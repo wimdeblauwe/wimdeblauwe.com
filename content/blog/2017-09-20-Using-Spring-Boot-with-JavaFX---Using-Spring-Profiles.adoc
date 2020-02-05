@@ -1,5 +1,5 @@
 ---
-title: "Using Spring Boot with JavaFX   Using Spring Profiles"
+title: "Using Spring Boot with JavaFX - Using Spring Profiles"
 date: 2017-09-20
 draft: false
 tags: ["javafx"]
@@ -11,7 +11,7 @@ tags: ["spring-boot"]
 :imagesdir: /images
 :icons: font
 
-In the previous post, I showed https://wimdeblauwe.wordpress.com/2017/09/18/using-spring-boot-with-javafx/[how to get started with Spring Boot and JavaFX].
+In the previous post, I showed ./blog/2017/09/18/using-spring-boot-with-javafx/[how to get started with Spring Boot and JavaFX].
 
 Continuing with the same example, we are going to create a new implementation of the `CountryService` interface that talks to the https://docs.openaq.org/[Open AQ Platform API] so the list of countries will be a lot bigger than our `HardcodedListCountryService` we have now.
 
@@ -19,83 +19,59 @@ Continuing with the same example, we are going to create a new implementation of
 
 First, we add 2 dependencies in our `pom.xml` to be able to use http://square.github.io/retrofit/[Retrofit]:
 
-[source]
+[source,xml]
 ----
-
 <dependency>
-
-<groupId>com.squareup.retrofit2</groupId>
-
-<artifactId>retrofit</artifactId>
-
-<version>2.3.0</version>
-
+    <groupId>com.squareup.retrofit2</groupId>
+    <artifactId>retrofit</artifactId>
+    <version>2.3.0</version>
 </dependency>
-
 <dependency>
-
-<groupId>com.squareup.retrofit2</groupId>
-
-<artifactId>converter-jackson</artifactId>
-
-<version>2.3.0</version>
-
+    <groupId>com.squareup.retrofit2</groupId>
+    <artifactId>converter-jackson</artifactId>
+    <version>2.3.0</version>
 </dependency>
-
 ----
 
 Using Retrofit, we can easily get information from the API and transform it using Jackson into Java Objects.
 
 First, we create an interface with a method for each call to the API we want to do:
 
-[source]
+[source,java]
 ----
-
 public interface OpenAqApi {
 
-@GET("countries")
-
-Call<OpenAqCountriesResponse> listCountries();
-
+    @GET("countries")
+    Call<OpenAqCountriesResponse> listCountries();
 }
 
 ----
 
 Next, we create objects that correspond to the returned JSON structures:
 
-[source]
+[source,java]
 ----
-
 @Getter
-
 @Setter
-
 @JsonIgnoreProperties(ignoreUnknown = true)
-
 public class OpenAqCountriesResponse {
 
-private List<OpenAqCountry> results;
+    private List<OpenAqCountry> results;
 
 }
-
 ----
 
 and
 
-[source]
+[source,java]
 ----
-
 @Getter
-
 @Setter
-
 @JsonIgnoreProperties(ignoreUnknown = true)
-
 public class OpenAqCountry {
 
-private String code;
-
-private String name;
+    private String code;
+    private String name;
 
 }
 
@@ -105,82 +81,56 @@ Note: We use `@JsonIgnoreProperties(ignoreUnknown = true)` to avoid having to ad
 
 Finally, we create an `OpenAqServiceImpl` class that sets up Retrofit for our API:
 
-[source]
+[source,java]
 ----
-
 @Component
-
 public class OpenAqServiceImpl implements OpenAqService {
 
-private final OpenAqApi api;
+    private final OpenAqApi api;
 
-public OpenAqServiceImpl() {
+    public OpenAqServiceImpl() {
 
-HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
+        HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
+        interceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
+        OkHttpClient client = new OkHttpClient.Builder()
+                .addInterceptor(interceptor).build();
 
-interceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl("https://api.openaq.org/v1/")
+                .addConverterFactory(JacksonConverterFactory.create())
+                .client(client)
+                .build();
 
-OkHttpClient client = new OkHttpClient.Builder()
+        api = retrofit.create(OpenAqApi.class);
+    }
 
-.addInterceptor(interceptor).build();
+    @Override
+    public Set<OpenAqCountry> listCountries() {
+        try {
+            OpenAqCountriesResponse response = api.listCountries().execute().body();
 
-Retrofit retrofit = new Retrofit.Builder()
+            if (response != null) {
+                return new HashSet<>(response.getResults());
+            } else {
+                return Collections.emptySet();
+            }
 
-.baseUrl("https://api.openaq.org/v1/")
-
-.addConverterFactory(JacksonConverterFactory.create())
-
-.client(client)
-
-.build();
-
-api = retrofit.create(OpenAqApi.class);
-
-}
-
-@Override
-
-public Set<OpenAqCountry> listCountries() {
-
-try {
-
-OpenAqCountriesResponse response = api.listCountries().execute().body();
-
-if (response != null) {
-
-return new HashSet<>(response.getResults());
-
-} else {
-
-return Collections.emptySet();
-
-}
-
-} catch (IOException e) {
-
-throw new RuntimeException(e);
-
-}
-
-}
-
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
 
 ----
 
 Note: The current code also logs the HTTP requests and responses. For this to work, you need an additional dependency:
 
-[source]
+[source,xml]
 ----
-
 <dependency>
-
-<groupId>com.squareup.okhttp3</groupId>
-
-<artifactId>logging-interceptor</artifactId>
-
-<version>3.8.0</version>
-
+    <groupId>com.squareup.okhttp3</groupId>
+    <artifactId>logging-interceptor</artifactId>
+    <version>3.8.0</version>
 </dependency>
 
 ----
@@ -189,33 +139,23 @@ If you don't want/need this logging, you can remove the dependency.
 
 With all this plumbing in place, we can create our actual `CountryServiceImpl` that is quite simple:
 
-[source]
+[source,java]
 ----
-
 @Component
-
 public class CountryServiceImpl implements CountryService {
 
-private final OpenAqService service;
+    private final OpenAqService service;
 
-public CountryServiceImpl(OpenAqService service) {
+    public CountryServiceImpl(OpenAqService service) {
+        this.service = service;
+    }
 
-this.service = service;
-
-}
-
-@Override
-
-public Set<Country> getAllCountries() {
-
-return service.listCountries().stream()
-
-.map(openAqCountry -> new Country(openAqCountry.getCode(), openAqCountry.getName()))
-
-.collect(Collectors.toSet());
-
-}
-
+    @Override
+    public Set<Country> getAllCountries() {
+        return service.listCountries().stream()
+                      .map(openAqCountry -> new Country(openAqCountry.getCode(), openAqCountry.getName()))
+                      .collect(Collectors.toSet());
+    }
 }
 
 ----
@@ -224,33 +164,23 @@ return service.listCountries().stream()
 
 However, if we now start our JavaFX application, Spring will complain that there are 2 classes that implement `CountryService` and it has no clue which one it has to inject into our controller. To solve this, we will add 2 extra annotations to the `HardcodedListCountryService`:
 
-[source]
+[source,java]
 ----
-
 @Component
-
 @Profile("offline")
-
 @Primary
-
 public class HardcodedListCountryService implements CountryService {
 
-@Override
+    @Override
+    public Set<Country> getAllCountries() {
 
-public Set<Country> getAllCountries() {
+        Set<Country> result = new HashSet<>();
+        result.add(new Country("AU", "Australia"));
+        result.add(new Country("BR", "Brazil"));
+        result.add(new Country("BE", "Belgium"));
 
-Set<Country> result = new HashSet<>();
-
-result.add(new Country("AU", "Australia"));
-
-result.add(new Country("BR", "Brazil"));
-
-result.add(new Country("BE", "Belgium"));
-
-return result;
-
-}
-
+        return result;
+    }
 }
 
 ----
@@ -261,7 +191,9 @@ return result;
 As a result, if we start the application without any argument, it will use the "online" version of the `CountryService` that uses the Open AQ API. When starting with
 
 [source]
-------spring.profiles.active=offline[/code]
+----
+--spring.profiles.active=offline
+----
 
 as program arguments, the hardcoded list will be used without contacting the API online.
 

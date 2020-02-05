@@ -14,139 +14,88 @@ During the migration of a https://spring.io/projects/spring-boot[Spring Boot] ap
 
 [source,java]
 ----
-
 @RestController
-
 public class MyRestController {
 
-@GetMapping
-
-public PageImpl<SomeDtoObject> listAll() {
-
-...
-
-}
-
+    @GetMapping
+    public PageImpl<SomeDtoObject> listAll() {
+        ...
+    }
 }
 
 ----
 
 With Spring Boot 1.5.13, this results in JSON like this:
 
-[source,javascript]
+[source,json]
 ----
-
 {
-
-"content": [
-
-{...},
-
-{...},
-
-....
-
-],
-
-"totalElements": 50,
-
-"totalPages": 3,
-
-"last": false,
-
-"size": 20,
-
-"number": 0,
-
-"numberOfElements": 1,
-
-"first": true,
-
-"sort": [
-
-{
-
-"direction": "DESC",
-
-"property": "date",
-
-"ignoreCase": false,
-
-"nullHandling": "NATIVE",
-
-"ascending": false,
-
-"descending": true
-
-}
-
-]
-
+  "content": [
+    {
+      ...
+    },
+    {
+      ...
+    },
+    ....
+  ],
+  "totalElements": 50,
+  "totalPages": 3,
+  "last": false,
+  "size": 20,
+  "number": 0,
+  "numberOfElements": 1,
+  "first": true,
+  "sort": [
+    {
+      "direction": "DESC",
+      "property": "date",
+      "ignoreCase": false,
+      "nullHandling": "NATIVE",
+      "ascending": false,
+      "descending": true
+    }
+  ]
 }
 
 ----
 
 However, with Spring Boot 2.0.2 (which includes Spring Data Commons 2.0.7), the resulting JSON is quite different:
 
-[source,javascript]
+[source,json]
 ----
-
 {
-
-"content": [
-
-{...},
-
-{...},
-
-....
-
-],
-
-"pageable": {
-
-"sort": {
-
-"sorted": true,
-
-"unsorted": false
-
-},
-
-"offset": 0,
-
-"pageNumber": 0,
-
-"pageSize": 20,
-
-"paged": true,
-
-"unpaged": false
-
-},
-
-"totalPages": 3,
-
-"last": false,
-
-"totalElements": 50,
-
-"size": 20,
-
-"number": 0,
-
-"numberOfElements": 1,
-
-"sort": {
-
-"sorted": true,
-
-"unsorted": false
-
-},
-
-"first": true
-
+  "content": [
+    {
+      ...
+    },
+    {
+      ...
+    },
+    ....
+  ],
+  "pageable": {
+    "sort": {
+      "sorted": true,
+      "unsorted": false
+    },
+    "offset": 0,
+    "pageNumber": 0,
+    "pageSize": 20,
+    "paged": true,
+    "unpaged": false
+  },
+  "totalPages": 3,
+  "last": false,
+  "totalElements": 50,
+  "size": 20,
+  "number": 0,
+  "numberOfElements": 1,
+  "sort": {
+    "sorted": true,
+    "unsorted": false
+  },
+  "first": true
 }
 
 ----

@@ -2,7 +2,7 @@
 title: "Tip on migration to Spring Boot 2 when using Flyway"
 date: 2018-08-30
 draft: false
-tags: ["spring-boot"]
+tags: ["spring-boot", "flyway"]
 ---
 :source-highlighter: rouge
 :rouge-css: style

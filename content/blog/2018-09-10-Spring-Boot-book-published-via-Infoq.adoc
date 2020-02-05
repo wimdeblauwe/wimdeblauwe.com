@@ -12,6 +12,8 @@ tags: ["spring-boot"]
 
 I am so happy because today my Spring Boot book is finally available! See https://www.infoq.com/minibooks/spring-boot-building-api-backend for all the details.
 
+<!--more-->
+
 I would like to thank the people at Infoq for making this a reality: Ana and Charles.
 
 Huge thanks to https://twitter.com/kittylyst[Ben Evans] for the technical review and Lawrence Nyveen for reviewing my English.

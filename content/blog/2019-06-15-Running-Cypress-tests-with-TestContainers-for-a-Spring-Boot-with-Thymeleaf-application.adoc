@@ -10,7 +10,7 @@ tags: ["spring-boot"]
 :imagesdir: /images
 :icons: font
 
-_UPDATE: The full test class code in this post does not actually fail the test when the Cypress tests fail. See my updated example at https://wimdeblauwe.wordpress.com/2019/06/16/ensure-junit-test-fails-when-cypress-tests-fail/[Ensure JUnit test fails when Cypress tests fail]._
+_UPDATE: The full test class code in this post does not actually fail the test when the Cypress tests fail. See my updated example at ./blog/2019/06/16/ensure-junit-test-fails-when-cypress-tests-fail/[Ensure JUnit test fails when Cypress tests fail]._
 
 At the last https://ng-be.org/[ng-be] conference I saw a demo of https://www.cypress.io/[Cypress]. Cypress allows to do functional testing of your web application, quite similar to Selenium for example, but still https://docs.cypress.io/guides/overview/key-differences.html#Architecture[quite different].
 
@@ -29,26 +29,19 @@ To create our first test, we need a few files.
 
 In `cypress.json`, we will put the base url of our application. By default, Spring Boot will run on localhost at port 8080, so our configuration should look like this:
 
-[source]
+[source,json]
 ----
-
 {
-
-"baseUrl": "http://localhost:8080"
-
+  "baseUrl": "http://localhost:8080"
 }
-
 ----
 
 In the `index.js` that is in the `support` directory, we load the `commands.js` file that should also be in the same directory:
 
-[source]
+[source,javascript]
 ----
-
 // Import commands.js using ES2015 syntax:
-
 import './commands'
-
 ----
 
 The `commands.js` file can be empty for now. The `index.js` in the `plugins` is also empty for now.
@@ -57,51 +50,35 @@ Finally, the `spec.js` file is the most important one as it contains our actual 
 
 For example:
 
-[source]
+[source,javascript]
 ----
-
 Cypress.on('uncaught:exception', (err, runnable) => {
-
-// returning false here prevents Cypress from
-
-// failing the test
-
-return false
+    // returning false here prevents Cypress from
+    // failing the test
+    return false
 
 });
 
 context('Website login', () => {
 
-beforeEach(() => {
+    beforeEach(() => {
+        cy.visit('/')
+    });
 
-cy.visit('/')
+    it('should redirect to login page if not logged on', function () {
+        cy.url().should('include', 'login')
+    });
 
-});
+    it('allows login with admin/admin credentials', function () {
+        cy.get('#username')
+            .type('admin');
+        cy.get('#password')
+            .type('admin');
+        cy.get('button[type=submit]').click();
 
-it('should redirect to login page if not logged on', function () {
-
-cy.url().should('include', 'login')
-
-});
-
-it('allows login with admin/admin credentials', function () {
-
-cy.get('#username')
-
-.type('admin');
-
-cy.get('#password')
-
-.type('admin');
-
-cy.get('button[type=submit]').click();
-
-// Administrators see the users page by default
-
-cy.url().should('include', 'users');
-
-});
-
+        // Administrators see the users page by default
+        cy.url().should('include', 'users');
+    });
 });
 
 ----
@@ -123,19 +100,16 @@ To run these tests in the desktop application of Cypress, you just need to do th
 
 After that, you will see Cypress running your tests side-by-side with your application:
 
-image:image::{imagesdir}//2019/06/screenshot-2019-06-15-at-20.14.24.png[]
+image::{imagesdir}/2019/06/screenshot-2019-06-15-at-20.14.24.png[]
 
 If you now edit your `spec.js` file, the Cypress application will watch it for changes and run all tests again as soon as you save the file.
 
 NOTE: It might be annoying if you are working on 1 test that all tests run. You can use `it.only()` instead of `it()` to instruct Cypress to only run that one test. E.g.:
 
-[source]
+[source,javascript]
 ----
-
 it.only('should redirect to login page if not logged on', function () {
-
-cy.url().should('include', 'login')
-
+    cy.url().should('include', 'login')
 });
 
 ----
@@ -148,17 +122,14 @@ Cypress recently published https://hub.docker.com/u/cypress[Docker images] for i
 
 If you are not already using Testcontainers, add the dependency to your `pom.xml`:
 
-[source]
+[source,xml]
 ----
-
-org.testcontainers
-
-testcontainers
-
-<versionv${testcontainers.version}
-
-test
-
+<dependency>
+    <groupId>org.testcontainers</groupId>
+    <artifactId>testcontainers</artifactId>
+    <version>${testcontainers.version}</version>
+    <scope>test</scope>
+</dependency>
 ----
 
 I used version 1.11.3.
@@ -167,15 +138,11 @@ I used version 1.11.3.
 
 Create a `CypressIntegrationTest` Java file in `src/test/java` that uses the `@SpringBootTest` annotation to startup the full application on a random port:
 
-[source]
+[source,java]
 ----
-
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-
 @ActiveProfiles(SpringProfiles.INTEGRATION_TEST)
-
 class CypressIntegrationTest {
 
 }
@@ -186,57 +153,39 @@ class CypressIntegrationTest {
 
 In our `CypressIntegrationTest`, we use the `GenericContainer` class from Testcontainers:
 
-[source]
+[source,java]
 ----
-
 private GenericContainer createCypressContainer() {
-
-GenericContainer result = new GenericContainer("cypress/included:3.3.1"); //
-
-result.withClasspathResourceMapping("e2e", "/e2e", BindMode.READ_WRITE); //
-
-result.setWorkingDirectory("/e2e"); //
-
-result.addEnv("CYPRESS_baseUrl", "http://host.testcontainers.internal:" + port); //
-
-return result;
-
+    GenericContainer result = new GenericContainer("cypress/included:3.3.1");
+    result.withClasspathResourceMapping("e2e", "/e2e", BindMode.READ_WRITE);
+    result.setWorkingDirectory("/e2e");
+    result.addEnv("CYPRESS_baseUrl", "http://host.testcontainers.internal:" + port);
+    return result;
 }
-
 ----
 
 * Use the cypress docker image that has everything included at version 3.3.1.
-
 * Map what is on the classpath under `e2e` to a path in the Docker container at `/e2e` as the Docker container expects to find the tests there.
-
 * Set the working directory in the container to `/e2e`
-
 * Override the `baseUrl` that is defined in `cypress.json` via an environment variable
 
 As the `@SpringBootTest` will run our application at a random port, we need to inject that port into our test:
 
-[source]
+[source,java]
 ----
-
 @LocalServerPort
-
 private int port;
-
 ----
 
 With that `port` field, we can build up the URL that Cypress should use for testing.
 
 To make it possible for the Cypress docker image started by Testcontainers to communicate with out application started by Spring Boot, we need to add this line at the start of our test:
 
-[source]
+[source,java]
 ----
-
 // Ensures that the container will be able to access the Spring Boot application that
-
 // is started via @SpringBootTest
-
 Testcontainers.exposeHostPorts(port);
-
 ----
 
 Adding this line allows the Docker container to access the host via `host.testcontainers.internal`.
@@ -245,7 +194,7 @@ Adding this line allows the Docker container to access the host via `host.testco
 
 With Testcontainers, you can put a directory that is on the classpath mounted as a volume in the docker container. Our tests are in `src/test/e2e` which is not on the classpath by default. We can easily add them on the (test)classpath by adding a `` block to our `pom.xml`:
 
-[source]
+[source,xml]
 ----
 
 ...
@@ -268,95 +217,69 @@ Not sure if it is the best way, but I added a `CountDownLatch` to wait for Cypre
 
 To recap, this is the full code of my test:
 
-[source]
+[source,java]
 ----
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-
 @ActiveProfiles(SpringProfiles.INTEGRATION_TEST)
-
 class CypressIntegrationTest {
 
-private static final Logger LOGGER = LoggerFactory.getLogger(CypressIntegrationTest.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(CypressIntegrationTest.class);
 
-private static final int MAX_TOTAL_TEST_TIME_IN_MINUTES = 5;
+    private static final int MAX_TOTAL_TEST_TIME_IN_MINUTES = 5;
 
-@LocalServerPort
+    @LocalServerPort
+    private int port;
 
-private int port;
+    @Autowired
+    private UserService userService;
 
-@Autowired
+    @Test
+    void runCypressTests() throws InterruptedException {
 
-private UserService userService;
+        // Ensures that the container will be able to access the Spring Boot application that
+        // is started via @SpringBootTest
+        Testcontainers.exposeHostPorts(port);
 
-@Test
+        userService.addAdministrator("admin", "Administrator", "admin", Gender.MALE,
+                                     LocalDate.of(1978, Month.DECEMBER, 2));
 
-void runCypressTests() throws InterruptedException {
+        CountDownLatch countDownLatch = new CountDownLatch(1);
 
-// Ensures that the container will be able to access the Spring Boot application that
+        try (GenericContainer container = createCypressContainer()) {
 
-// is started via @SpringBootTest
+            container.start();
+            container.followOutput(new Consumer() {
 
-Testcontainers.exposeHostPorts(port);
+                @Override
+                public void accept(OutputFrame outputFrame) {
 
-userService.addAdministrator("admin", "Administrator", "admin", Gender.MALE,
+                    LOGGER.debug(outputFrame.getUtf8String());
 
-LocalDate.of(1978, Month.DECEMBER, 2));
+                    if (outputFrame.getUtf8String().contains("Run Finished")) {
+                        countDownLatch.countDown();
+                    }
+                }
+            });
 
-CountDownLatch countDownLatch = new CountDownLatch(1);
+            countDownLatch.await(MAX_TOTAL_TEST_TIME_IN_MINUTES, TimeUnit.MINUTES);
 
-try (GenericContainer container = createCypressContainer()) {
+            // Just sleep a bit extra because 'Run Finished' is not the really last line,
+            // but very close to the end
 
-container.start();
+            Thread.sleep(2000);
+        }
+    }
 
-container.followOutput(new Consumer() {
-
-@Override
-
-public void accept(OutputFrame outputFrame) {
-
-LOGGER.debug(outputFrame.getUtf8String());
-
-if (outputFrame.getUtf8String().contains("Run Finished")) {
-
-countDownLatch.countDown();
-
-}
-
-}
-
-});
-
-countDownLatch.await(MAX_TOTAL_TEST_TIME_IN_MINUTES, TimeUnit.MINUTES);
-
-// Just sleep a bit extra because 'Run Finished' is not the really last line,
-
-// but very close to the end
-
-Thread.sleep(2000);
-
-}
-
-}
-
-@NotNull
-
-private GenericContainer createCypressContainer() {
-
-GenericContainer result = new GenericContainer("cypress/included:3.3.1");
-
-result.withClasspathResourceMapping("e2e", "/e2e", BindMode.READ_WRITE);
-
-result.setWorkingDirectory("/e2e");
-
-result.addEnv("CYPRESS_baseUrl", "http://host.testcontainers.internal:" + port);
-
-return result;
-
-}
-
+    @NotNull
+    private GenericContainer createCypressContainer() {
+        GenericContainer result = new GenericContainer("cypress/included:3.3.1");
+        result.withClasspathResourceMapping("e2e", "/e2e", BindMode.READ_WRITE);
+        result.setWorkingDirectory("/e2e");
+        result.addEnv("CYPRESS_baseUrl", "http://host.testcontainers.internal:" + port);
+        return result;
+    }
 }
 
 ----

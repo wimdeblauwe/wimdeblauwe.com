@@ -22,30 +22,89 @@ The project will show a list of todo items (Not very original I know, but that i
 
 We'll start with the `Todo` class:
 
-[source,wp-block-syntaxhighlighter-code]
+[source,java]
 ----
-public class Todo {    private String description;    public Todo(String description) {        this.description = description;    }    public String getDescription() {        return description;    }    public void setDescription(String description) {        this.description = description;    }}
+public class Todo {
+    private String description;
+
+    public Todo(String description) {
+        this.description = description;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+}
 ----
 
 and the `TodoService`:
 
-[source,wp-block-syntaxhighlighter-code]
+[source,java]
 ----
-@Servicepublic class TodoService {    private List<Todo> items = new ArrayList<>();    public TodoService() {        items.add(new Todo("Add Cypress tests"));        items.add(new Todo("Write blog post"));    }    public void addTodoItem(Todo todo) {        items.add(todo);    }    public List<Todo> findAll() {        return items;    }}
+@Service
+public class TodoService {
+    private List<Todo> items = new ArrayList<>();
+
+    public TodoService() {
+        items.add(new Todo("Add Cypress tests"));
+        items.add(new Todo("Write blog post"));
+    }
+
+    public void addTodoItem(Todo todo) {
+        items.add(todo);
+    }
+
+    public List<Todo> findAll() {
+        return items;
+    }
+}
 ----
 
 In a web sub-package, we create the `TodoController`:
 
-[source,wp-block-syntaxhighlighter-code]
+[source,java]
 ----
-@Controller@RequestMapping("/todos")public class TodoController {    private final TodoService service;    public TodoController(TodoService service) {        this.service = service;    }    @GetMapping    public String list(Model model) {        model.addAttribute("todos", service.findAll());        return "todo-list";    }}
+@Controller
+@RequestMapping("/todos")
+public class TodoController {
+    private final TodoService service;
+
+    public TodoController(TodoService service) {
+        this.service = service;
+    }
+
+    @GetMapping
+    public String list(Model model) {
+        model.addAttribute("todos", service.findAll());
+        return "todo-list";
+    }
+}
 ----
 
 Finally, in the `src/main/resources/templates` directory, we add our Thymeleaf template:
 
-[source,wp-block-syntaxhighlighter-code]
+[source,xml]
 ----
-<!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml"      xmlns:th="http://www.thymeleaf.org"><body>    <h1>TODO list</h1>    <div>        <th:block th:if="${todos.size() > 0}">            <ul id="todo-items-list">                <li th:each="item : ${todos}" th:text="${item.description}">                </li>            </ul>        </th:block>        <th:block th:if="${todos.empty}">            <div id="empty-todos-message">There are no todo items</div>        </th:block>    </div></body></html>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+    <body>
+        <h1>TODO list</h1>
+        <div>
+            <th:block th:if="${todos.size() > 0}">
+                <ul id="todo-items-list">
+                    <li th:each="item : ${todos}" th:text="${item.description}"></li>
+                </ul>
+            </th:block>
+            <th:block th:if="${todos.empty}">
+                <div id="empty-todos-message">There are no todo items</div>
+            </th:block>
+        </div>
+    </body>
+</html>
 ----
 
 == Add Cypress to the project
@@ -56,41 +115,83 @@ As an alternative, just create the following files in `src/test/e2e`:
 
 `cypress.json`:
 
-[source,wp-block-syntaxhighlighter-code]
+[source,json]
 ----
-{  "baseUrl": "http://localhost:8080",  "reporter": "cypress-multi-reporters",  "reporterOptions": {    "configFile": "reporter-config.json"  }}
+{
+  "baseUrl": "http://localhost:8080",
+  "reporter": "cypress-multi-reporters",
+  "reporterOptions": {
+    "configFile": "reporter-config.json"
+  }
+}
 ----
 
 `package.json`:
 
-[source,wp-block-syntaxhighlighter-code]
+[source,json]
 ----
-{  "name": "testcontainers-cypress-example",  "version": "0.0.1-SNAPSHOT",  "description": "",  "scripts": {    "test": "echo \"Error: no test specified\" && exit 1"  },  "devDependencies": {    "cypress": "^3.8.3",    "cypress-multi-reporters": "^1.2.3",    "mocha": "^7.0.1",    "mochawesome": "^4.1.0"  }}
+{
+  "name": "testcontainers-cypress-example",
+  "version": "0.0.1-SNAPSHOT",
+  "description": "",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "cypress": "^3.8.3",
+    "cypress-multi-reporters": "^1.2.3",
+    "mocha": "^7.0.1",
+    "mochawesome": "^4.1.0"
+  }
+}
 ----
 
 `reporter-config.json`:
 
-[source,wp-block-syntaxhighlighter-code]
+[source,json]
 ----
-{  "reporterEnabled": "spec, mochawesome",  "mochawesomeReporterOptions": {    "reportDir": "cypress/reports/mochawesome",    "overwrite": false,    "html": false,    "json": true  }}
+{
+  "reporterEnabled": "spec, mochawesome",
+  "mochawesomeReporterOptions": {
+    "reportDir": "cypress/reports/mochawesome",
+    "overwrite": false,
+    "html": false,
+    "json": true
+  }
+}
 ----
 
 Finally, run `npm install` to install the dependencies.
 
 Also update your `.gitignore` to exclude the following from accidental commit:
 
-[source,wp-block-syntaxhighlighter-code]
+[source]
 ----
-node_modulessrc/test/e2e/cypress/reportssrc/test/e2e/cypress/videossrc/test/e2e/cypress/screenshots
+node_modules
+src/test/e2e/cypress/reports
+src/test/e2e/cypress/videos
+src/test/e2e/cypress/screenshots
 ----
 
 == Add Cypress tests
 
 We can now add a Cypress test by creating the `todos.spec.js` file in `src/test/e2e/cypress/integration`:
 
-[source,wp-block-syntaxhighlighter-code]
+[source,javascript]
 ----
-/// <reference types="Cypress" />context('Todo tests', () => {   it('should show a message if there are no todo items', () => {       cy.visit('/todos');       cy.get('h1').contains('TODO list');       cy.get('#empty-todos-message').contains('There are no todo items');   });   it('should show all todo items', () => {       cy.visit('/todos');       cy.get('h1').contains('TODO list');       cy.get('#todo-items-list')           .children()           .should('have.length', 2)           .should('contain', 'Add Cypress tests')           .and('contain', 'Write blog post');   })});
+/// <reference types="Cypress" />
+context('Todo tests', () => {
+    it('should show a message if there are no todo items', () => {
+        cy.visit('/todos');
+        cy.get('h1').contains('TODO list');
+        cy.get('#empty-todos-message').contains('There are no todo items');
+    });
+    it('should show all todo items', () => {
+        cy.visit('/todos');
+        cy.get('h1').contains('TODO list');
+        cy.get('#todo-items-list').children().should('have.length', 2).should('contain', 'Add Cypress tests').and('contain', 'Write blog post');
+    })
+});
 ----
 
 To run the tests:
@@ -100,11 +201,11 @@ To run the tests:
 
 The Cypress application should open and show something like this:
 
-image:image::{imagesdir}//2020/02/image.png[]
+image::{imagesdir}//2020/02/image.png[]
 
 Click on `todos.spec.js` to start the tests. Cypress will start Chrome and run the tests.
 
-image:image::{imagesdir}//2020/02/image-1.png[]
+image::{imagesdir}//2020/02/image-1.png[]
 
 As you can see, one of the tests has failed. This is normal since our application starts with 2 todo items hardcoded in our service. To fix this, we will expose a special REST endpoint that allows us to inform the Spring Boot application in what "state" it should be so we can be sure about what our Cypress tests can expect.
 
@@ -112,28 +213,76 @@ As you can see, one of the tests has failed. This is normal since our applicatio
 
 Add this code in the `infrastructure/test` sub-package:
 
-[source,wp-block-syntaxhighlighter-code]
+[source,java]
 ----
-@RestController@RequestMapping("/api/integration-test")public class IntegrationTestRestController {    private final TodoService service;    public IntegrationTestRestController(TodoService service) {        this.service = service;    }    @PostMapping("/clear-all-todos")    public void clearAllTodos() {        service.deleteAll();    }    @PostMapping("/prepare-todo-list-items")    public void prepareTodoListItems() {        service.addTodoItem(new Todo("Add Cypress tests"));        service.addTodoItem(new Todo("Write blog post"));    }}
+@RestController
+@RequestMapping("/api/integration-test")
+public class IntegrationTestRestController {
+    private final TodoService service;
+
+    public IntegrationTestRestController(TodoService service) {
+        this.service = service;
+    }
+
+    @PostMapping("/clear-all-todos")
+    public void clearAllTodos() {
+        service.deleteAll();
+    }
+
+    @PostMapping("/prepare-todo-list-items")
+    public void prepareTodoListItems() {
+        service.addTodoItem(new Todo("Add Cypress tests"));
+        service.addTodoItem(new Todo("Write blog post"));
+    }
+}
 ----
 
 At the same time, update the `TodoService` to look like this:
 
-[source,wp-block-syntaxhighlighter-code]
+[source,java]
 ----
-@Servicepublic class TodoService {    private List<Todo> items = new ArrayList<>();    public void addTodoItem(Todo todo) {        items.add(todo);    }    public List<Todo> findAll() {        return items;    }    public void deleteAll() {        items.clear();    }}
+@Service
+public class TodoService {
+    private List<Todo> items = new ArrayList<>();
+
+    public void addTodoItem(Todo todo) {
+        items.add(todo);
+    }
+
+    public List<Todo> findAll() {
+        return items;
+    }
+
+    public void deleteAll() {
+        items.clear();
+    }
+}
 ----
 
 Finally, update Cypress tests to do a POST request at the start of each test:
 
-[source,wp-block-syntaxhighlighter-code]
+[source,javascript]
 ----
-/// <reference types="Cypress" />context('Todo tests', () => {   it('should show a message if there are no todo items', () => {       cy.request('POST', '/api/integration-test/clear-all-todos');       cy.visit('/todos');       cy.get('h1').contains('TODO list');       cy.get('#empty-todos-message').contains('There are no todo items');   });   it('should show all todo items', () => {       cy.request('POST', '/api/integration-test/prepare-todo-list-items');       cy.visit('/todos');       cy.get('h1').contains('TODO list');       cy.get('#todo-items-list')           .children()           .should('have.length', 2)           .should('contain', 'Add Cypress tests')           .and('contain', 'Write blog post');   })});
+/// <reference types="Cypress" />
+context('Todo tests', () => {
+    it('should show a message if there are no todo items', () => {
+        cy.request('POST', '/api/integration-test/clear-all-todos');
+        cy.visit('/todos');
+        cy.get('h1').contains('TODO list');
+        cy.get('#empty-todos-message').contains('There are no todo items');
+    });
+    it('should show all todo items', () => {
+        cy.request('POST', '/api/integration-test/prepare-todo-list-items');
+        cy.visit('/todos');
+        cy.get('h1').contains('TODO list');
+        cy.get('#todo-items-list').children().should('have.length', 2).should('contain', 'Add Cypress tests').and('contain', 'Write blog post');
+    })
+});
 ----
 
 If we now run the tests again by restarting the Spring Boot app, we see that both tests now pass:
 
-image:image::{imagesdir}//2020/02/image-2.png[]
+image::{imagesdir}//2020/02/image-2.png[]
 
 == Run the Cypress tests from JUnit
 
@@ -141,35 +290,82 @@ As a final step (and the reason for this blog post), we will run the Cypress tes
 
 Add testcontainer-cypress as a dependency in Maven:
 
-[source,wp-block-syntaxhighlighter-code]
+[source,xml]
 ----
-<dependency>    <groupId>io.github.wimdeblauwe</groupId>    <artifactId>testcontainers-cypress</artifactId>    <version>${tc-cypress.version}</version>    <scope>test</scope></dependency>
+<dependency>
+    <groupId>io.github.wimdeblauwe</groupId>
+    <artifactId>testcontainers-cypress</artifactId>
+    <version>${tc-cypress.version}</version>
+    <scope>test</scope>
+</dependency>
 ----
 
 Add the e2e directory as test resource:
 
-[source,wp-block-syntaxhighlighter-code]
+[source,xml]
 ----
-<project>    <build>        <testResources>     <testResource>             <directory>src/test/resources</directory>        </testResource>        <testResource>     <directory>src/test/e2e</directory>      <targetPath>e2e</targetPath>     </testResource>    </testResources>    </build></project>
+<project>
+    <build>
+        <testResources>
+            <testResource>
+                <directory>src/test/resources</directory>
+            </testResource>
+            <testResource>
+                <directory>src/test/e2e</directory>
+                <targetPath>e2e</targetPath>
+            </testResource>
+        </testResources>
+    </build>
+</project>
 ----
 
 With this setup, we can create our JUnit test:
 
-[source,wp-block-syntaxhighlighter-code]
+[source,java]
 ----
-import io.github.wimdeblauwe.testcontainers.cypress.CypressContainer;import io.github.wimdeblauwe.testcontainers.cypress.CypressTestResults;import org.junit.jupiter.api.Test;import org.springframework.boot.test.context.SpringBootTest;import org.springframework.boot.web.server.LocalServerPort;import org.testcontainers.Testcontainers;import java.io.IOException;import java.util.concurrent.TimeoutException;import static org.junit.jupiter.api.Assertions.fail;@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)class TodoControllerCypressIntegrationTest {    @LocalServerPort    private int port;    @Test    void runCypressTests() throws InterruptedException, IOException, TimeoutException {        Testcontainers.exposeHostPorts(port);        try (CypressContainer container = new CypressContainer().withLocalServerPort(port)) {            container.start();            CypressTestResults testResults = container.getTestResults();            if (testResults.getNumberOfFailingTests() > 0) {                fail("There was a failure running the Cypress tests!\n\n" + testResults);            }        }    }}
+import io.github.wimdeblauwe.testcontainers.cypress.CypressContainer;
+import io.github.wimdeblauwe.testcontainers.cypress.CypressTestResults;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.web.server.LocalServerPort;
+import org.testcontainers.Testcontainers;
+
+import java.io.IOException;
+import java.util.concurrent.TimeoutException;
+
+import static org.junit.jupiter.api.Assertions.fail;
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+class TodoControllerCypressIntegrationTest {
+    @LocalServerPort
+    private int port;
+
+    @Test
+    void runCypressTests() throws InterruptedException, IOException, TimeoutException {
+        Testcontainers.exposeHostPorts(port);
+        try (CypressContainer container = new CypressContainer().withLocalServerPort(port)) {
+            container.start();
+            CypressTestResults testResults = container.getTestResults();
+            if (testResults.getNumberOfFailingTests() > 0) {
+                fail("There was a failure running the Cypress tests!\n\n" + testResults);
+            }
+        }
+    }
+}
 ----
 
 The output of the test should show that both tests have run:
 
-[source,wp-block-syntaxhighlighter-code]
+[source]
 ----
-2020-02-01 16:09:45.357  INFO 5937 --- [           main] i.g.w.t.cypress.CypressContainer         : Cypress tests run: 2Cypress tests passing: 2Cypress tests failing: 0
+2020-02-01 16:09:45.357  INFO 5937 --- [           main] i.g.w.t.cypress.CypressContainer         : Cypress tests run: 2
+Cypress tests passing: 2
+Cypress tests failing: 0
 ----
 
 If wanted, you can see the whole test run in the video that Cypress creates in the `target/test-classes/e2e/cypress/videos` directory.
 
-image:image::{imagesdir}//2020/02/screenshot-2020-02-01-at-16.13.31.png[]
+image::{imagesdir}/2020/02/screenshot-2020-02-01-at-16.13.31.png[]
 
 == Conclusion
 

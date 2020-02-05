@@ -2,6 +2,7 @@
 title: "Switching between JDK 8 and 11 using SDKMAN "
 date: 2018-09-26
 draft: false
+tags: ["java"]
 ---
 :source-highlighter: rouge
 :rouge-css: style
@@ -10,6 +11,8 @@ draft: false
 :icons: font
 
 I have written about https://wimdeblauwe.wordpress.com/2014/03/20/switching-easily-between-java-jdks-on-mac-os-x/[switching JDK versions on your mac] before. With JDK 11 now being out, it is time to give an updated version.
+
+<!--more-->
 
 You can make switching between the Oracle JDK 8 and the OpenJDK 11 very easy if you use https://sdkman.io/[SDKMAN!]. Just follow the installation instructions at https://sdkman.io/install to get started.
 

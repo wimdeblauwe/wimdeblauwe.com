@@ -2,8 +2,7 @@
 title: "Using Spring Boot with JavaFX"
 date: 2017-09-18
 draft: false
-tags: ["javafx"]
-tags: ["spring-boot"]
+tags: ["javafx","spring-boot"]
 ---
 :source-highlighter: rouge
 :rouge-css: style
@@ -204,7 +203,7 @@ Some things to note:
 
 Starting the application from IntelliJ IDEA shows the UI:
 
-image:image::{imagesdir}//2017/09/screen-shot-2017-09-18-at-20-51-59.png[]
+image::{imagesdir}//2017/09/screen-shot-2017-09-18-at-20-51-59.png[]
 
 == Injecting a Spring instantiated service
 
@@ -355,7 +354,7 @@ Since this is our only instance of `CountryService`, we can just have it pick up
 
 The resulting UI looks like this:
 
-image:image::{imagesdir}//2017/09/screen-shot-2017-09-18-at-21-03-49.png[]
+image::{imagesdir}//2017/09/screen-shot-2017-09-18-at-21-03-49.png[]
 
 == Conclusion
 

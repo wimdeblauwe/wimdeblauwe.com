@@ -233,69 +233,40 @@ The easiest to do that is using the a `logback-spring.xml` at the root of the cl
 
 [source,xml]
 ----
-
 <?xml version="1.0" encoding="UTF-8"?>
 
 <configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <springProfile name="dev,localmysql">
+        <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
 
-<include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <springProfile name="staging,prod">
+        <include resource="org/springframework/boot/logging/logback/file-appender.xml"/>
+        <appender name="DATADOGFILE"
+                  class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <customFields>{"env":"${TOPWIN_DATADOG_ENV}","version":"@project.version@"}</customFields>
+            </encoder>
+            <file>myapplication-datadog.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+                <fileNamePattern>myapplication-datadog.%i</fileNamePattern>
+            </rollingPolicy>
+            <triggeringPolicy
+                    class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+                <MaxFileSize>10MB</MaxFileSize>
+            </triggeringPolicy>
+        </appender>
 
-<springProfile name="dev,localmysql">
-
-<include resource="org/springframework/boot/logging/logback/console-appender.xml" />
-
-<root level="INFO">
-
-<appender-ref ref="CONSOLE" />
-
-</root>
-
-</springProfile>
-
-<springProfile name="staging,prod">
-
-<include resource="org/springframework/boot/logging/logback/file-appender.xml"/>
-
-<appender name="DATADOGFILE"
-
-class="ch.qos.logback.core.rolling.RollingFileAppender">
-
-<encoder class="net.logstash.logback.encoder.LogstashEncoder">
-
-<customFields>{"env":"${TOPWIN_DATADOG_ENV}","version":"@project.version@"}</customFields>
-
-</encoder>
-
-<file>myapplication-datadog.log</file>
-
-<rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-
-<fileNamePattern>myapplication-datadog.%i</fileNamePattern>
-
-</rollingPolicy>
-
-<triggeringPolicy
-
-class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-
-<MaxFileSize>10MB</MaxFileSize>
-
-</triggeringPolicy>
-
-</appender>
-
-<root level="INFO">
-
-<appender-ref ref="FILE"/>
-
-<appender-ref ref="DATADOGFILE" />
-
-</root>
-
-</springProfile>
-
+        <root level="INFO">
+            <appender-ref ref="FILE"/>
+            <appender-ref ref="DATADOGFILE"/>
+        </root>
+    </springProfile>
 </configuration>
-
 ----
 
 After deploying all this, metrics and log files should appear in your Datadog console.
