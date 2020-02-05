@@ -1,0 +1,13 @@
+---
+title: "New  bugfix  release JIRA Database Values Plugin 1.1.1"
+date: 2010-10-13
+draft: false
+tags: ["jira"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+Quick update: there is a new release of the JIRA Database Values Plugin 1.1.1 because there was an issue with 1.1 if you had issues without a value assigned for your custom field. Download the new version here: https://plugins.atlassian.com/plugin/details/4969

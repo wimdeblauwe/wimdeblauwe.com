@@ -1,0 +1,37 @@
+---
+title: "Spring Boot book published via Infoq"
+date: 2018-09-10
+draft: false
+tags: ["spring-boot"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+I am so happy because today my Spring Boot book is finally available! See https://www.infoq.com/minibooks/spring-boot-building-api-backend for all the details.
+
+I would like to thank the people at Infoq for making this a reality: Ana and Charles.
+
+Huge thanks to https://twitter.com/kittylyst[Ben Evans] for the technical review and Lawrence Nyveen for reviewing my English.
+
+Further I got to thank https://twitter.com/mraible[Matt Raible] for creating the https://github.com/mraible/infoq-mini-book[InfoQ Minibook Template] so that I could write the book using https://asciidoctor.org/[Asciidoctor].
+
+As a final thank you, these are the great open source technologies that are used in the book:
+
+* Spring Boot: https://spring.io/projects/spring-boot
+* Spring Data: https://spring.io/projects/spring-data
+* Spring Security: https://spring.io/projects/spring-security
+* Spring REST Docs: https://spring.io/projects/spring-restdocs
+* JUnit: https://junit.org/
+* AssertJ: http://joel-costigliola.github.io/assertj/
+* Testcontainers: https://www.testcontainers.org/
+* Mockito: https://site.mockito.org/
+* Rest Assured: http://rest-assured.io/
+* Maven: https://maven.apache.org/
+* H2 Database: http://www.h2database.com/
+* Postgresql: https://www.postgresql.org/
+* Flyway: https://flywaydb.org/
+
+On a side note: The book uses Spring Boot 2. If there are people that want a version for Spring Boot 1, I can give that since the book started with Spring Boot 1 originally. Just contact me via email at wim dot deblauwe at gmail dot com.

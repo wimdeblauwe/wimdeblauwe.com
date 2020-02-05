@@ -1,0 +1,29 @@
+---
+title: "Release JIRA Database Values Plugin 1.3.0"
+date: 2011-04-11
+draft: false
+tags: ["jira"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+A new JIRA Database Values plugin has been released, see https://plugins.atlassian.com/plugin/details/4969 for download.
+
+The major change is compatibility with JIRA 4.3.
+
+There are some additional minor improvements like:
+
+* Use the internal JIRA db if no connection parameters are defined in the properties file
+
+* Honor the sort order used in the SQL query when using cascading comboboxes
+
+* Fix for Z-order if the AJAX popup appears over some other elements (thanks to Edgars Fabricius for providing a patch)
+
+enjoy!
+
+regards,
+
+Wim

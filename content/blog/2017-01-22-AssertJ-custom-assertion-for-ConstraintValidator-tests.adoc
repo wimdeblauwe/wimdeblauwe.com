@@ -1,0 +1,154 @@
+---
+title: "AssertJ custom assertion for ConstraintValidator tests"
+date: 2017-01-22
+draft: false
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+As a follow-up to my last post on a https://wimdeblauwe.wordpress.com/2017/01/21/custom-validator-to-check-if-a-string-contains-xml/[custom validator to check if a String contains XML], I like to elaborate on how I made the unit test so readable.
+
+To repeat, here is part of the unit test again with the assertions highlighted:
+
+//{empty}[code language="java" highlight="8,18"]
+[source,java]
+----
+@Test
+
+public void givenNoXml_notValid() {
+
+ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+
+Validator validator = factory.getValidator();
+
+TestObject testObject = new TestObject("This is no XML string");
+
+Set<ConstraintViolation<TestObject>> violationSet = validator.validate(testObject);
+
+assertThat(violationSet).hasViolationOnPath("xml");
+
+}
+
+@Test
+
+public void givenXml_valid() {
+
+ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+
+Validator validator = factory.getValidator();
+
+TestObject testObject = new TestObject("<Node>test</Node>");
+
+Set<ConstraintViolation<TestObject>> violationSet = validator.validate(testObject);
+
+assertThat(violationSet).hasNoViolations();
+
+}
+
+----
+
+I love using http://joel-costigliola.github.io/assertj/[AssertJ] for assertions in my unit tests, because:
+
+* They are very readable
+* They are code completion friendly
+* You don't have to remember if the expected value goes first or last
+
+AssertJ also support adding http://joel-costigliola.github.io/assertj/assertj-core-custom-assertions.html[custom assertions], which is what I did here:
+
+[source,java]
+----
+
+import org.assertj.core.api.AbstractAssert;
+
+import javax.validation.ConstraintViolation;
+
+import java.util.Set;
+
+import java.util.stream.Collectors;
+
+public class ConstraintViolationSetAssert extends AbstractAssert<ConstraintViolationSetAssert, Set<? extends ConstraintViolation>> {
+
+public ConstraintViolationSetAssert(Set<? extends ConstraintViolation> actual) {
+
+super(actual, ConstraintViolationSetAssert.class);
+
+}
+
+public static ConstraintViolationSetAssert assertThat(Set<? extends ConstraintViolation> actual) {
+
+return new ConstraintViolationSetAssert(actual);
+
+}
+
+public ConstraintViolationSetAssert hasViolationOnPath(String path) {
+
+isNotNull();
+
+// check condition
+
+if (!containsViolationWithPath(actual, path)) {
+
+failWithMessage("There was no violation with path <%s>. Violation paths: <%s>", path, actual.stream()
+
+.map(violation -> violation
+
+.getPropertyPath()
+
+.toString())
+
+.collect(
+
+Collectors
+
+.toList()));
+
+}
+
+return this;
+
+}
+
+public ConstraintViolationSetAssert hasNoViolations() {
+
+isNotNull();
+
+if (!actual.isEmpty()) {
+
+failWithMessage("Expecting no violations, but there are %s violations", actual.size());
+
+}
+
+return this;
+
+}
+
+private boolean containsViolationWithPath(Set<? extends ConstraintViolation> violations, String path) {
+
+boolean result = false;
+
+for (ConstraintViolation violation : violations) {
+
+if (violation.getPropertyPath().toString().equals(path)) {
+
+result = true;
+
+break;
+
+}
+
+}
+
+return result;
+
+}
+
+}
+
+----
+
+The actual process of creating a custom assertion is explained in detail on http://joel-costigliola.github.io/assertj/assertj-core-custom-assertions.html[the AssertJ website].
+
+_This know-how originated during the development of a https://www.pegusapps.com/[PegusApps] project._

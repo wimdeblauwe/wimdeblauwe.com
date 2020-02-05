@@ -1,0 +1,13 @@
+---
+title: "Release JIRA Database Values plugin 3.3"
+date: 2014-05-24
+draft: false
+tags: ["jira"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+Just a quick note that I released version 3.3 of my https://marketplace.atlassian.com/plugins/org.deblauwe.jira.plugin.database-values-plugin[JIRA database values plugin]. It has only 1 bugfix: https://bitbucket.org/wimdeblauwe/jdvp/issue/14/ajax-style-field-dont-run-in-popup-screen but an important one given the 5 votes it got. Note that I cannot take any credit for the fix, user Mirek Hankus provide it. Thanks for it!

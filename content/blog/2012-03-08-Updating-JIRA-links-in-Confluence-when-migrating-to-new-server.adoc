@@ -1,0 +1,436 @@
+---
+title: "Updating JIRA links in Confluence when migrating to new server"
+date: 2012-03-08
+draft: false
+tags: ["jira"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+We just finished the process of migrating our internal http://www.atlassian.com/software/jira/overview[JIRA] server running on Windows to a new Ubuntu machine. The migration process went fairly smooth. However, the URL of JIRA has also changed and we have a lot of links in our http://www.atlassian.com/software/confluence/overview[Confluence] wiki pointing to JIRA.
+
+To update all the links manually, would be tedious and error-prone, so I used some http://groovy.codehaus.org/[Groovy] together with the excellent https://studio.plugins.atlassian.com/wiki/display/CSOAP/Confluence+Command+Line+Interface[Confluence Command Line Interface] to make this automatic.
+
+This is the main loop of my program, no surprises there:
+
+[source,groovy]
+----
+
+public static void main(String[] args)
+
+{
+
+logger.info("Getting configuration");
+
+ConfigurationLoader loader = new ConfigurationLoader();
+
+Configuration configuration = loader.getConfiguration();
+
+List<String> spaces = getAllSpaces(configuration);
+
+for (String spaceName: spaces)
+
+{
+
+logger.debug("Updating space {}", spaceName)
+
+List<String> pageNames = getAllPages(configuration, spaceName);
+
+for (String pageName: pageNames)
+
+{
+
+logger.debug(" Updating page {}", pageName)
+
+updateJiraUrl(configuration, spaceName, pageName);
+
+}
+
+}
+
+}
+
+----
+
+The `ConfigurationLoader` and the `Configuration` objects are just keeping track of what the URL of confluence is, and the path to the Confluence CLI. So, the actual code first gets all the spaces, then all the pages into that space and then we try to update any old JIRA URL we find on that page.
+
+The function to get all the spaces call the Confluence CLI and then does some string magic on the result to just get the keys of the spaces only:
+
+[source,groovy]
+----
+
+static List<String> getAllSpaces(LiquidPlannerConfiguration configuration)
+
+{
+
+File tempFile = File.createTempFile("confluence-spaces-list", "txt")
+
+ProcessBuilder processBuilder = new ProcessBuilder();
+
+processBuilder.command(configuration.pathToConfluenceCli,
+
+"--server",
+
+configuration.confluenceInstallationUrl,
+
+"--user",
+
+configuration.confluenceUser,
+
+"--password",
+
+configuration.confluencePassword,
+
+"--action",
+
+"getSpaceList",
+
+"--file",
+
+tempFile.getAbsolutePath())
+
+processBuilder.redirectErrorStream(true)
+
+def Process process = processBuilder.start()
+
+writeProcessOutput(process);
+
+int processResult = process.waitFor()
+
+logger.info("Got result from process: {}", processResult)
+
+List<String> result = new ArrayList<String>();
+
+tempFile.eachLine {
+
+def spaceKey = it.find(/^"[A-Z0-9]*"/);
+
+if (spaceKey)
+
+{
+
+result.add(spaceKey.substring(1, spaceKey.length() - 1))
+
+}
+
+}
+
+tempFile.delete();
+
+return result;
+
+}
+
+----
+
+For each space key, we get a list of all the page names:
+
+[source,groovy]
+----
+
+static List<String> getAllPages(LiquidPlannerConfiguration configuration, String spaceKey)
+
+{
+
+File tempFile = File.createTempFile("confluence-pages-list", "txt")
+
+ProcessBuilder processBuilder = new ProcessBuilder();
+
+processBuilder.command(configuration.pathToConfluenceCli,
+
+"--server",
+
+configuration.confluenceInstallationUrl,
+
+"--user",
+
+configuration.confluenceUser,
+
+"--password",
+
+configuration.confluencePassword,
+
+"--action",
+
+"getPageList",
+
+"--space",
+
+spaceKey,
+
+"--file",
+
+tempFile.getAbsolutePath())
+
+processBuilder.redirectErrorStream(true)
+
+def Process process = processBuilder.start()
+
+writeProcessOutput(process);
+
+int processResult = process.waitFor()
+
+logger.info("Got result from process: {}", processResult)
+
+List<String> result = new ArrayList<String>();
+
+tempFile.eachLine {
+
+result.add(it);
+
+}
+
+tempFile.delete();
+
+return result;
+
+}
+
+----
+
+For update of the page, we first need to get the content of the page and then update the page:
+
+[source,groovy]
+----
+
+static void updateJiraUrl(LiquidPlannerConfiguration configuration, String spaceName, String pageName)
+
+{
+
+File pageContents = null;
+
+try
+
+{
+
+pageContents = getPageContent(configuration, spaceName, pageName);
+
+updatePageContents(configuration, spaceName, pageName, pageContents);
+
+}
+
+finally
+
+{
+
+if( pageContents )
+
+{
+
+pageContents.delete()
+
+}
+
+}
+
+}
+
+----
+
+Getting the content of the page is just calling Confluence CLI:
+
+[source,groovy]
+----
+
+static File getPageContent(LiquidPlannerConfiguration configuration, String spaceName, String pageName)
+
+{
+
+File tempFile = File.createTempFile(spaceName + "-page", "txt")
+
+ProcessBuilder processBuilder = new ProcessBuilder();
+
+processBuilder.command(configuration.pathToConfluenceCli,
+
+"--server",
+
+configuration.confluenceInstallationUrl,
+
+"--user",
+
+configuration.confluenceUser,
+
+"--password",
+
+configuration.confluencePassword,
+
+"--action",
+
+"getSource",
+
+"--space",
+
+spaceName,
+
+"--title",
+
+pageName,
+
+"--file",
+
+tempFile.absolutePath)
+
+processBuilder.redirectErrorStream(true)
+
+def Process process = processBuilder.start()
+
+writeProcessOutput(process);
+
+int processResult = process.waitFor()
+
+logger.info("Got result from process: {}", processResult)
+
+return tempFile;
+
+}
+
+----
+
+Updating the page is done here:
+
+[source,groovy]
+----
+
+static void updatePageContents(LiquidPlannerConfiguration configuration, String spaceName, String pageName, File pageContents)
+
+{
+
+if( !pageContents.text.contains( "companyweb.company.com:8888/jira") )
+
+{
+
+return;
+
+}
+
+File replacedFile = File.createTempFile(spaceName + "-page-replaced", "txt");
+
+def replacedFileWriter = new FileWriter( replacedFile );
+
+new FileReader( pageContents ).transformLine( replacedFileWriter ) {
+
+it.replaceAll("companyweb\\.company\\.com:8888/jira", "jira\\.company\\.com:8888")
+
+}
+
+ProcessBuilder processBuilder = new ProcessBuilder();
+
+processBuilder.command(configuration.pathToConfluenceCli,
+
+"--server",
+
+configuration.confluenceInstallationUrl,
+
+"--user",
+
+configuration.confluenceUser,
+
+"--password",
+
+configuration.confluencePassword,
+
+"--action",
+
+"storePage",
+
+"--space",
+
+spaceName,
+
+"--title",
+
+pageName,
+
+"--file",
+
+replacedFile.absolutePath)
+
+processBuilder.redirectErrorStream(true)
+
+def Process process = processBuilder.start()
+
+writeProcessOutput(process);
+
+int processResult = process.waitFor()
+
+logger.info("Got result from process: {}", processResult)
+
+}
+
+----
+
+There are 2 pieces of code in this last function that I would like to highlight:
+
+[source,groovy]
+----
+
+if( !pageContents.text.contains( "companyweb.company.com:8888/jira") )
+
+{
+
+return;
+
+}
+
+----
+
+This part just reads the text of the confluence page which we saved to a file and checks if the old URL is present. If it is not present, we just return from the method and thus do not change anything.
+
+Notice how easy it is in Groovy to get the content of a file as a String. The `File#getText()` method is something that is part of the http://groovy.codehaus.org/groovy-jdk/[Groovy JDK]. See http://groovy.codehaus.org/groovy-jdk/java/io/File.html for more interesting methods on File added by Groovy.
+
+The 2nd piece of code does the actual replacement, again with a very nice piece of Groovy code:
+
+[source,groovy]
+----
+
+File replacedFile = File.createTempFile(spaceName + "-page-replaced", "txt");
+
+def replacedFileWriter = new FileWriter( replacedFile );
+
+new FileReader( pageContents ).transformLine( replacedFileWriter ) {
+
+it.replaceAll("companyweb\\.company\\.com:8888/jira", "jira\\.company\\.com:8888")
+
+}
+
+----
+
+What we have here is reading from the `pageContents` file and writing it out to the `replacedFile`. Just before the write of each line, the closure is called so we can do some transformation on that line. Here, we use the `replaceAll` method that takes a http://www.regular-expressions.info/[regular expression] to do the URL matching and replacing. Since a dot (.) is a special character, we have to escape it with a backslash (\) and since a backslash is also a special character, we also have to escape that one.
+
+That is all there is to it. I used Confluence CLI 2.4.0 which is the last one at the time of writing and Confluence 3.4 which is the version we have currently at our company.
+
+PS: If you want to run this yourself, you just need 1 more function that reads the output of the Confluence CLI process:
+
+[source,groovy]
+----
+
+static void writeProcessOutput(Process process) throws Exception
+
+{
+
+InputStreamReader tempReader = new InputStreamReader(
+
+new BufferedInputStream(process.getInputStream()));
+
+BufferedReader reader = new BufferedReader(tempReader);
+
+while (true)
+
+{
+
+String line = reader.readLine();
+
+if (line == null)
+
+break;
+
+System.out.println(line);
+
+}
+
+}
+
+----

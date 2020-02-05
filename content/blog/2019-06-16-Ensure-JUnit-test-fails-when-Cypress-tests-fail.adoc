@@ -1,0 +1,260 @@
+---
+title: "Ensure JUnit test fails when Cypress tests fail"
+date: 2019-06-16
+draft: false
+tags: ["spring-boot"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+In my previous blog post on https://wimdeblauwe.wordpress.com/2019/06/15/running-cypress-tests-with-testcontainers-for-a-spring-boot-with-thymeleaf-application/[Running Cypress tests with TestContainers for a Spring Boot with Thymeleaf application], I explained how to run Cypress tests as part of a JUnit test. However, the example did not actually fail the test if there are test failures in Cypress. Oops :-)
+
+In order to do that, we can use the support that Testcontainers has for watching the log output and parse that.
+
+This is the full code that will accomplish this and it will also print the number of run tests, number of passed tests and the number of failed tests:
+
+[source,java]
+----
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+
+@ActiveProfiles(SpringProfiles.INTEGRATION_TEST)
+
+class CypressIntegrationTest {
+
+private static final Logger LOGGER = LoggerFactory.getLogger(CypressIntegrationTest.class);
+
+private static final String CYPRESS_VERSION = "3.3.1";
+
+private static final int MAX_TOTAL_TEST_TIME_IN_MINUTES = 10;
+
+@LocalServerPort
+
+private int port;
+
+@Autowired
+
+private UserService userService;
+
+@Test
+
+void runCypressTests() throws InterruptedException {
+
+// Ensures that the container will be able to access the Spring Boot application that
+
+// is started via @SpringBootTest
+
+Testcontainers.exposeHostPorts(port);
+
+userService.addAdministrator("admin", "Administrator", "admin", Gender.MALE,
+
+LocalDate.of(1978, Month.DECEMBER, 2));
+
+CountDownLatch countDownLatch = new CountDownLatch(1);
+
+try (GenericContainer container = createCypressContainer()) {
+
+container.start();
+
+CypressContainerOutputFollower follower = new CypressContainerOutputFollower(countDownLatch);
+
+container.followOutput(follower);
+
+boolean success = countDownLatch.await(MAX_TOTAL_TEST_TIME_IN_MINUTES, TimeUnit.MINUTES);
+
+if (success) {
+
+// Just sleep a bit extra because 'Run Finished' is not the really last line,
+
+// but very close to the end
+
+Thread.sleep(2000);
+
+CypressTestResults results = follower.getResults();
+
+String resultInformation = String.format("Cypress tests run: %s\n" +
+
+"Cypress tests passing: %s\n" +
+
+"Cypress tests failing: %s",
+
+results.getNumberOfTests(),
+
+results.getNumberOfPassingTests(),
+
+results.getNumberOfFailingTests());
+
+LOGGER.info(resultInformation);
+
+if (results.getNumberOfFailingTests() > 0) {
+
+fail("There was a failure running the Cypress tests!\n\n" + resultInformation);
+
+}
+
+} else {
+
+fail("Cypress tests did not finish within %d minute(s)", MAX_TOTAL_TEST_TIME_IN_MINUTES);
+
+}
+
+}
+
+}
+
+@NotNull
+
+private GenericContainer createCypressContainer() {
+
+GenericContainer result = new GenericContainer("cypress/included:" + CYPRESS_VERSION);
+
+result.withClasspathResourceMapping("e2e", "/e2e", BindMode.READ_WRITE);
+
+result.setWorkingDirectory("/e2e");
+
+result.addEnv("CYPRESS_baseUrl", "http://host.testcontainers.internal:" + port);
+
+return result;
+
+}
+
+private static class CypressContainerOutputFollower implements Consumer {
+
+private static final Pattern NUMBER_OF_TESTS_REGEX = Pattern.compile(".*│\\s*Tests:\\s*([0-9])*\\s*│.*");
+
+private static final Pattern NUMBER_OF_PASSING_REGEX = Pattern.compile(".*│\\s*Passing:\\s*([0-9])*\\s*│.*");
+
+private static final Pattern NUMBER_OF_FAILING_REGEX = Pattern.compile(".*│\\s*Failing:\\s*([0-9])*\\s*│.*");
+
+private final CountDownLatch countDownLatch;
+
+private final CypressTestResults results = new CypressTestResults();
+
+CypressContainerOutputFollower(CountDownLatch countDownLatch) {
+
+this.countDownLatch = countDownLatch;
+
+}
+
+@Override
+
+public void accept(OutputFrame outputFrame) {
+
+String logLine = StringUtils.strip(outputFrame.getUtf8String());
+
+LOGGER.debug(logLine);
+
+if (logLine.contains("Run Finished")) {
+
+countDownLatch.countDown();
+
+} else {
+
+storeNumberOfTestsIfMatches(logLine);
+
+storeNumberOfPassingTestsIfMatches(logLine);
+
+storeNumberOfFailingTestsIfMatches(logLine);
+
+}
+
+}
+
+CypressTestResults getResults() {
+
+return results;
+
+}
+
+private void storeNumberOfTestsIfMatches(String logLine) {
+
+Matcher matcher = NUMBER_OF_TESTS_REGEX.matcher(logLine);
+
+if (matcher.matches()) {
+
+results.setNumberOfTests(Integer.parseInt(matcher.group(1)));
+
+}
+
+}
+
+private void storeNumberOfPassingTestsIfMatches(String logLine) {
+
+Matcher matcher = NUMBER_OF_PASSING_REGEX.matcher(logLine);
+
+if (matcher.matches()) {
+
+results.setNumberOfPassingTests(Integer.parseInt(matcher.group(1)));
+
+}
+
+}
+
+private void storeNumberOfFailingTestsIfMatches(String logLine) {
+
+Matcher matcher = NUMBER_OF_FAILING_REGEX.matcher(logLine);
+
+if (matcher.matches()) {
+
+results.setNumberOfFailingTests(Integer.parseInt(matcher.group(1)));
+
+}
+
+}
+
+}
+
+private static class CypressTestResults {
+
+int numberOfTests;
+
+int numberOfPassingTests;
+
+int numberOfFailingTests;
+
+int getNumberOfTests() {
+
+return numberOfTests;
+
+}
+
+void setNumberOfTests(int numberOfTests) {
+
+this.numberOfTests = numberOfTests;
+
+}
+
+int getNumberOfPassingTests() {
+
+return numberOfPassingTests;
+
+}
+
+void setNumberOfPassingTests(int numberOfPassingTests) {
+
+this.numberOfPassingTests = numberOfPassingTests;
+
+}
+
+int getNumberOfFailingTests() {
+
+return numberOfFailingTests;
+
+}
+
+void setNumberOfFailingTests(int numberOfFailingTests) {
+
+this.numberOfFailingTests = numberOfFailingTests;
+
+}
+
+}
+
+}
+
+----

@@ -1,0 +1,25 @@
+---
+title: "JIRA Database Values Plugin for JIRA 5.1 released "
+date: 2013-01-16
+draft: false
+tags: ["jira"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+I just released the new version of the JIRA Database Values Plugin. It is now compatible with JIRA 5.1 and 5.2. Most notable change is that under the hood http://jquery.com/[jQuery] is used now instead of http://script.aculo.us/[Scriptaculous].
+
+See https://marketplace.atlassian.com/plugins/org.deblauwe.jira.plugin.database-values-plugin[Atlassian Marketplace] for the download.
+
+The source code has also been migrated to the excellet Bitbucket service. Sources can be found at https://bitbucket.org/wimdeblauwe/jdvp and the documentation at the embedded wiki: https://bitbucket.org/wimdeblauwe/jdvp/wiki/Home
+
+This version would not have been possible without the people that donated on http://www.gofundme.com/1efxt4[GoFundMe] so a big thank you to them all!
+
+Enjoy it!
+
+Wim
+
+PS: One breaking change is that linking of multiple custom fields is no longer supported. It never worked really well anyway and I had to remove it to support the inline editing capabilities of JIRA 5.1.

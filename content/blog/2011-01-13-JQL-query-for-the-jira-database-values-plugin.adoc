@@ -1,0 +1,33 @@
+---
+title: "JQL query for the jira database values plugin"
+date: 2011-01-13
+draft: false
+tags: ["jira"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+I have just finished implementing a custom JQL query for the https://plugins.atlassian.com/plugin/details/4969[jira database values plugin]. It allows to search on anything you want related to the value you have in your custom field.
+
+Take the example of a "Customer" custom field that links to a customer table in a database. Previously it was not possible to search for all issues linked to the customers from a certain country for example. With the new JQL query, it is as easy as:
+
+`Customer IN dbValue("Country", "Belgium")`
+
+How can this work?
+
+All you need to do is add this to your properties file:
+
+`jql.1.query.reference=Country`
+
+jql.1.query=select id from customer where country = 'QUERY_VALUE'
+
+The first line defines what should be the first argument used in the JQL query. If the plugin finds this matching query reference, then it will execute the matching query, replacing QUERY_VALUE with the 2nd argument passed into the JQL query. So the actual query against the database in our example becomes:
+
+`select id from customer where country = 'Belgium'`
+
+Important point: the query should only return 1 column and it has to be the column you have also defined as primary key column.
+
+This will be coming in the 1.2 release of the plugin. If you want to try it out, take the build from https://studio.plugins.atlassian.com/builds/browse/JDVP-TRUNK-44/artifact. Let me know if it works for you (or not!) or you might need something extra.

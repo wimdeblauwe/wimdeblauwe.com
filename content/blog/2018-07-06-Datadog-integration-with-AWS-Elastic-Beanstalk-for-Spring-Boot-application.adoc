@@ -1,0 +1,301 @@
+---
+title: "Datadog integration with AWS Elastic Beanstalk for Spring Boot application"
+date: 2018-07-06
+draft: false
+tags: ["spring-boot"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+If you have an application deployed on AWS Elastic Beanstalk and you want to add Datadog integration to it, then these instructions might help you out.
+
+I started out with the instructions at https://www.datadoghq.com/blog/deploy-datadog-aws-elastic-beanstalk/ but they use the older version 5 of the datadog-agent and not the newer version 6.
+
+In your source code, you normally have a `.ebextensions` folder to configure the Elastic Beanstalk deployment. Inside that folder, create the following files (Create directories as needed):
+
+`.ebextensions/99datadog.config`
+
+[source]
+----
+
+# .ebextensions/99datadog.config
+
+files:
+
+"/tmp/replace_datadog_api_key.sh" :
+
+mode: "000700"
+
+owner: root
+
+group: root
+
+content: |
+
+#!/bin/bash
+
+sed 's/api_key:.*/api_key: YOUR_API_KEY' /etc/datadog-agent/datadog.yaml.example > /etc/datadog-agent/datadog.yaml
+
+sed -i 's/# expvar_port:.*/expvar_port: 5005/' /etc/datadog-agent/datadog.yaml
+
+sed -i 's/# cmd_port:.*/cmd_port: 5006/' /etc/datadog-agent/datadog.yaml
+
+sed -i 's/.*logs_enabled:.*/logs_enabled: true/' /etc/datadog-agent/datadog.yaml
+
+container_commands:
+
+01chmod:
+
+command: "chmod +x .ebextensions/datadog/hooks/*"
+
+02mkdir_appdeploy_post:
+
+test: '[ ! -d /opt/elasticbeanstalk/hooks/appdeploy/post ]'
+
+command: "mkdir /opt/elasticbeanstalk/hooks/appdeploy/post"
+
+02mkdir_configdeploy_post:
+
+test: '[ ! -d /opt/elasticbeanstalk/hooks/configdeploy/post ]'
+
+command: "mkdir /opt/elasticbeanstalk/hooks/configdeploy/post"
+
+10appdeploy_pre_stop:
+
+command: "cp .ebextensions/datadog/hooks/99stop_datadog.sh /opt/elasticbeanstalk/hooks/appdeploy/pre/"
+
+11appdeploy_post_start:
+
+command: "cp .ebextensions/datadog/hooks/99start_datadog.sh /opt/elasticbeanstalk/hooks/appdeploy/post/"
+
+20preinit_stop:
+
+command: "cp .ebextensions/datadog/hooks/99stop_datadog.sh /opt/elasticbeanstalk/hooks/preinit"
+
+21postinit_start:
+
+command: "cp .ebextensions/datadog/hooks/99start_datadog.sh /opt/elasticbeanstalk/hooks/postinit"
+
+30configdeploy_pre_stop:
+
+command: "cp .ebextensions/datadog/hooks/99stop_datadog.sh /opt/elasticbeanstalk/hooks/configdeploy/pre/"
+
+31configdeploy_post_start:
+
+command: "cp .ebextensions/datadog/hooks/99start_datadog.sh /opt/elasticbeanstalk/hooks/configdeploy/post/"
+
+90install_datadog:
+
+command: "cp .ebextensions/datadog/datadog.repo /etc/yum.repos.d/datadog.repo; yum -y makecache; yum -y install datadog-agent"
+
+91setup_datadog:
+
+command: "/tmp/replace_datadog_api_key.sh ; rm /tmp/replace_datadog_api_key.sh"
+
+92copy_java_log_config:
+
+command: "cp .ebextensions/datadog/conf.d/java.yaml /etc/datadog-agent/conf.d/"
+
+----
+
+Don't forget to replace `YOUR_API_KEY` with the actual Datadog API key.
+
+Note that I also enable sending log entries to datadog. If you don't need/want that, just leave out the 2nd `sed` line and remove the section `92_copy_java_log_config.`
+
+As a best practise, don't actually commit your API key here. For our application, we use CloudFormation to be able to read this form an environment variable.
+
+I also needed to change the `expvar_port` and `cmd_port` ports as they use 5000 and 5001 by default. However, my Spring Boot application already uses port 5000 as Elastic Beanstalk expects the application to use that port.
+
+`.ebextensions/datadog/datadog.repo`
+
+[source]
+----
+
+{empty}[datadog]
+
+name = Datadog, Inc.
+
+baseurl = https://yum.datadoghq.com/stable/6/x86_64/
+
+enabled=1
+
+gpgcheck=1
+
+gpgkey=https://yum.datadoghq.com/DATADOG_RPM_KEY.public
+
+----
+
+`.ebextensions/datadog/hooks/99start_datadog.sh`
+
+[source]
+----
+
+#!/bin/bash
+
+# .ebextensions/datadog/hooks/99start_datadog.sh
+
+STATUS=`sudo initctl status datadog-agent`
+
+if [[ "$STATUS" == *"datadog-agent start/running"* ]]
+
+then
+
+echo "Agent already running"
+
+else
+
+echo "Agent starting..."
+
+sudo initctl start datadog-agent
+
+fi
+
+----
+
+`.ebextensions/datadog/hooks/99stop_datadog.sh`
+
+[source]
+----
+
+#!/bin/bash
+
+# .ebextensions/datadog/hooks/99stop_datadog.sh
+
+STATUS=`sudo initctl status datadog-agent`
+
+if [[ "$STATUS" == *"datadog-agent stop/waiting"* ]]
+
+then
+
+echo "Agent already stopped"
+
+else
+
+echo "Agent stopping..."
+
+sudo initctl stop datadog-agent
+
+fi
+
+----
+
+The final file is only needed because I want to send logs from my Spring Boot application, so this is optional if you don't need that:
+
+`.ebextensions/datadog/conf.d/java.yaml`
+
+[source]
+----
+
+#Log section
+
+logs:
+
+## - type : file (mandatory) type of log input source (tcp / udp / file)
+
+## port / path : (mandatory) Set port if type is tcp or udp. Set path if type is file
+
+## service : (mandatory) name of the service owning the log
+
+## source : (mandatory) attribute that defines which integration is sending the logs
+
+## sourcecategory : (optional) Multiple value attribute. Can be used to refine the source attribtue
+
+## tags: (optional) add tags to each logs collected
+
+- type: file
+
+path: /var/app/current/myapplication-datadog.log
+
+service: java
+
+source: java
+
+sourcecategory: sourcecode
+
+# For multiline logs, if they start by the date with the format yyyy-mm-dd uncomment the following processing rule
+
+#log_processing_rules:
+
+# - type: multi_line
+
+# name: new_log_start_with_date
+
+# pattern: \d{4}\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01])
+
+----
+
+This assumes you have setup logging in the Spring Boot application to write using the `net.logstash.logback.encoder.LogstashEncoder` to a file `myapplication-datadog.log`
+
+The easiest to do that is using the a `logback-spring.xml` at the root of the classpath:
+
+[source,xml]
+----
+
+<?xml version="1.0" encoding="UTF-8"?>
+
+<configuration>
+
+<include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+<springProfile name="dev,localmysql">
+
+<include resource="org/springframework/boot/logging/logback/console-appender.xml" />
+
+<root level="INFO">
+
+<appender-ref ref="CONSOLE" />
+
+</root>
+
+</springProfile>
+
+<springProfile name="staging,prod">
+
+<include resource="org/springframework/boot/logging/logback/file-appender.xml"/>
+
+<appender name="DATADOGFILE"
+
+class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+<encoder class="net.logstash.logback.encoder.LogstashEncoder">
+
+<customFields>{"env":"${TOPWIN_DATADOG_ENV}","version":"@project.version@"}</customFields>
+
+</encoder>
+
+<file>myapplication-datadog.log</file>
+
+<rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+
+<fileNamePattern>myapplication-datadog.%i</fileNamePattern>
+
+</rollingPolicy>
+
+<triggeringPolicy
+
+class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+
+<MaxFileSize>10MB</MaxFileSize>
+
+</triggeringPolicy>
+
+</appender>
+
+<root level="INFO">
+
+<appender-ref ref="FILE"/>
+
+<appender-ref ref="DATADOGFILE" />
+
+</root>
+
+</springProfile>
+
+</configuration>
+
+----
+
+After deploying all this, metrics and log files should appear in your Datadog console.

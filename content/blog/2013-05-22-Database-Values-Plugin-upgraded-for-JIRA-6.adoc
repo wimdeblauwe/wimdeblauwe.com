@@ -1,0 +1,13 @@
+---
+title: "Database Values Plugin upgraded for JIRA 6"
+date: 2013-05-22
+draft: false
+tags: ["jira"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+I just finished upgrading the JIRA Database Values Plugin for JIRA 6. Download it from https://marketplace.atlassian.com/plugins/org.deblauwe.jira.plugin.database-values-plugin

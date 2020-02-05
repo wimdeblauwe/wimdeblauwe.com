@@ -1,0 +1,90 @@
+---
+title: "JIRA Database values plugin   new release 1.2"
+date: 2011-01-20
+draft: false
+tags: ["jira"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+I am very proud on this new release of my https://plugins.atlassian.com/plugin/details/4969[jira database values plugin]. Not only does it have a bunch of really nice additions (which I am going to explain a bit more in detail here), but there are also a lot of people that have helped this release by providing bug reports, patches, ...
+
+*1) JQL Function to search on 'secondary' attributes*
+
+I am most proud of this one, because I think it will be really useful to a lot of people. Suppose you link to your customer database and would like to know how many issues are coming from customers in Belgium. This was almost impossible to do before, but with the new `dbValuesMatching` JQL function, it is a piece of cake:
+
+[source]
+----
+
+Customer in dbValuesMatching("Country", "Belgium")
+
+----
+
+This shows it in action in JIRA 4.2:
+
+image::{imagesdir}//2011/01/selection_015.png[]
+
+You can also use `not in` so search for all customers not in Belgium:
+
+[source]
+----
+
+Customer not in dbValuesMatching("Country", "Belgium")
+
+----
+
+This shows it in action in JIRA 4.2:
+
+image::{imagesdir}//2011/01/selection_016.png[]
+
+See https://studio.plugins.atlassian.com/wiki/display/JDVP/JIRA+Database+Values+Plugin#JIRADatabaseValuesPlugin-ConfigurationoftheJQLfunction[Configuration of the JQL function] on how you need to set this up.
+
+*2) Sort*
+
+Sorting works again! I was not aware of it, but it seems that sorting got broken when we upgraded the plugin for JIRA 4. Jenifer Lambert pointed this out and now it works perfectly again.
+
+*3) Linking of different database values custom fields*
+
+This release allows you link 2 (or more) custom fields. You can then use the selected value of the first custom field in the query to the database for the 2nd custom field. See https://studio.plugins.atlassian.com/wiki/display/JDVP/JIRA+Database+Values+Plugin#JIRADatabaseValuesPlugin-Linkmultiplecustomfields[here] for the details.
+
+_Thanks to Frédéric Beuserie and Miguel Maldonado for providing a patch for this._
+
+*4) Use the jira user in your SQL query*
+
+If you want your query to depend on the current logged in user, this new feature makes it possible. This is an example:
+
+[source,sql]
+----
+
+sql.query=select id, firstname, lastname, city, country from customer where jira_user like '${jira.user}'
+
+----
+
+_Thanks to David Corley for providing a patch for this._
+
+*5) Nice error message if properties file cannot be found*
+
+Previous versions would display something like this if the properties file cannot be found:
+
+image::{imagesdir}//2011/01/selection_006.png[]
+
+The new version is a bit friendlier and shows this:
+
+image::{imagesdir}//2011/01/selection_012.png[]
+
+*6) Log what the database returns*
+
+To help with debugging if something goes wrong, the plugin now prints the first 5 records if you enable the DEBUG logging. See https://studio.plugins.atlassian.com/wiki/display/JDVP/Enable+the+plugin+logging[here] for more info on how to enable logging.
+
+*7) Clickable items in the 'Issue Statistics' dashboard gadget*
+
+If you use your custom field in a 'Issue Statistics' dashboard gadget, you can now click through on any item to further inspect the issues:
+
+image::{imagesdir}//2011/01/selection_014.png[]
+
+_Thanks to Cyrille Courtière for providing a patch for this._
+
+Enjoy this new release! Download it from https://plugins.atlassian.com/plugin/details/4969 and please put in a review if you like the plugin.

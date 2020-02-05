@@ -1,0 +1,116 @@
+---
+title: "JIRA Speakeasy extension to show  key   summary  in an inline dialog"
+date: 2011-07-01
+draft: false
+tags: ["jira"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+We use JIRA at works to track issues (duh :)). What I need to do a lot is copy the key and summary of an issue to use as a checkin comment. If you copy paste it from an issue page you end up with this:
+
+____
+PRJ-234
+
+This is the summary of the issue
+____
+
+But what I really want is this:
+
+____
+PRJ-234 - This is the summary of the issue
+____
+
+I have been meaning to give http://confluence.atlassian.com/display/DEVNET/Speakeasy+Overview[Speakeasy] a try, so this seemed like a perfect candidate. After quite some experimentation and looking a few http://confluence.atlassian.com/display/DEVNET/Speakeasy+Extension+Examples[examples], I came up with the following:
+
+[source,javascript]
+----
+
+/**
+
+* The main module
+
+*
+
+* @context atl.general
+
+*/
+
+var $ = require('speakeasy/jquery').jQuery;
+
+$(document).ready(function() {
+
+var key = $("#key-val").text();
+
+var summary = $("#issue_header_summary:first").text();
+
+var inlineDialog = AJS.InlineDialog(AJS.$("#key-val"),1,
+
+function(content,trigger,showPopup)
+
+{
+
+var dialogContent = '<div id="key-summary-popup">'+key + ' - ' + summary +'</div>';
+
+inlineDialog.refresh();
+
+$(content).html(dialogContent);
+
+showPopup();
+
+}
+
+,
+
+{
+
+onHover:true,hideDelay:1000
+
+}
+
+);
+
+});
+
+----
+
+I am using an AUI http://confluence.atlassian.com/display/AUI/Inline+Dialog[Inline Dialog] to show the content, so I can easily copy/paste it.
+
+This is what it looks like in action if you hover over the issue key:
+
+image::{imagesdir}//2011/07/screenshot_019.png[]
+
+The code is fairly straight forward if you know jQuery (which I did not before I tried to do this thing).
+
+First, we need to find the actual key and summary text on the page so we can put them in the inline dialog:
+
+[source,javascript]
+----
+
+var key = $("#key-val").text();
+
+var summary = $("#issue_header_summary:first").text();
+
+----
+
+I used the Chrome developer console to find the id's for the html elements. There is no specific id on the element that has the summary, but in the version of JIRA I tried (4.3.2) it was on the first child of the 'issue_header_summary' element.
+
+The other part of the code is showing an inline dialog with the dynamically generated `div`. The documentation does not show how to do this, I took it from one of the examples.
+
+Finally, add a splash of CSS to make it look nicer:
+
+[source,css]
+----
+
+#key-summary-popup {
+
+padding: 5px;
+
+}
+
+----
+
+I cannot seem to upload a zip file to this blog, so email me if you want the extension for your own use.

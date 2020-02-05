@@ -1,0 +1,39 @@
+---
+title: "Synchronisation of Atlassian JIRA with LiquidPlanner"
+date: 2011-10-13
+draft: false
+tags: ["jira"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+While http://www.atlassian.com/software/jira/[Atlassian JIRA] is a great tool to manage a project, it is not really convenient to handle (many) multiple simultanious projects, especially as people need to work on different projects at the same time. I recently discovered http://www.liquidplanner.com/[LiquidPlanner] which claims to be really good at multi-project/multi-resources management. After the trial period, our company decided to go with it and is very happy with the results so far.
+
+Since we have already much information in JIRA, we needed a way to pull this information into LiquidPlanner in an automated way. I wrote a small tool in http://groovy.codehaus.org/[Groovy] that uses the http://www.liquidplanner.com/api-guide/[LiquidPlanner REST API] and the http://docs.atlassian.com/jira/REST/latest/[JIRA REST API] to automate this. This blog entry will show how it works, http://wp.me/p16Vjw-2C[part 2] will show the code to make it all work.
+
+A typical way that we structure the project inside LiquidPlanner is as follows:
+
+image::{imagesdir}//2011/10/selection_001.png[]
+
+We have a project with 2 sub-projects: Implementation and Testing. Testing depends on Implementation obviously. We plan our testing time in LiquidPlanner and not in JIRA, so this is already done here. As you can see, there is no time allocated for implementation yet, but this is where our synchronizer kicks in.
+
+What we want to do is get all issues from JIRA that have a fix version of V1.03 in the 'ABC' project for each person. We add up all the remaining estimates for each issue and put this as the remaining work for that person in LiquidPlanner. Since our structure in LiquidPlanner is totally arbritary, how can we do this?
+
+Luckily, each item in LiquidPlanner has an 'External Reference' field. We can use this to reference the JIRA project and version we want to sync to:
+
+image::{imagesdir}//2011/10/selection_002.png[]
+
+The synchronizer will read all items from LiquidPlanner that have an external reference. Then, it will do a query on JIRA as follows:
+
+`project="projectKey" and fixVersion="versionString" and resolution="unresolved" and assignee="userName"`
+
+Note that for convenience we made sure the usernames in LiquidPlanner are the same as in JIRA. If you make sure the task owner in LiquidPlanner is the correct person, then the query will do its job.
+
+After running the synchronizer, we get the following result:
+
+image::{imagesdir}//2011/10/selection_003.png[]
+
+It is really as simple as that. Just put in the good external references and the remaining estimates will get synced. Head over to http://wp.me/p16Vjw-2C[part 2] to see the code behind this.

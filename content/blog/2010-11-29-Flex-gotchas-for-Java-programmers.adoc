@@ -1,0 +1,162 @@
+---
+title: "Flex gotchas for Java programmers"
+date: 2010-11-29
+draft: false
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+As a long time Java programmer switching to Flex, I have had some real gotcha moments. I want to share a few so you don't fall into the same pitfalls as I have done.
+
+* Casting
+* Equals (or the lack of it)
+* Setter optimization
+
+*Casting*
+
+In Java, you cast an object to a class or interface as follows:
+
+[source,java]
+----
+
+Object obj = ...
+
+String str = (String)obj;
+
+----
+
+In Flex, you have 2 ways to do it:
+
+[source]
+----
+
+var obj:Object = ...
+
+var str:String = String(obj);
+
+var str2:String = obj as String;
+
+----
+
+The difference is that the first form will throw an exception when `obj` is not of type `String`. With the 2nd form, `str2` would be `null` if `obj` is not a `String`. I like the first form most, because of it's fail-fast behavior (just like Java does).
+
+There are however a few exceptions to the rule:
+
+[source]
+----
+
+var array1:Array = ["Joe","Jack"];
+
+var array2:Array = Array(array1); //creates a new array!
+
+----
+
+You would expect that `array2` contains the same as `array1`, *but* in fact, `array2` is an `Array` with the first element being `array1` ! So here, there is no casting, but the constructor is called.
+
+The same applies to Error:
+
+[source]
+----
+
+var error1:Object = ..;
+
+var error2:Error = Error(error1); //creates a new error
+
+----
+
+The only solution is to use the `as` keyword:
+
+[source]
+----
+
+var error2:Error = error1 as Error;
+
+----
+
+I ran into this one when enabling the global error handler as explained here for example: http://www.summa-tech.com/blog/2010/01/04/global-error-handling-in-flex/. We change the line:
+
+[source]
+----
+
+var error:Error = DynamicEvent(event).error as Error;
+
+----
+
+into
+
+[source]
+----
+
+var error:Error = Error(DynamicEvent(event).error); //incorrect!
+
+----
+
+but this gives you the wrong stacktrace in the end, because you create a new `Error` object.
+
+*Equals (or the lack of it)*
+
+There is no method on `Object` for equality in Flex like there is in Java. This means that all equality is done through identity comparison. The `ArrayCollection` class for example, has a `contains()` (See http://help.adobe.com/en_US/FlashPlatform/reference/actionscript/3/mx/collections/ListCollectionView.html#contains()[livedocs]) method, but this will only work if the object in the collection is the exact same reference as the object you pass into the collection. This is especially tricky if you are in a client/server environment (using BlazeDS for example). You might get a complex object from the server, and you want to check if it is already in your collection:
+
+[source]
+----
+
+var dog:Dog = ... //got dog from the server
+
+var boolean:isInList = dogs.contains( dog );
+
+----
+
+In this case `isInList` might return false, altough there might be a `Dog` object in the list that is "equal" to the one we got from the server. Another example where this is annoying is if you have a `ComboBox` or a `List` where you bind an `ArrayCollection` to the view component and want to set the selectedItem property. If this item comes from the server, you will probably need to use the index instead or write a custom function that inspects (all) properties of your object.
+
+The open-source http://www.as3commons.org/as3-commons-lang/index.html[as3commons lang] has an http://www.as3commons.org/as3-commons-lang/asdoc/org/as3commons/lang/IEquals.html#equals()[IEquals] interface which you can use, but it is of course a pity that `ArrayCollection` does not know or use this interface.
+
+*Setter optimization*
+
+I searched a long time on this one, because it was so strange at first. In Flex, a bindable setter will *not* be called if the value you set on the property, is the same as the current value of the property.
+
+[source]
+----
+
+public function set points( points:Integer ):void
+
+{
+
+m_points = points;
+
+sendEmailThatNewPointsAreSet();
+
+}
+
+{empty}[Bindable]
+
+public function get points():Integer
+
+{
+
+return m_points;
+
+}
+
+----
+
+Suppose this code is in a class called `Person` and you do this:
+
+[source]
+----
+
+var person:Person = new Person();
+
+person.points = 50;
+
+person.points = 60;
+
+person.points = 60; // Setter will not be called anymore!
+
+----
+
+In Java, the setter would be called 3 times, and the email would get sent 3 times. In Flex, the setter is only called twice! So be very careful if you do extra stuff in a setter in Flex.
+
+That is all for my gotchas, now let me know yours! What are some of your "favorites"? :)

@@ -1,0 +1,37 @@
+---
+title: "Enable preview of Spring REST Docs snippets in IntelliJ IDEA"
+date: 2017-07-24
+draft: false
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+If you use https://projects.spring.io/spring-restdocs/[Spring REST Docs], you will be using the Asciidoctor `include` directive a lot to include the request and responses that are generated from the unit tests. Drawback is that the https://plugins.jetbrains.com/plugin/7391-asciidoc[Asciidoctor plugin for IntelliJ IDEA] will not render them by default and looks like this:
+
+image:image::{imagesdir}//2017/07/screen-shot-2017-07-24-at-14-12-36.png[]
+
+The reason is simple, the `snippets` attribute is only available when running the Maven or Gradle task to build the final documentation.
+
+As a workaround, you can add the following at the top of your document:
+
+[source]
+----
+
+ifndef::snippets[]
+
+:snippets: ../../../target/generated-snippets
+
+endif::[]
+
+----
+
+We use the http://asciidoctor.org/docs/user-manual/#ifndef-directive[ifndef directive] to define the `snippets` attribute in case the build system did not define it yet.
+
+Now the preview works nicely:
+
+image:image::{imagesdir}//2017/07/screen-shot-2017-07-24-at-14-13-51.png[]
+
+Note that it will only work if you are using default locations for the asciidoc source files and the generated snippets. Adjust the path if you use something else.

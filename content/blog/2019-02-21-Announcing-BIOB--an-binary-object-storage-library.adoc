@@ -1,0 +1,19 @@
+---
+title: "Announcing BIOB  an binary object storage library"
+date: 2019-02-21
+draft: false
+tags: ["spring-boot"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+I am announcing a new open-source project I am working on: BIOB
+
+It is still very early days, but there is already a fully functional local file system implementation and an in-memory implementation for testing. See https://github.com/wimdeblauwe/biob for full details and a usage example on how to use the library in your own project.
+
+It does not depend on Spring or Spring Boot, but I have used it in that context so far because that is what I use for all of my projects.
+
+Feel free to try it out and contact me if you have questions, remarks or ideas for the project!

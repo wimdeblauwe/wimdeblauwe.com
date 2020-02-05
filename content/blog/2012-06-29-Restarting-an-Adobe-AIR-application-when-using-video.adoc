@@ -1,0 +1,22 @@
+---
+title: "Restarting an Adobe AIR application when using video"
+date: 2012-06-29
+draft: false
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+An http://www.google.be/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&ved=0CFsQFjAA&url=http%3A%2F%2Fwww.adobe.com%2Fproducts%2Fair.html&ei=XZLtT5mCA4KEhQf0gumNDQ&usg=AFQjCNHADmIokjuhElojs6atCUBwfUGprA&sig2=skWgKkRcWHMV7phr8ae05A[Adobe AIR] application can restart itself, using the code found in http://stackoverflow.com/questions/1821749/how-to-restart-a-standalone-adobe-air-flex-application[this StackOverflow question]. However, it does not seem to work always in our application. We are creating new http://help.adobe.com/en_US/FlashPlatform/reference/actionscript/3/flash/display/NativeWindow.html[NativeWindow]s to allow the user to detach a window from the main application window to support using multiple monitors. The problem seemed to be more frequent when windows were detached.
+
+After more investigation, it seemed that not the detached windows, but the video playing the detached windows was the problem. We now first make sure we stop all video that is playing before we do the restart code. We are using the http://help.adobe.com/en_US/FlashPlatform/reference/actionscript/3/flash/media/Video.html[Video] class in our application, so we stop it like this:
+
+[source]
+----
+video.attachNetStream( null );
+video.clear();
+----
+
+This way, the restarts of our application have become reliable.

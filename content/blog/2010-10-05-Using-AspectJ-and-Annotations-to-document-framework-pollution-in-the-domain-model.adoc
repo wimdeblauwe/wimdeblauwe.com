@@ -1,0 +1,162 @@
+---
+title: "Using AspectJ and Annotations to document framework pollution in the domain model"
+date: 2010-10-05
+draft: false
+tags: ["aspectj"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+This blog post will show you how to use http://www.eclipse.org/aspectj/[Aspectj] and Annotations in Java to avoid that certain framework artifacts 'pollute' your code and people start calling methods that you really don't want when you thought out your design.
+
+A concrete example for this if you want to create immutable objects. Value Objects in http://en.wikipedia.org/wiki/Domain-driven_design[Domain Driven Design] should be like this. You create a constructor for all your object needs, mark all fields final and add some public getters. But now you want to send this object to a http://www.adobe.com/products/flex/[Flex] client using http://opensource.adobe.com/wiki/display/blazeds/BlazeDS/[BlazeDS]. You need a default constructor and getters for all properties. Your immutable object, just became highly mutable,  just because the framework you use needs this. Same can be said for http://www.hibernate.org/[Hibernate] or http://www.oracle.com/technetwork/middleware/coherence/overview/index.html[Coherence] that need a default constructor.
+
+First, we will create an annotation that allows to mark methods and constructors as only being needed because a framework we use requires it:
+
+[source,java]
+----
+@Retention(RetentionPolicy.RUNTIME)
+public @interface FrameworkArtifact {
+    Framework[] value();
+}
+----
+
+`Framework` is an enum that contains the actual frameworks we want to use:
+
+[source,java]
+----
+public enum Framework {
+    BLAZEDS,
+    HIBERNATE
+}
+
+----
+
+This is our example domain object, which we liked to have made immutable, but we cannot due to Hibernate and Blazeds:
+
+[source,java]
+----
+public class DomainObject {
+    private int id;
+    private String name;
+
+    @FrameworkArtifact({Framework.HIBERNATE, Framework.BLAZEDS})
+    public DomainObject() {
+
+    }
+
+    public DomainObject(int id, String name) {
+        this.id = id;
+        this.name = name;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    @FrameworkArtifact(Framework.BLAZEDS)
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    @FrameworkArtifact(Framework.BLAZEDS)
+    public void setName(String name) {
+        this.name = name;
+    }
+}
+
+----
+
+This already gives us some documentation on why some methods are there and they are probably shown as not used by your editor. If you use IntelliJ IDEA, you can tell it to not show those methods as not used if they have this annotation.
+
+We want to go a step further and have the compiler signal us if "normal" code calls these methods, because we don't want that. It is quite easy using AspectJ:
+
+[source,java]
+----
+public aspect EnforceFrameworkArtifactUsage {
+
+declare error : call( @FrameworkArtifact * * (..)) || call( @FrameworkArtifact new(..) )
+: "You should not call a FrameworkArtifact directly: {joinpoint.signature} ";
+
+}
+
+----
+
+This aspect tells the aspectj compiler to fail if there is something that calls a method that is annotated with `@FrameworkArtifact` or a constructor. Suppose this little main class:
+
+[source,java]
+----
+public class Main {
+
+    public static void main(String[] args) {
+
+        DomainObject domainObject = new DomainObject(1, "myName");
+        String name = domainObject.getName();
+        System.out.println("name = " + name);
+
+        DomainObject domainObject2 = new DomainObject();
+        domainObject2.setId(2);
+    }
+}
+
+----
+
+The first part is usage we want to allow, the second part is what we do not want to allow. If we compile, the aspect will match those calls and report a compilation error (this is done using maven here):
+
+``
+[source]
+----
+[INFO] Compiler errors:
+
+error at DomainObject domainObject2 = new DomainObject();
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/home/wdb/Personal/projects/framework-artifacts/src/main/java/org/wimdeblauwe/fa/Main.java:13:0::0 You should not call a FrameworkArtifact directly: void org.wimdeblauwe.fa.domain.DomainObject.()
+
+see also: /home/wdb/Personal/projects/framework-artifacts/src/main/aspect/org/wimdeblauwe/fa/architecture/EnforceFrameworkArtifactUsage.aj:8::0
+
+error at domainObject2.setId(2);
+
+^^^^^^^^^^^^^^^^^^^^^^
+
+/home/wdb/Personal/projects/framework-artifacts/src/main/java/org/wimdeblauwe/fa/Main.java:14:0::0 You should not call a FrameworkArtifact directly: void org.wimdeblauwe.fa.domain.DomainObject.setId(int)
+
+see also: /home/wdb/Personal/projects/framework-artifacts/src/main/aspect/org/wimdeblauwe/fa/architecture/EnforceFrameworkArtifactUsage.aj:8::0
+----
+
+It is a pity that the error message does not show the actual framework that is involved. AFAIK, this is not something you can do with `declare error`. If you really want this, you can change the aspect to use a `before` advice. This will not fail the build, but will only warn you when the actual call happens in your code. Advantage is that you have more freedom to do what you want (print something, throw exception, ...), but the biggest drawback is ofcourse that it is at runtime, not at compile time.
+
+This is the aspect using the before advice:
+
+[source,java]
+----
+public aspect EnforceFrameworkArtifactUsage{
+
+    before(FrameworkArtifact fa):
+    (call(@FrameworkArtifact **(..))||call(@FrameworkArtifact new(..)))&&@annotation(fa) {
+
+        System.out.println("You should not call a FrameworkArtifact directly: "+thisJoinPoint.getSignature()
+        +" is only there for "+Arrays.asList(fa.value())
+        +". It is called from: "+thisEnclosingJoinPointStaticPart.getSourceLocation());
+    }
+}
+
+----
+
+As said, compilation will not fail now. However, if you run `Main.java`, it will print the following:
+
+
+[source]
+----
+You should not call a FrameworkArtifact directly: org.wimdeblauwe.fa.domain.DomainObject() is only there for [HIBERNATE, BLAZEDS]. It is called from: Main.java:7
+
+You should not call a FrameworkArtifact directly: void org.wimdeblauwe.fa.domain.DomainObject.setId(int) is only there for [BLAZEDS]. It is called from: Main.java:7
+----

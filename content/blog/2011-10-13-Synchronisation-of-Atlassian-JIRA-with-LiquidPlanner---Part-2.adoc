@@ -1,0 +1,294 @@
+---
+title: "Synchronisation of Atlassian JIRA with LiquidPlanner   Part 2"
+date: 2011-10-13
+draft: false
+tags: ["jira"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+http://wp.me/p16Vjw-2l[Part 1] showed how the http://www.atlassian.com/software/jira/[JIRA] to http://www.liquidplanner.com/[LiquidPlanner] synchronizer makes it really easy to sync the remaining estimates on your JIRA issues with LiquidPlanner. This part will show the http://groovy.codehaus.org/[Groovy] code to make it all work.
+
+*Getting Started*
+
+I used Groovy 1.8.2 and http://groovy.codehaus.org/HTTP+Builder[HTTPBuilder] 0.5.1. Editing was done in http://www.jetbrains.com/idea/[Jetbrains IntelliJ IDEA] 10.5.2 which has excellent http://www.jetbrains.com/idea/features/groovy_grails.html[Groovy support]. The project is compiled and packaged using http://maven.apache.org/[Maven] 3.0.3 with various plugins.
+
+*Connecting to JIRA and LiquidPlaner REST API*
+
+The first step is talking to the REST APIs. This is how it is done for JIRA:
+
+[source,groovy]
+----
+
+def HTTPBuilder jira = new HTTPBuilder(JIRA_API_URL);
+
+jira.client.addRequestInterceptor(new HttpRequestInterceptor()
+
+{
+
+void process(HttpRequest httpRequest, HttpContext httpContext)
+
+{
+
+httpRequest.addHeader('Authorization', 'Basic ' + JIRA_LOGIN.bytes.encodeBase64().toString())
+
+}
+
+})
+
+----
+
+The `JIRA_URL` variable points to REST endpoint of your own JIRA installation. This is normally `http://<servername>/jira/rest/api/2.0.alpha1/`. Then, `JIRA_LOGIN` is a string that has your JIRA login credentials in the form `username:password`.
+
+Connecting to LiquidPlanner is exactly the same, but you would use the url `https://app.liquidplanner.com/api/` and ofcourse your LiquidPlanner username and password (_Note: The `liquidPlanner` variable points to the HTTPBuilder for LiquidPlanner in the code snippets that follow_).
+
+Both JIRA and LiquidPlanner use http://en.wikipedia.org/wiki/JSON[JSON] for querying and updating. Since Groovy http://docs.codehaus.org/display/GROOVY/Groovy+1.8+release+notes#Groovy1.8releasenotes-NativeJSONsupport[supports JSON natively] in version 1.8, it is real easy to work with the responses we get from both web services.
+
+*Get the LiquidPlanner tasks*
+
+Now that we can talk to both LiquidPlanner and JIRA, we need to fetch the LiquidPlanner tasks that have an external reference and are not marked as done. This is easily done using the following query (which is a HTTP GET):
+
+[source,groovy]
+----
+
+def JSONArray tasks = m_liquidPlanner.get( path: 'workspaces/'+m_lpWorkspaceId+'/tasks', query: ['filter[]':['external_reference contains /', 'is_done is false']] );
+
+----
+
+Note that we need to pass the correct workspace id so that we are looking at our own workspace.
+
+Since we know the external reference has to contain a slash(`/`) we can use that to get all the tasks that have this. When we combine this with the `is_done` filter, we get all tasks we want to iterate over.
+
+This is the main iteration loop:
+
+[source,groovy]
+----
+
+tasks.each {
+
+def String ref = it.external_reference;
+
+logger.debug("ref: {}", ref);
+
+def String[] projectAndVersion = ref.split('/');
+
+def project = projectAndVersion[0];
+
+def version = projectAndVersion[1];
+
+def String userName = getJiraUserName(it.owner_id);
+
+def int remainingHours = getRemainingEstimateFromJira(project, version, userName);
+
+setTaskEstimate(it.id, remainingHours);
+
+}
+
+----
+
+*Mapping the LiquidPlanner users to JIRA*
+
+Each task in LiquidPlanner has an `owner_id` which is like an internal id of each LiquidPlanner member. To map it to JIRA users, we first get all members of the workspace, get their names and then ask JIRA if they exist as well. In the end, we print all non-existing users. This makes it easy to see if you might have a mistake in the user mapping.
+
+[source,groovy]
+----
+
+def lpOwnerIdTolpUserName = [:]
+
+def JSONArray members = liquidPlanner.get(path: 'workspaces/' + lpWorkspaceId + '/members');
+
+logger.debug("LiquidPlanner members: {}", members.size());
+
+List<String> unmappedMembers = new ArrayList<String>();
+
+members.each {
+
+def ownerId = it.id;
+
+def String userName = it.user_name;
+
+if (!userName.equals('unassigned') && !userName.equals('everyone'))
+
+{
+
+try
+
+{
+
+def JSONObject user = jira.get(path: 'user', query: ['username': userName])
+
+logger.debug( "Username $userName from LP exists in JIRA as well. Has displayName: {}", user.displayName);
+
+lpOwnerIdTolpUserName.put(ownerId, userName.toUpperCase())
+
+}
+
+catch (Exception e)
+
+{
+
+unmappedMembers.add( userName );
+
+logger.debug("ERROR: User $userName does not exist in JIRA!!");
+
+};
+
+}
+
+}
+
+if( !unmappedMembers.isEmpty() )
+
+{
+
+int nrOfUnmappedMembers = unmappedMembers.size();
+
+logger.error("There are $nrOfUnmappedMembers users in LiquidPlanner that do not exist in JIRA:" );
+
+for( String userName : unmappedMembers )
+
+{
+
+logger.error( "- $userName" );
+
+}
+
+}
+
+----
+
+We first create an empty map `lpOwnerIdTolpUserName`. We than iterate over all members in our workspace. For each member we do a HTTP GET on JIRA to see if the user exists. When it does exist we add the mapping, so we can map the `owner_id` to the owner username (which in our case is also the JIRA username)
+
+*Get estimates from JIRA*
+
+Next up, ask JIRA all matching issues and add up all the estimates:
+
+[source,groovy]
+----
+
+int getRemainingEstimateFromJira(String projectKey, String versionString, String userName)
+
+{
+
+logger.debug("Searching remaining estimate for $userName in version $versionString in project $projectKey");
+
+int remainingEstimateInHours = 0;
+
+m_jira.request(Method.POST, ContentType.JSON) { req ->
+
+uri.path = 'search'
+
+def jqlSearchString = 'project=' + projectKey + ' and fixVersion=\"' + versionString + '\" and resolution = unresolved and assignee=' + userName
+
+body = [jql: jqlSearchString]
+
+response.success = { resp, json ->
+
+remainingEstimateInHours += getRemainingEstimateFromJira(json);
+
+}
+
+response.failure = {resp ->
+
+addError( resp )
+
+}
+
+}
+
+return remainingEstimateInHours;
+
+}
+
+----
+
+We do a http://confluence.atlassian.com/display/JIRA/Advanced+Searching[JQL search] which returns all matching issues is JSON format. The JQL looks as follows:
+
+`project="projectKey" and fixVersion="versionString" and resolution="unresolved" and assignee="userName"`
+
+When we get the issues, we pass them to the `getRemainingEstimateFromJira(JSONObject json)` function which will iterate over all issues and sum their estimates:
+
+[source,groovy]
+----
+
+int getRemainingEstimateFromJira(JSONObject searchResult)
+
+{
+
+int remainingEstimateInHours = 0;
+
+searchResult.each
+
+{
+
+if (it.getKey().equals('issues'))
+
+{
+
+def JSONArray issues = it.getValue();
+
+issues.each {
+
+def jiraIssue = jira.get(path: 'issue/' + it.key);
+
+remainingEstimateInHours += jiraIssue.fields.timetracking.value.timeestimate / 60;
+
+}
+
+}
+
+}
+
+return remainingEstimateInHours;
+
+}
+
+----
+
+Notice how we need to do an extra request on JIRA for each issue. The search only returned the issues keys, but to get the remaining estimate on each issue, another query is needed. Since JIRA returns the estimate in minutes and we want it in hours, we divide by 60.
+
+*Updating LiquidPlanner*
+
+Now that we calculated how much work the person still has to do, we can update LiquidPlanner:
+
+[source,groovy]
+----
+
+private def setTaskEstimate(int taskId, int remainingHours)
+
+{
+
+liquidPlanner.request(Method.POST, ContentType.JSON) { req ->
+
+uri.path = 'workspaces/' + m_lpWorkspaceId + '/tasks/' + taskId + '/estimates';
+
+body = [estimate: [low: remainingHours + "h", high: (remainingHours * (1 + HIGH_ESTIMATE_PERCENTAGE)) + "h"]]
+
+response.success = {resp, json ->
+
+logger.debug "Succesfully set estimate to (" + remainingHours + "h," + (remainingHours * (1 + HIGH_ESTIMATE_PERCENTAGE)) + "h) for task " + taskId
+
+}
+
+response.failure = {resp ->
+
+addError(resp);
+
+}
+
+}
+
+}
+
+----
+
+To update, we do a HTTP POST with the remaining hours. For the high estimate, I add 10% to the hours from JIRA, but you can use what you want ofcourse.
+
+If you appreciate this information, please use the image link below to sign up for LiquidPlanner. Thanks!
+
+https://app.liquidplanner.com/signup_a/330/f850d1d9ba1c450859d0a598da282d929077cc79[image:https://app.liquidplanner.com/images/affiliates/468-x-60.gif[LiquidPlanner online project management software]]
+
+That is it! Leave any questions you have in the comments or email me directly at `wim dot deblauwe at gmail dot com`.

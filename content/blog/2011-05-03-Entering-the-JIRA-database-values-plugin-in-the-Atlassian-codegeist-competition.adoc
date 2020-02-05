@@ -1,0 +1,31 @@
+---
+title: "Entering the JIRA database values plugin in the Atlassian codegeist competition"
+date: 2011-05-03
+draft: false
+tags: ["jira"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+I just entered my https://plugins.atlassian.com/plugin/details/4969[JIRA Database Values Plugin] in the http://codegeist.atlassian.com/[Atlassian Codegeist] competition. You can view my entry here: http://codegeist.atlassian.com/entry/167349
+
+I uploaded a video with it to make it more visual. I was quite surprised to find it so easy to do on my Ubuntu (just updated to 11.04).
+
+{empty}1) Installed http://recordmydesktop.sourceforge.net/about.php[recordMyDesktop] to do the actual screencast recording:
+
+`sudo apt-get install gtk-recordmydesktop`
+
+This will install a program shortcut called 'Desktop recorder'. Once running, there is a handy systray icon to start and stop the recording.
+
+{empty}2) Installed `mencoder` and used this command line to convert the `.ogv` file to xvid:
+
+`mencoder out.ogv -ovc xvid -xvidencopts pass=1 -o jdvp.avi`
+
+That is it!
+
+Don't forget to vote for my entry!
+
+PS: Is there anybody who knows a free program running on Ubuntu that allows to add text overlays in the video?

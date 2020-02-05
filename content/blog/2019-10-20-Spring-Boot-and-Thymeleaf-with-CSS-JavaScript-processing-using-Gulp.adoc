@@ -1,0 +1,211 @@
+---
+title: "Spring Boot and Thymeleaf with CSS JavaScript processing using Gulp"
+date: 2019-10-20
+draft: false
+tags: ["spring-boot"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+This blog post will explain how to setup a https://spring.io/projects/spring-boot[Spring Boot] project with server-side HTML rendering using https://www.thymeleaf.org/[Thymeleaf] templates.
+
+Out-of-the-box, it is the intention to put your CSS and JavaScript into `src/main/resources/static` so that Spring Boot will serve them and you can reference them from Thymeleaf. With https://docs.spring.io/spring-boot/docs/current/reference/html/using-boot-devtools.html[Spring Boot DevTools] there is a built-in live reload server that allows to edit the HTML templates, or CSS/JavaScript files and have the browser display the changes automatically.
+
+This is all great, until you want to do some more advanced things. With this default setup, you are missing out on:
+
+* CSS/Javascript minification
+* Ability to use a CSS preprocessor like https://sass-lang.com/[Sass]
+* Ability to use https://babeljs.io/[babel] so you can code modern JavaScript, but still support older browsers
+
+This post will show how you can have all that modern frontend tooling in your Spring Boot with Thymeleaf application, supporting live reload development in the process.
+
+== Getting Started
+
+To get started, we head over to https://start.spring.io/ to generate a Spring Boot + Thymeleaf project. The example here uses Spring Boot 2.1.8 using the "Web" and "Thymeleaf" dependencies using Java 11 with Maven.
+
+image:image::{imagesdir}//2019/09/Screenshot-2019-09-19-at-14.38.21-1024x343.png[]
+
+NOTE: We don't add dev-tools as we will take a different approach.
+
+To have something to test, we create a simple Spring MVC controller in `src/main/java` (using the package structure you want, so next to the generated main class):
+
+[source,wp-block-syntaxhighlighter-code]
+----
+import org.springframework.stereotype.Controller;import org.springframework.web.bind.annotation.GetMapping;import org.springframework.web.bind.annotation.RequestMapping;@Controller@RequestMapping("/")public class HomeController {    @GetMapping    public String home() {        return "home";    }}
+----
+
+And in `src/main/resources/templates`, we add our Thymeleaf template called `home.html`:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+<html xmlns="http://www.w3.org/1999/xhtml"      lang="en"><head>    <link rel="stylesheet" href="/css/application.css"/>    <title></title></head><body><h1>Wim Deblauwe</h1><div id="tagline"></div><script src="/js/application.js"></script></body></html>
+----
+
+Futher, we create the `application.css` file in `src/main/resources/static/css`:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+body {    background-color: floralwhite;}h1 {    color: black;}
+----
+
+and `application.js` in `src/main/resources/static/js`:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+const tagline = document.getElementById('tagline');tagline.innerHTML = 'Added with JavaScript';
+----
+
+Running this application should show the following web page at http://localhost:8080/[http://localhost:8080] :
+
+image:image::{imagesdir}//2019/10/image.png[]
+
+== Frontend tooling setup
+
+For the frontend tooling, we will use https://www.npmjs.com/[npm] and https://gulpjs.com/[gulp]. To get started, we create a minimal `package.json` file at the root of our project:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+{  "name": "thymeleaf-live-reload",  "scripts": {    "watch": "gulp watch",    "build": "gulp build"  }}
+----
+
+We now need to add the necessary dependencies via `npm`:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+> npm install --save-dev gulp gulp-watch browser-sync
+----
+
+Running the commands will yield the following `package.json`:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+{  "name": "thymeleaf-live-reload",  "scripts": {    "watch": "gulp watch",    "build": "gulp build"  },  "devDependencies": {    "browser-sync": "^2.26.7",    "gulp": "^4.0.2",    "gulp-watch": "^5.0.1"  }}
+----
+
+We can now create a `gulpfile.js` that will do the heavy lifting:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+const gulp = require('gulp');const watch = require('gulp-watch');const browserSync = require('browser-sync').create();gulp.task('watch', () => {    browserSync.init({        proxy: 'localhost:8080',    });    gulp.watch(['src/main/resources/**/*.html'], gulp.series('copy-html-and-reload'));    gulp.watch(['src/main/resources/**/*.css'], gulp.series('copy-css-and-reload'));    gulp.watch(['src/main/resources/**/*.js'], gulp.series('copy-js-and-reload'));});gulp.task('copy-html', () =>    gulp.src(['src/main/resources/**/*.html'])        .pipe(gulp.dest('target/classes/')));gulp.task('copy-css', () =>    gulp.src(['src/main/resources/**/*.css'])        .pipe(gulp.dest('target/classes/')));gulp.task('copy-js', () =>    gulp.src(['src/main/resources/**/*.js'])        .pipe(gulp.dest('target/classes/')));gulp.task('copy-html-and-reload', gulp.series('copy-html', reload));gulp.task('copy-css-and-reload', gulp.series('copy-css', reload));gulp.task('copy-js-and-reload', gulp.series('copy-js', reload));gulp.task('build', gulp.series('copy-html', 'copy-css', 'copy-js'));gulp.task('default', gulp.series('watch'));function reload(done) {    browserSync.reload();    done();}
+----
+
+The important parts are:
+
+* `proxy: 'localhost:8080'` -> This configures browser sync to proxy the Spring Boot application running at localhost on port 8080. If you want to change the port the Spring Boot application is running on, you will need to change this as well.
+* `gulp.watch(['src/main/resources/**/*.html'], gulp.series('copy-html-and-reload'));` -> This instructs browser sync to watch all directories below `src/main/resources` for HTML files and if something changed, execute the `copy-html-and-reload` goal.
+* The same thing as for the HTML is done for the CSS and the JavaScript files
+
+By default, Spring Boot enables Thymeleaf caching so the HTML files that get copied to `target/classes` would not be picked up live. To avoid this, create an `application-live.properties` file to disable Thymeleaf caching when running with the `live` Spring profile (in `src/main/resources`):
+
+[source,wp-block-syntaxhighlighter-code]
+----
+spring.thymeleaf.cache=false
+----
+
+Now start the Spring Boot application using the `live` profile and open a terminal to start the watching of the client side files:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+> npm run watch
+----
+
+This should open your default browser at http://localhost:3000/[http://localhost:3000]. Now edit some HTML, CSS or JavaScript and save it. The gulp script will copy the changes to `target/classes` and reload the browser automatically.
+
+== Adding Babel
+
+The setup we have so far is not really doing more than what Spring Boot DevTools does out of the box. However, we can now start adding actual processing of the client code to make it really interesting.
+
+As an example, we will add https://babeljs.io/[Babel] processing to the JavaScript so that our modern JavaScript can be understood by older browsers. First, add babel via npm:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+> npm install --save-dev gulp-babel @babel/core @babel/preset-env
+----
+
+Configure babel by creating `.babelrc` at the root of the project:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+{  "presets": ["@babel/preset-env"]}
+----
+
+Finally, add the babel processing in the `copy-js` task in the `gulpfile.js`:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+gulp.task('copy-js', () =>    gulp.src(['src/main/resources/**/*.js'])        .pipe(babel())        .pipe(gulp.dest('target/classes/')));
+----
+
+If you now run the Spring Boot application and `npm run watch`, and you edit the `application.js`, you'll see that the resulting JavaScript in the browser has been transpiled with Babel:
+
+image:image::{imagesdir}//2019/09/image-3.png[]
+
+== Production builds
+
+Once development is ready and you want to go to production, it is good to add minification of CSS and JavaScript. To add this, we use Terser and Uglifycss:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+> npm install --save-dev gulp-terser gulp-uglifycss
+----
+
+In order to only enable this when we want to create a production build, we use https://www.npmjs.com/package/gulp-environments[gulp-environments]:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+> npm install --save-dev gulp-environments
+----
+
+We can now update `gulpfile.js` to use this. First, at the top of the file, add `require` statements and keep a reference to the `production` environment:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+const environments = require('gulp-environments');const uglifycss = require('gulp-uglifycss');const terser = require('gulp-terser');const production = environments.production;
+----
+
+Next, update the `copy-css` and `copy-js` tasks to call the minification processors, wrapped in a `production()` call:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+gulp.task('copy-css', () =>    gulp.src(['src/main/resources/**/*.css'])        .pipe(production(uglifycss()))        .pipe(gulp.dest('target/classes/')));gulp.task('copy-js', () =>    gulp.src(['src/main/resources/**/*.js'])        .pipe(babel())        .pipe(production(terser()))        .pipe(gulp.dest('target/classes/')));
+----
+
+The `production()` call ensures the minification is only done when we are running in the production environment. To test this, add a new script called `build-prod` in `package.json`:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+{  ...  "scripts": {    "watch": "gulp watch",    "build": "gulp build",    "build-prod": "gulp build --env production"  },  ...}
+----
+
+If you now run `npm run build-prod`, you should get minified CSS and JavaScript in `target/classes`. If you run `npm run build` or `npm run watch`, you will get non-minified assets.
+
+== Production builds via Maven
+
+As a final step, we need to run these client production builds via Maven so that if we build with Maven, we get the proper client files in our jar file. For this purpose, we will use the https://github.com/eirslett/frontend-maven-plugin[frontend-maven-plugin]. We will configure the plugin to run our gulp task automatically.
+
+Since we want to be able to control if the minification happens via a Maven profile, we define a `release` profile in Maven where we configure gulp with the `--env production` flag.
+
+This is the full `pom.xml` that is needed:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+<?xml version="1.0" encoding="UTF-8"?><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">  <modelVersion>4.0.0</modelVersion>   <parent>       <groupId>org.springframework.boot</groupId>      <artifactId>spring-boot-starter-parent</artifactId>      <version>2.1.8.RELEASE</version>     <relativePath/> <!-- lookup parent from repository -->   </parent>  <groupId>digital.pegus.examples</groupId>    <artifactId>thymeleaf-live-reload</artifactId>   <version>0.0.1-SNAPSHOT</version>    <name>thymeleaf-live-reload</name>   <description>Demo project for Spring Boot</description>   <properties>       <java.version>11</java.version>        <frontend-maven-plugin.version>1.8.0</frontend-maven-plugin.version>        <frontend-maven-plugin.nodeVersion>v12.10.0</frontend-maven-plugin.nodeVersion>        <frontend-maven-plugin.npmVersion>6.10.3</frontend-maven-plugin.npmVersion>    </properties>   <dependencies>     <dependency>           <groupId>org.springframework.boot</groupId>          <artifactId>spring-boot-starter-thymeleaf</artifactId>       </dependency>      <dependency>           <groupId>org.springframework.boot</groupId>          <artifactId>spring-boot-starter-web</artifactId>     </dependency>       <dependency>           <groupId>org.springframework.boot</groupId>          <artifactId>spring-boot-starter-test</artifactId>            <scope>test</scope>      </dependency>  </dependencies>    <build>        <resources>            <resource>                <directory>src/main/resources</directory>               <!-- Do not have the maven-resource-plugin copy these as the frontend-maven-plugin will take care of it -->                <excludes>                    <exclude>**/*.html</exclude>                    <exclude>**/*.css</exclude>                    <exclude>**/*.js</exclude>                </excludes>            </resource>        </resources>        <pluginManagement>            <plugins>                <plugin>                    <groupId>com.github.eirslett</groupId>                    <artifactId>frontend-maven-plugin</artifactId>                    <version>${frontend-maven-plugin.version}</version>                    <executions>                        <execution>                            <id>install-frontend-tooling</id>                            <goals>                                <goal>install-node-and-npm</goal>                            </goals>                            <configuration>                                <nodeVersion>${frontend-maven-plugin.nodeVersion}</nodeVersion>                                <npmVersion>${frontend-maven-plugin.npmVersion}</npmVersion>                            </configuration>                        </execution>                        <execution>                            <id>run-gulp-build</id>                            <goals>                                <goal>gulp</goal>                            </goals>                            <configuration>                                <arguments>build</arguments>                            </configuration>                        </execution>                    </executions>                </plugin>            </plugins>        </pluginManagement>        <plugins>            <plugin>                <groupId>org.springframework.boot</groupId>                <artifactId>spring-boot-maven-plugin</artifactId>            </plugin>            <plugin>                <groupId>com.github.eirslett</groupId>                <artifactId>frontend-maven-plugin</artifactId>            </plugin>        </plugins>    </build>    <profiles>        <profile>            <id>release</id>            <build>                <plugins>                    <plugin>                        <groupId>com.github.eirslett</groupId>                        <artifactId>frontend-maven-plugin</artifactId>                        <executions>                            <execution>                                <id>run-gulp-build</id>                                <goals>                                    <goal>gulp</goal>                                </goals>                                <configuration>                                    <arguments>build --env production</arguments>                                </configuration>                            </execution>                        </executions>                    </plugin>                </plugins>            </build>        </profile>    </profiles></project>
+----
+
+If you now run `mvn package && java -jar target/thymeleaf-live-reload-0.0.1-SNAPSHOT.jar`, you can open your browser at http://localhost:8080/[http://localhost:8080] and notice that the Babel transpiling has been done. If you do the same with the `release` profile, you will notice that the minification also happened:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+> mvn clean package -Prelease && java -jar target/thymeleaf-live-reload-0.0.1-SNAPSHOT.jar
+----
+
+Important to note is that IntelliJ by default no longer will copy the HTML, CSS and JavaScript into `target/classes` when you start the Spring Boot application from IntelliJ itself. So either you start the Spring Boot application and you run `npm run build` before you run `npm run watch`, or you can configure the IntelliJ run configuration to do that automatically by adding a "Before launch" step that runs the `build` Gulp task.
+
+== Conclusion
+
+With this setup, we can enjoy modern front-end tooling in our Spring Boot/Thymeleaf setup with live reloading.
+
+The full source code can viewed on https://github.com/wimdeblauwe/blog-example-code/tree/master/thymeleaf-live-reload[GitHub].

@@ -1,0 +1,233 @@
+---
+title: "PageImpl JSON serialization with Spring Boot 2"
+date: 2018-06-10
+draft: false
+tags: ["spring-boot"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+During the migration of a https://spring.io/projects/spring-boot[Spring Boot] application from 1.5.13 to 2.0.2, some of my https://spring.io/projects/spring-restdocs[Spring Rest Docs] tests started failing. The reason being that some of my `RestController`s return a `org.springframework.data.domain.PageImpl` object (from https://spring.io/projects/spring-data[Spring Data Commons]).
+
+[source,java]
+----
+
+@RestController
+
+public class MyRestController {
+
+@GetMapping
+
+public PageImpl<SomeDtoObject> listAll() {
+
+...
+
+}
+
+}
+
+----
+
+With Spring Boot 1.5.13, this results in JSON like this:
+
+[source,javascript]
+----
+
+{
+
+"content": [
+
+{...},
+
+{...},
+
+....
+
+],
+
+"totalElements": 50,
+
+"totalPages": 3,
+
+"last": false,
+
+"size": 20,
+
+"number": 0,
+
+"numberOfElements": 1,
+
+"first": true,
+
+"sort": [
+
+{
+
+"direction": "DESC",
+
+"property": "date",
+
+"ignoreCase": false,
+
+"nullHandling": "NATIVE",
+
+"ascending": false,
+
+"descending": true
+
+}
+
+]
+
+}
+
+----
+
+However, with Spring Boot 2.0.2 (which includes Spring Data Commons 2.0.7), the resulting JSON is quite different:
+
+[source,javascript]
+----
+
+{
+
+"content": [
+
+{...},
+
+{...},
+
+....
+
+],
+
+"pageable": {
+
+"sort": {
+
+"sorted": true,
+
+"unsorted": false
+
+},
+
+"offset": 0,
+
+"pageNumber": 0,
+
+"pageSize": 20,
+
+"paged": true,
+
+"unpaged": false
+
+},
+
+"totalPages": 3,
+
+"last": false,
+
+"totalElements": 50,
+
+"size": 20,
+
+"number": 0,
+
+"numberOfElements": 1,
+
+"sort": {
+
+"sorted": true,
+
+"unsorted": false
+
+},
+
+"first": true
+
+}
+
+----
+
+The `content` element is still there, but the others are quite different.
+
+In order to have the same back as before, add a custom JSON serializer:
+
+[source,java]
+----
+
+import com.fasterxml.jackson.core.JsonGenerator;
+
+import com.fasterxml.jackson.databind.JsonSerializer;
+
+import com.fasterxml.jackson.databind.SerializerProvider;
+
+import org.springframework.boot.jackson.JsonComponent;
+
+import org.springframework.data.domain.PageImpl;
+
+import org.springframework.data.domain.Sort;
+
+import java.io.IOException;
+
+@JsonComponent
+
+public class PageImplJacksonSerializer extends JsonSerializer {
+
+@Override
+
+public void serialize(PageImpl page, JsonGenerator jsonGenerator, SerializerProvider serializerProvider) throws IOException {
+
+jsonGenerator.writeStartObject();
+
+jsonGenerator.writeObjectField("content", page.getContent());
+
+jsonGenerator.writeBooleanField("first", page.isFirst());
+
+jsonGenerator.writeBooleanField("last", page.isLast());
+
+jsonGenerator.writeNumberField("totalPages", page.getTotalPages());
+
+jsonGenerator.writeNumberField("totalElements", page.getTotalElements());
+
+jsonGenerator.writeNumberField("numberOfElements", page.getNumberOfElements());
+
+jsonGenerator.writeNumberField("size", page.getSize());
+
+jsonGenerator.writeNumberField("number", page.getNumber());
+
+Sort sort = page.getSort();
+
+jsonGenerator.writeArrayFieldStart("sort");
+
+for (Sort.Order order : sort) {
+
+jsonGenerator.writeStartObject();
+
+jsonGenerator.writeStringField("property", order.getProperty());
+
+jsonGenerator.writeStringField("direction", order.getDirection().name());
+
+jsonGenerator.writeBooleanField("ignoreCase", order.isIgnoreCase());
+
+jsonGenerator.writeStringField("nullHandling", order.getNullHandling().name());
+
+jsonGenerator.writeEndObject();
+
+}
+
+jsonGenerator.writeEndArray();
+
+jsonGenerator.writeEndObject();
+
+}
+
+}
+
+----
+
+Spring Boot will automatically pick this up (Due to the `@JsonComponent` annotation) to serialize the `PageImpl` objects.
+
+ 

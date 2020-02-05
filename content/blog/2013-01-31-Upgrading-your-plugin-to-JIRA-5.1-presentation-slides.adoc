@@ -1,0 +1,13 @@
+---
+title: "Upgrading your plugin to JIRA 5.1 presentation slides"
+date: 2013-01-31
+draft: false
+tags: ["jira"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+Last week, I gave a presentation on upgrading the https://marketplace.atlassian.com/plugins/org.deblauwe.jira.plugin.database-values-plugin[JIRA Database values plugin] to JIRA 5.1 for the https://twitter.com/aug_be[Atlassian Belgian User Group]. For those that are interested, the slides can be viewed here: https://docs.google.com/presentation/d/100KHFe-oxlVmud6nhSbgdjUaXFO2Jnf7qPcDhZpPGDo/pub?start=false&loop=false&delayms=3000

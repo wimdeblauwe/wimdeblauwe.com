@@ -1,0 +1,238 @@
+---
+title: "Using primary key objects with Spring Data and Hibernate"
+date: 2019-10-27
+draft: false
+tags: ["spring-boot"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+Most of the tutorials or blog posts that use Spring Data JPA use auto-generated primary keys. For example, a very simple `User` entity with just a single `name` property would look like this:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+import javax.persistence.Entity;import javax.persistence.GeneratedValue;import javax.persistence.Id;@Entitypublic class User {    @Id    @GeneratedValue    private Long id;    private String name;    public User(String name) {        this.name = name;    }    public Long getId() {        return id;    }    public String getName() {        return name;    }}
+----
+
+Notice how the `id` is of type `Long` and it is annotated with `@Id` (to indicate that that is the primary key of the entity) and `@GeneratedValue` (So that Hibernate will automatically fill in that id when inserting the entity in the database the first time).
+
+And the Spring Data repository to go along with it would be:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+public interface UserRepository extends CrudRepository<User, Long> {}
+----
+
+The drawback here is that if all entities in the application follow this pattern, all id's are typed to `Long`. Imagine we also have an `Order` entity, then our `OrderService` could have a method like this:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+public interface OrderService {    Order getOrder(long orderId, long userId);}
+----
+
+It is now _quite easy to get the order wrong_ and passing in an `orderId` into the 2nd parameter or vise-versa.
+
+== Defining a primary key object
+
+What I find a better way, is using a dedicated object for the primary key of each entity. So we have classes like `UserId` and `OrderId`.
+
+To do this, we first will create an `Entity` interface:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+public interface Entity<T extends EntityId> {    T getId();}
+----
+
+This uses the `EntityId` interface that represents the primary key object:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+import java.io.Serializable;/** * Interface for primary keys of entities. * * @param <T> the underlying type of the entity id */public interface EntityId<T> extends Serializable {    T getValue();    String asString();}
+----
+
+This interface will "hide" the fact that a `long` is used, but it is generic so any underlying type can be used (E.g. a `UUID` is also possible).
+
+Using these classes, our `User` entity becomes:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+@javax.persistence.Entitypublic class User implements Entity<UserId> {    @Id    @GeneratedValue // Will not work!    private UserId id;    ...}
+----
+
+Now, this _will not work_ out of the box since Hibernate will not know how to create a `UserId` object. To make it work, we need to create our own `IdentifierGenerator` to bridge the `long` that is generated from the database with our own `UserId` object.
+
+First, the `UserId` class:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+public class UserId {    private Long value;    public UserId(Long value) {        this.value = value;    }    public Long getValue() {        return value;    }    public String asString() {        return String.valueOf(value);    }}
+----
+
+Next the `UserIdIdentifierGenerator`:
+
+(This is heavily based on the example https://vladmihalcea.com/how-to-implement-a-custom-string-based-sequence-identifier-generator-with-hibernate/[How to implement a custom String-based sequence identifier generator with Hibernate] from https://twitter.com/vlad_mihalcea[Vlad Mihalcea])
+
+[source,wp-block-syntaxhighlighter-code]
+----
+public class UserIdIdentifierGenerator implements IdentifierGenerator, Configurable {    private String sequenceCallSyntax;    @Override    public void configure(Type type, Properties params, ServiceRegistry serviceRegistry) throws MappingException {        JdbcEnvironment jdbcEnvironment = serviceRegistry                .getService(JdbcEnvironment.class);        Dialect dialect = jdbcEnvironment.getDialect();        final String sequencePerEntitySuffix = ConfigurationHelper                .getString(                        SequenceStyleGenerator.CONFIG_SEQUENCE_PER_ENTITY_SUFFIX,                        params,                        SequenceStyleGenerator.DEF_SEQUENCE_SUFFIX                );        boolean preferSequencePerEntity = ConfigurationHelper                .getBoolean(                        SequenceStyleGenerator.CONFIG_PREFER_SEQUENCE_PER_ENTITY,                        params,                        false                );        final String defaultSequenceName = preferSequencePerEntity                ? params.getProperty(JPA_ENTITY_NAME) + sequencePerEntitySuffix                : SequenceStyleGenerator.DEF_SEQUENCE_NAME;        sequenceCallSyntax = dialect                .getSequenceNextValString(                        ConfigurationHelper.getString(                                SequenceStyleGenerator.SEQUENCE_PARAM,                                params,                                defaultSequenceName                        )                );    }    @Override    public Serializable generate(SharedSessionContractImplementor session,                                 Object obj) throws HibernateException {        if (obj instanceof Entity) {            Entity entity = (Entity) obj;            EntityId id = entity.getId();            if (id != null) {                return id;            }        }        long seqValue = ((Number)                ((Session) session)                        .createNativeQuery(sequenceCallSyntax)                        .uniqueResult()        ).longValue();        return new UserId(seqValue);    }}
+----
+
+The most important part is the `generate` method. It will get a new unique long from the database, which we then use to create the `UserId` object. Hibernate will set this object on our `User` object.
+
+We can now use the `UserIdIdentifierGenerator` in our `User` entity:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+@javax.persistence.Entitypublic class User implements Entity<UserId> {    @EmbeddedId    @GenericGenerator(            name = "assigned-sequence",            strategy = "com.wimdeblauwe.examples.primarykeyobject.user.UserIdIdentifierGenerator")    @GeneratedValue(            generator = "assigned-sequence",            strategy = GenerationType.SEQUENCE)    private UserId id;
+----
+
+Note that we need to use `@EmbeddedId` instead of `@Id`.
+
+Finally, adjust `UserRepository` to indicate that the `UserId` type is now used:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+public interface UserRepository extends CrudRepository<User, UserId> {}
+----
+
+This can be validated with this `@DataJpaTest` test:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+@DataJpaTestclass UserRepositoryTest {    @Autowired    private UserRepository repository;    @Test    @Sql(statements = "CREATE SEQUENCE HIBERNATE_SEQUENCE")    public void testSaveUser() {        User user = repository.save(new User("Wim"));        assertThat(user).isNotNull();        assertThat(user.getId()).isNotNull()                                .isInstanceOf(UserId.class);        assertThat(user.getId().getValue()).isPositive();    }}
+----
+
+The sequence table is here created in the unit test itself. In an actual application, you should use https://flywaydb.org/[Flyway] (or https://www.liquibase.org/[Liquibase]) to do proper database initialization and migrations.
+
+Our service interface now becomes:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+public interface OrderService {    Order getOrder(OrderId orderId, UserId userId);}
+----
+
+So now there is no way to accidentally pass a `UserId` in an `OrderId` parameter!
+
+== Tweak the used column name
+
+If we check the generated SQL (Using `spring.jpa.show-sql=true` in our Spring Boot application), we see that this DDL is generated:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+create table user (value bigint not null, name varchar(255), primary key (value))
+----
+
+It is not so nice that the primary key column is called `value`, it would be nicer to have it as `id` in the database. There are 2 ways to do this.
+
+=== AttributeOverride
+
+We can influence use column in the entity by using the `@AttributeOverride` annotation:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+    @EmbeddedId    @AttributeOverride(name = "value", column = @Column(name = "id"))    @GenericGenerator(            name = "assigned-sequence",            strategy = "com.wimdeblauwe.examples.primarykeyobject.user.UserIdIdentifierGenerator")    @GeneratedValue(            generator = "assigned-sequence",            strategy = GenerationType.SEQUENCE)    private UserId id;
+----
+
+Here we state that the `value` property of the embedded id should be mapped to a column with the `id` name.
+
+=== Override column in entity id class
+
+The other option is to override the column name in the entity id class itself:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+public class UserId {    @Column(name = "id")    private final Long value;    ...}
+----
+
+I have chosen for the remainder to use this 2nd option as it needs less annotations on the `id` field of the entity. In both cases, the following SQL is now generated:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+create table user (id bigint not null, name varchar(255), primary key (id))
+----
+
+== Avoid code duplication
+
+To avoid too much code duplication for each `EntityId` class, we will create some helper classes. We will start with `AbstractLongEntityId`:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+@MappedSuperclasspublic abstract class AbstractLongEntityId implements EntityId<Long> {    @Column(name = "id")    private final Long value;    public AbstractLongEntityId(Long value) {        this.value = value;    }    @Override    public Long getValue() {        return value;    }    @Override    public String asString() {        return String.valueOf(value);    }}
+----
+
+This class should be used as a superclass for each `EntityId` object. With this, our `UserId` class simplifies to:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+public class UserId extends AbstractLongEntityId {    public UserId(Long value) {        super(value);    }}
+----
+
+And `OrderId` would be:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+public class OrderId extends AbstractLongEntityId {    public OrderId(Long value) {        super(value);    }}
+----
+
+As we need a `IdentifierGenerator` for each id class, we will create this abstract class to make that as easy as possible. This one is called `AbstractLongEntityIdIdentifierGenerator` and has 1 abstract method that subclasses should use to create the id object when given a generated `long` value.
+
+[source,wp-block-syntaxhighlighter-code]
+----
+protected abstract T createEntityId(long seqValue);
+----
+
+Using that class, we can simplify our `UserIdIdentifierGenerator` to:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+public class UserIdIdentifierGenerator extends AbstractLongEntityIdIdentifierGenerator<UserId> {        @Override    protected UserId createEntityId(long seqValue) {        return new UserId(seqValue);    }}
+----
+
+The user entity itself remains the same:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+@javax.persistence.Entitypublic class User implements Entity<UserId> {    @EmbeddedId    @GenericGenerator(            name = "assigned-sequence",            strategy = "com.wimdeblauwe.examples.primarykeyobject.user.UserIdIdentifierGenerator")    @GeneratedValue(            generator = "assigned-sequence",            strategy = GenerationType.SEQUENCE)    private UserId id;    ...}
+----
+
+== Sequence numbers per entity
+
+While everything currently works, when we looks at the generated id's they increase across all entities. So if we first store a `User`, next an `Order` and again a `User`, we will have the following primary key values assigned:
+
+* User -> `1`
+* Order -> `2`
+* User -> `3`
+
+You might not care about this and this is perfectly fine. However, if you do want to have numbers increasing separately for each entity, it is also possible.
+
+To configure that, add the following parameter:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+@javax.persistence.Entitypublic class User implements Entity<UserId> {    @EmbeddedId    @GenericGenerator(            name = "assigned-sequence",            strategy = "com.wimdeblauwe.examples.primarykeyobject.user.UserIdIdentifierGenerator",            parameters = {@Parameter(name = SequenceStyleGenerator.CONFIG_PREFER_SEQUENCE_PER_ENTITY,                     value = "true")})    @GeneratedValue(            generator = "assigned-sequence",            strategy = GenerationType.SEQUENCE)    private UserId id;
+----
+
+By setting the `SequenceStyleGenerator.CONFIG_PREFER_SEQUENCE_PER_ENTITY` parameter to `true`, Hibernate will use a separate sequence for the `User` entity. It is called `USER_SEQ` by default, but you can also override the suffix if desired:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+@javax.persistence.Entitypublic class User implements Entity<UserId> {    @EmbeddedId    @GenericGenerator(            name = "assigned-sequence",            strategy = "com.wimdeblauwe.examples.primarykeyobject.user.UserIdIdentifierGenerator",            parameters = {@Parameter(name = SequenceStyleGenerator.CONFIG_PREFER_SEQUENCE_PER_ENTITY,                    value = "true"),                    @Parameter(name = SequenceStyleGenerator.CONFIG_SEQUENCE_PER_ENTITY_SUFFIX,                            value = "_SEQUENCE")})    @GeneratedValue(            generator = "assigned-sequence",            strategy = GenerationType.SEQUENCE)    private UserId id;
+----
+
+When creating your tables, you now need to create a sequence per entity of course:
+
+[source,wp-block-syntaxhighlighter-code]
+----
+CREATE SEQUENCE IF NOT EXISTS USER_SEQUENCE;CREATE SEQUENCE IF NOT EXISTS ORDER_SEQUENCE;
+----
+
+This results in each entity having his own separate numbering.
+
+== Conclusion
+
+We see that with little work we can have type-safe id classes that will make our whole code base more expressive.
+
+The full source code can be found on https://github.com/wimdeblauwe/blog-example-code/tree/master/primary-key-object[GitHub].

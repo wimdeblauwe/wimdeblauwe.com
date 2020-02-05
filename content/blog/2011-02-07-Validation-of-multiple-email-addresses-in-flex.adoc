@@ -1,0 +1,148 @@
+---
+title: "Validation of multiple email addresses in flex"
+date: 2011-02-07
+draft: false
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+For our flex application, I had a 'cc' field that could handle multiple email addresses. When adding validation, I first used the standard http://help.adobe.com/en_US/FlashPlatform/reference/actionscript/3/mx/validators/EmailValidator.html[EmailValidator] class. However, this would not work as soon as you want to add multiple email addresss, like:
+
+`foo@company.com;bar@company.com`
+
+Luckily, creating a custom validator to handle this case is quite easy:
+
+[source]
+----
+
+import mx.validators.EmailValidator;
+
+import org.as3commons.lang.StringUtils;
+
+/**
+
+* This validator allows validation of multiple email addresses
+
+* that are separated by a semicolon (;)
+
+*/
+
+public class CompositeEmailValidator extends EmailValidator
+
+{
+
+public function CompositeEmailValidator()
+
+{
+
+}
+
+override protected function doValidation( value:Object ):Array
+
+{
+
+var result:Array = [];
+
+var emailsString:String = String( value );
+
+var emails:Array = StringUtils.tokenizeToArray( emailsString, ";" );
+
+for each (var email:String in emails)
+
+{
+
+var emailResult:Array = super.doValidation( email );
+
+if (emailResult.length > 0)
+
+{
+
+result = result.concat( emailResult );
+
+}
+
+}
+
+return result;
+
+}
+
+}
+
+----
+
+I first use the `tokenizeToArray` function (from the excellent http://www.as3commons.org/as3-commons-lang/[as3commons lang]) to split up the string into separate email addresses. Each of those are validated using the flex EmailValidator. All those results are put together and returned to the caller of `doValidation()`.
+
+The correctness of this is easily validated by writing a unit test:
+
+[source]
+----
+
+import flexunit.framework.TestCase;
+
+import mx.events.ValidationResultEvent;
+
+public class CompositeEmailValidatorTest extends TestCase
+
+{
+
+public function CompositeEmailValidatorTest()
+
+{
+
+}
+
+public function testSingleEmail():void
+
+{
+
+var validator:CompositeEmailValidator = new CompositeEmailValidator();
+
+var result:ValidationResultEvent = validator.validate( "wdb@company.com" );
+
+assertEquals( ValidationResultEvent.VALID, result.type );
+
+}
+
+public function testSingleEmailInvalid():void
+
+{
+
+var validator:CompositeEmailValidator = new CompositeEmailValidator();
+
+var result:ValidationResultEvent = validator.validate( "wdbcompany.com" );
+
+assertEquals( ValidationResultEvent.INVALID, result.type );
+
+}
+
+public function testMultipleEmails():void
+
+{
+
+var validator:CompositeEmailValidator = new CompositeEmailValidator();
+
+var result:ValidationResultEvent = validator.validate( "wdb@company.com;tl@company.com" );
+
+assertEquals( ValidationResultEvent.VALID, result.type );
+
+}
+
+public function testMultipleEmailsInvalid():void
+
+{
+
+var validator:CompositeEmailValidator = new CompositeEmailValidator();
+
+var result:ValidationResultEvent = validator.validate( "wdb@company.com;tlcompany.com" );
+
+assertEquals( ValidationResultEvent.INVALID, result.type );
+
+}
+
+}
+
+----

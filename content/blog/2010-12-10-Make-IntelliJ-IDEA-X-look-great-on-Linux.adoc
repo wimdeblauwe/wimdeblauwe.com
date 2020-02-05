@@ -1,0 +1,32 @@
+---
+title: "Make IntelliJ IDEA X look great on Linux"
+date: 2010-12-10
+draft: false
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+The new http://www.jetbrains.com/idea/[IntelliJ IDEA], called X, is out and there are http://www.jetbrains.com/idea/whatsnew/index.html[lots of new goodies] in there. For my day-to-day job, the most important is the improved Flex support.
+
+I work on Ubuntu 10.10 and by default IntelliJ does not look that great. This is a screenshot of the file menu:
+
+image::{imagesdir}//2010/12/selection_009.png[]
+
+Go to `File` > `Settings` and select `Appearance` in the list. Check the `Override default fonts by` checkbox and select 'DejaVu Sans' from the list of fonts:
+
+image::{imagesdir}//2010/12/selection_010.png[]
+
+_Notice how it says 'Not Recommended', but I have doing this for years without any problems, so I have no idea why they put that there..._
+
+This is the same file menu with the new font:
+
+image::{imagesdir}//2010/12/selection_011.png[]
+
+This is a lot nicer if you ask me. It would even look better if it had anti-aliasing, but I did not manage to force it to do that (I tried adding `-Dswing.aatext=true` to `idea.vmoptions`, but that did not seem to do anything).
+
+Note that this only changes the font that the IDE itself uses. If you want to change the font that you see your code in, go to `Editor` > `Colors & Fonts` > `Font`. I really like `Lucida Sans Typewriter` or `DejaVu Sans Mono`.
+
+Develop with pleasure and good looks :)

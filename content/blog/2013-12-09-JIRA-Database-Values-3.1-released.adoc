@@ -1,0 +1,15 @@
+---
+title: "JIRA Database Values 3.1 released"
+date: 2013-12-09
+draft: false
+tags: ["jira"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+I have just released the version 3.1 of the JIRA Database values plugin. It fixes the issue that sometimes the AJAX style input did not work in the create issue screen. The plugin is compatible with Atlassian JIRA 6.x.
+
+See https://marketplace.atlassian.com/plugins/org.deblauwe.jira.plugin.database-values-plugin for more info and download.

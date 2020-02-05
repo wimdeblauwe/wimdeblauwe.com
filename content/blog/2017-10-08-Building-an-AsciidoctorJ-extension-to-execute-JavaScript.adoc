@@ -1,0 +1,252 @@
+---
+title: "Building an AsciidoctorJ extension to execute JavaScript"
+date: 2017-10-08
+draft: false
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+I love using http://asciidoctor.org/[Asciidoctor] for writing documentation. I mainly got to know it through the excellent https://projects.spring.io/spring-restdocs/[Spring REST Docs] project.
+
+I wanted to build an extension (kind of a plug-in) for Asciidoctor. As I don't know Ruby, writing an extension in Ruby was a bit too much. Luckily, there is AsciidoctorJ (The JVM version of Asciidoctor) which lets me write extensions in any JVM language. Here, we will be using plain Java, but http://groovy-lang.org/[Groovy] for example would work equally well.
+
+In this example, we will be writing one liners of JavaScript in an asciidoctor document. The extension will execute the JavaScript using http://www.oracle.com/technetwork/articles/java/jf14-nashorn-2126515.html[Oracle Nashorn]. It has been part of Java since Java 8 and allows to execute JavaScript on the JVM.
+
+As an example, we will use this asciidoc document:
+
+[source]
+----
+
+= Example document
+
+The below block will be interpreted by the Nashorn Javascript runner in Java 8.
+
+The source is `2+2`, the output should only contain the result of the calculation.
+
+{empty}[javascript-exec]
+
+----
+
+2+2
+
+----
+
+This is some other text
+
+----
+
+To get started, we create a `build.gradle` file like this:
+
+[source,groovy]
+----
+
+group 'org.asciidoctor.extension'
+
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+
+apply plugin: 'maven'
+
+sourceCompatibility = 1.8
+
+repositories {
+
+mavenCentral()
+
+}
+
+dependencies {
+
+compile 'org.asciidoctor:asciidoctorj:1.5.5'
+
+testCompile 'junit:junit:4.12'
+
+testCompile 'org.assertj:assertj-core:3.8.0'
+
+}
+
+----
+
+With a `settings.gradle` like this:
+
+[source,groovy]
+----
+
+rootProject.name = 'asciidoctorj-javascript-extension'
+
+----
+
+Next, in the `src/main/java` directory, we create the `org.asciidoctor.extension.javascript.JavaScriptExecutionBlock` class:
+
+[source,java]
+----
+
+package org.asciidoctor.extension.javascript;
+
+import org.asciidoctor.ast.AbstractBlock;
+
+import org.asciidoctor.extension.BlockProcessor;
+
+import org.asciidoctor.extension.Reader;
+
+import javax.script.ScriptEngine;
+
+import javax.script.ScriptEngineManager;
+
+import javax.script.ScriptException;
+
+import java.util.ArrayList;
+
+import java.util.HashMap;
+
+import java.util.List;
+
+import java.util.Map;
+
+public class JavaScriptExecutionBlock extends BlockProcessor {
+
+private static final ScriptEngine SCRIPT_ENGINE = new ScriptEngineManager().getEngineByName("nashorn");
+
+public JavaScriptExecutionBlock(String name, Map<String, Object> config) {
+
+super(name, createConfig());
+
+}
+
+@Override
+
+public Object process(AbstractBlock parent, Reader reader, Map<String, Object> attributes) {
+
+String jsResult;
+
+try {
+
+jsResult = SCRIPT_ENGINE.eval(reader.read()).toString();
+
+} catch (ScriptException e) {
+
+e.printStackTrace();
+
+jsResult = e.getMessage();
+
+}
+
+return createBlock(parent, "paragraph", jsResult, attributes, new HashMap<>());
+
+}
+
+private static Map<String, Object> createConfig() {
+
+Map<String, Object> result = new HashMap<>();
+
+result.put("contexts", createContextsConfig());
+
+return result;
+
+}
+
+private static List<String> createContextsConfig() {
+
+List<String> contexts = new ArrayList<>();
+
+contexts.add(":open");
+
+return contexts;
+
+}
+
+}
+
+----
+
+We get the text that is put in the asciidoc document for the extension by using `reader.read()`. We run this through the `ScriptEngine` and put the result in a new `paragraph` block.
+
+To have Asciidoctor use our extension, we need 2 additional things:
+
+* A class extending `ExtensionRegistry` that will indicate what the name of the extension is to use in the document
+* A file called `org.asciidoctor.extension.spi.ExtensionRegistry` in the `META-INF/services` package
+
+The `JavaScriptExtensionRegistry`:
+
+[source,java]
+----
+
+package org.asciidoctor.extension.javascript;
+
+import org.asciidoctor.Asciidoctor;
+
+import org.asciidoctor.extension.spi.ExtensionRegistry;
+
+public class JavaScriptExtensionRegistry implements ExtensionRegistry {
+
+@Override
+
+public void register(Asciidoctor asciidoctor) {
+
+asciidoctor.javaExtensionRegistry().block("javascript-exec", JavaScriptExecutionBlock.class);
+
+}
+
+}
+
+----
+
+The `org.asciidoctor.extension.spi.ExtensionRegistry` file:
+
+[source]
+----
+
+org.asciidoctor.extension.javascript.JavaScriptExtensionRegistry
+
+----
+
+That is all that there is to it really. If you now want to use your extension, you just install it to your local repository through Gradle. Then you can use in the Gradle build that builds your document like this:
+
+[source,groovy]
+----
+
+buildscript {
+
+repositories {
+
+mavenLocal()
+
+jcenter()
+
+}
+
+dependencies {
+
+classpath 'org.asciidoctor:asciidoctor-gradle-plugin:1.5.3'
+
+classpath 'org.asciidoctor:asciidoctorj-pdf:1.5.0-alpha.15'
+
+classpath 'org.asciidoctor.extension:asciidoctorj-javascript-extension:1.0-SNAPSHOT'
+
+}
+
+}
+
+apply plugin: 'org.asciidoctor.convert'
+
+asciidoctor {
+
+backends 'pdf', 'html5'
+
+sourceDir = file('src/main/asciidoc')
+
+}
+
+----
+
+Notice the 3rd dependency that points to our just created extension. The result is a HTML and PDF page with the JavaScript result inside. This is a screenshot of the HTML output:
+
+image:image::{imagesdir}//2017/10/asciidoctor-javascript-extension-html.png[]
+
+And that is all it takes to build an extension for AsciidoctorJ.
+
+_This know-how originated during the development of a https://www.pegusapps.com/[PegusApps] project._

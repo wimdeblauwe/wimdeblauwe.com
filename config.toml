@@ -1,0 +1,60 @@
+baseURL = "https://wimdeblauwe.dev/"
+languageCode = "en-us"
+title = "Wim Deblauwe"
+theme = "ezhil"
+copyright = "© 2020 Wim Deblauwe"
+# disqusShortname = ""
+# googleAnalytics = ""
+
+[params]
+    # If social media links are enabled then enable this to fetch icons from CDN instead of hosted on your site
+    featherIconsCDN = true
+
+    customCSS = "css/wimdeblauwe.css"
+
+[[menu.main]]
+name = "Blog"
+url = "/"
+weight = 1
+
+[[menu.main]]
+name = "Projects"
+url = "/projects"
+weight = 2
+
+[[menu.main]]
+name = "Book"
+url = "/books"
+weight = 3
+
+[[menu.main]]
+name = "About"
+url = "/about"
+weight = 4
+
+[[params.social]]
+name = "RSS FEED"
+icon = "rss"
+url = "/blog/index.xml"
+
+[[params.social]]
+name = "GitHub"
+icon = "github"
+url = "https://github.com/wimdeblauwe"
+
+[[params.social]]
+name = "Twitter"
+icon = "twitter"
+url = "https://twitter.com/wimdeblauwe"
+
+# Enable tags.
+[taxonomies]
+tag = "tags"
+
+[privacy.youtube]
+privacyEnhanced = true
+
+[privacy.googleAnalytics]
+anonymizeIP = true
+respectDoNotTrack = true
+useSessionStorage = true

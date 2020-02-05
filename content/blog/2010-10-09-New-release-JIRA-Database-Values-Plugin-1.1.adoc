@@ -1,0 +1,51 @@
+---
+title: "New release JIRA Database Values Plugin 1.1"
+date: 2010-10-09
+draft: false
+tags: ["jira"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+I am proud to announce a new 1.1 version of the https://plugins.atlassian.com/plugin/details/4969[JIRA Database Values Plugin]. It has the following improvements:
+
+* *Support AJAX lookup in searching*: If you use the simple mode for searching in JIRA, you can now select a value from your custom field via AJAX lookup. This makes it a lot easier then that long list of items you might have in the default search mode. The only drawback is that you can only select 1 item. The list allows multi-selection. Use the `search.type` property in your configuration file to select with search mode you want to use.
+* *Support for history and activity view*: You can now choose how your value is rendered in the history view and the activity views. In previous versions, the primary key was displayed, which is usually not what you want. Use `rendering.changelog.viewpattern` in the configuration file to configure this. Note that it is optional as the `rendering.viewpattern` will be used by default.
+* *Support for statistics views*: You can now use your custom field in a pie chart, 2d statistics filter and single level group by report. If you want to set a different rendering pattern for these views, use the `rendering.statistics.viewpattern` key in your properties file. Note that this one does not support HTML, so if your `rendering.viewpattern` has HTML, you need to add this key and provide a pattern that does not use HTML.
+* *Choose how to render NULL values*: Previous releases of the plugin always rendered a NULL value as 'Unknown'. As of this release, it will be rendered as an empty string. You can override what is shown by using this:
++
+`rendering.viewpattern={0} {1,N/A}`
++
+This means that a null value in the 2nd column of your SQL query will be rendered as 'N/A'. _Thanks to http://andrewgdotcom.wordpress.com/[Andrew Gallagher] for providing the patch._
+* *Add a separate query for the search*: You might want to separate the queries you use for editing/viewing and searching. The property `sql.query.search` key allows to do just this.
+
+*Some screenshots:*
+
+The simple search in JIRA with the list that already existed:
+
+image::{imagesdir}//2010/10/selection_002.png[]
+
+and the new AJAX enabled search:
+
+image::{imagesdir}//2010/10/selection_005.png[]
+
+The activity stream showing the change to the custom field in a nice readable way:
+
+image::{imagesdir}//2010/10/selection_004.png[]
+
+The history view of an issue showing the change to the custom field:
+
+image::{imagesdir}//2010/10/selection_003.png[]
+
+The custom field used in a pie chart:
+
+image::{imagesdir}//2010/10/selection_001.png[]
+
+*Download*
+
+This version was tested with the latest JIRA version, which is 4.1.2 at the time of writing.
+
+Go https://plugins.atlassian.com/plugin/details/4969[download it from the plugin exchange] and try it out!

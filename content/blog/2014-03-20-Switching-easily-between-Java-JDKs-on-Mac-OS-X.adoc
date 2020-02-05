@@ -1,0 +1,82 @@
+---
+title: "Switching easily between Java JDKs on Mac OS X"
+date: 2014-03-20
+draft: false
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+I just came upon a neat little trick to easily switch what JDK you are using on the command line on Mac OS X (10.9.2 is the version I am using), courtesy of http://apple.stackexchange.com/a/93132/21912[this AskDifferent answer].
+
+First, add the following aliases in ~/.profile file:
+
+....
+alias setJdk6='export JAVA_HOME=$(/usr/libexec/java_home -v 1.6)'
+alias setJdk7='export JAVA_HOME=$(/usr/libexec/java_home -v 1.7)'
+alias setJdk8='export JAVA_HOME=$(/usr/libexec/java_home -v 1.8)'
+....
+
+Open a new terminal window or use source ~/.profile to load the aliases.
+
+Now you can easily switch between the installed JDKs:
+
+....
+> setJdk6
+....
+
+We can verify that Maven picks this up correctly:
+
+....
+> mvn --version
+Apache Maven 3.0.4 (r1232337; 2012-01-17 09:44:56+0100)
+Maven home: /Applications/maven/apache-maven-3.0.4
+Java version: 1.6.0_65, vendor: Apple Inc.
+Java home: /System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Home
+Default locale: en_US, platform encoding: MacRoman
+OS name: "mac os x", version: "10.9.2", arch: "x86_64", family: "mac"
+....
+
+To go to JDK 7:
+
+....
+> setJdk7
+....
+
+And Maven shows:
+
+....
+> mvn --version
+Apache Maven 3.0.4 (r1232337; 2012-01-17 09:44:56+0100)
+Maven home: /Applications/maven/apache-maven-3.0.4
+Java version: 1.7.0_45, vendor: Oracle Corporation
+Java home: /Library/Java/JavaVirtualMachines/jdk1.7.0_45.jdk/Contents/Home/jre
+Default locale: en_US, platform encoding: UTF-8
+OS name: "mac os x", version: "10.9.2", arch: "x86_64", family: "mac"
+....
+
+This works just as well to switch to the just released JDK 8:
+
+....
+> setJdk8
+....
+
+Maven output:
+
+....
+> mvn --version
+Apache Maven 3.0.4 (r1232337; 2012-01-17 09:44:56+0100)
+Maven home: /Applications/maven/apache-maven-3.0.4
+Java version: 1.8.0, vendor: Oracle Corporation
+Java home: /Library/Java/JavaVirtualMachines/jdk1.8.0.jdk/Contents/Home/jre
+Default locale: en_US, platform encoding: UTF-8
+OS name: "mac os x", version: "10.9.2", arch: "x86_64", family: "mac"
+....
+
+Voila, simpel and effective!
+
+ 
+
+ 

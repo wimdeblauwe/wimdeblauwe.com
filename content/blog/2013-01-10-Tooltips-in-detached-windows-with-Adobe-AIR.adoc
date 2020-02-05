@@ -1,0 +1,24 @@
+---
+title: "Tooltips in detached windows with Adobe AIR"
+date: 2013-01-10
+draft: false
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+I just had an issue where we display a tooltip on a custom component in Flex. This worked fine until we also used this component in a http://livedocs.adobe.com/flex/3/html/help.html?content=WorkingWithWindows_1.html[detached window in Adobe AIR]. We never saw the tooltip in the detached window.
+
+This is the code we used before in the custom component:
+
+[source]
+----m_tooltip = ToolTipManager.createToolTip( tooltip, event.stageX + 10, event.stageY + 10 );[/code]
+
+This is what fixed it:
+
+[source]
+----m_tooltip = ToolTipManager.createToolTip( tooltip, event.stageX + 10, event.stageY + 10, null, this );[/code]
+
+The important part is the `this` parameter passed into the createToolTip method. If not passed into the method, the framework will always use the `FlexGlobals.topLevelApplication`, which is not your detached window. By passing in the reference to custom component to the tooltip manager, it will use the correct native window to display the tooltip in.

@@ -1,0 +1,15 @@
+---
+title: "Version 1.0.2 of Practical Guide to Building an API Back End with Spring Boot released"
+date: 2018-12-24
+draft: false
+tags: ["spring-boot"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+You can download an updated version of my book 'Practical Guide to Building an API Back End with Spring Boot' from InfoQ: https://www.infoq.com/minibooks/spring-boot-building-api-backend
+
+The changelog can be viewed at https://wimdeblauwe.wordpress.com/my-spring-boot-book/

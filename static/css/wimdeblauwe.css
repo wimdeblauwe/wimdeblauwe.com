@@ -1,0 +1,122 @@
+body {
+    font-family: 'Open Sans', sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: 'Rokkitt', serif;
+}
+
+a,
+a:hover {
+    color: #0066a1;
+    text-decoration: none
+}
+
+a:hover {
+    text-decoration: underline
+}
+
+.post-tags .tags a {
+    color: #0066a1;
+    border: 1px solid #0066a1;
+}
+
+.meta-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.post-tags {
+    margin-right: 1rem;
+}
+
+.post-tags .tags li {
+    margin-top: 0;
+}
+
+.rouge {
+    padding-left: 0.5rem;
+}
+
+img.align-left {
+    margin: 10px auto 10px 10px;
+}
+
+#paypal-container {
+    display: flex;
+    align-items: center;
+    justify-content: left;
+}
+
+#paypal-text-link {
+    margin-left: 1rem;
+}
+
+.github-url {
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    margin-top: -1rem;
+}
+
+.github-url > svg {
+    margin-right: 0.5rem;
+    width: 1rem;
+    height: 1rem;
+}
+
+.project-description {
+    margin-top: 1rem;
+}
+
+h3.summary {
+    margin-top: 0.5rem;
+}
+
+
+.row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.row > div:nth-child(3) {
+    margin-left: auto;
+}
+
+
+.header-image-container {
+    padding-right: 20px;
+}
+.header-image {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.pull-right {
+    margin-left: auto;
+}
+
+.fill {
+    flex: 1;
+}
+
+@media only screen and (max-width: 670px) {
+    div.desktop {
+        display: none;
+    }
+}
+
+@media only screen and (min-width: 671px) {
+    div.mobile {
+        display: none;
+    }
+}

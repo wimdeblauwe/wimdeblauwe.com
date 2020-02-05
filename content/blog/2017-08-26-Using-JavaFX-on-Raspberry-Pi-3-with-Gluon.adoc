@@ -1,0 +1,159 @@
+---
+title: "Using JavaFX on Raspberry Pi 3 with Gluon"
+date: 2017-08-26
+draft: false
+tags: ["javafx"]
+tags: ["spring-boot"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+In this post, I am going to detail the steps to get a simple JavaFX application running on the Raspberry Pi 3 using Gluon.
+
+== Hardware
+
+For this setup, I used the Raspberry Pi 3 with the official 7" touchscreen connected.
+
+image:https://wimdeblauwe.files.wordpress.com/2017/08/img_1296.jpg[Raspberry Pi with touchscreen,width=1280,height=960]
+
+== Raspbian Installation
+
+First off, download Raspbian from https://www.raspberrypi.org/downloads/raspbian/. I chose the "RASPBIAN STRETCH WITH DESKTOP" version and burned it on an SD-card using https://etcher.io/[Etcher].
+
+Insert the SD-card in the Raspberry Pi and let it boot. The screen should look like this when done:
+
+image:https://wimdeblauwe.files.wordpress.com/2017/08/img_2384.jpg[Raspbian start screen,width=1280,height=960]
+
+Find out the IP address of the Raspberry Pi by running `ifconfig` on the Pi itself or looking at the DHCP clients list of your router.
+
+Enable SSH to be able to easily copy files to the Raspberry Pi. See https://www.raspberrypi.org/documentation/remote-access/ssh/[the official instructions] on how to do that.
+
+== Installation of Java
+
+Download the 'Linux ARM 32 Hard Float ABI' Java SE Development kit from http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html[the Oracle website]. I downloaded `jdk-8u144-linux-arm32-vfp-hflt.tar.gz`.
+
+Copy it to the device using SCP:
+
+[source]
+----
+
+scp jdk-8u144-linux-arm32-vfp-hflt.tar.gz pi@192.168.1.60:
+
+----
+
+(Replacing `192.168.1.60` with the IP address of your own device of course)
+
+Now unzip the copied file:
+
+[source]
+----
+
+tar zxf jdk-8u144-linux-arm32-vfp-hflt.tar.gz
+
+----
+
+Move the JDK to a location of your choice. I choose `/opt` and also created a symbolic link for future updates:
+
+[source]
+----
+
+sudo mv ./jdk1.8.0_144/ /opt/
+
+sudo ln -s /opt/jdk1.8.0_144/ /opt/jdk8
+
+----
+
+Check if Java works by checking the version of the `java` executable:
+
+[source]
+----
+
+pi@raspberrypi:~ $ /opt/jdk8/bin/java -version
+
+java version "1.8.0_144"
+
+Java(TM) SE Runtime Environment (build 1.8.0_144-b01)
+
+Java HotSpot(TM) Client VM (build 25.144-b01, mixed mode)
+
+----
+
+== Installation of JavaFX
+
+Although Java 8 contains JavaFX by default, it does not contain what is needed to have JavaFX applications running on the Raspberry Pi. For this, you need the Gluon JavaFX Embedded SDK. Download it from http://gluonhq.com/products/mobile/javafxports/get/
+
+Copy it to the Pi:
+
+[source]
+----
+
+scp armv6hf-sdk-8.60.9.zip pi@192.168.1.60:
+
+----
+
+On the Pi itself, unzip it and copy the unzipped files onto the just installed Java SDK. Take note of http://docs.gluonhq.com/javafxports/#_embedded[what parts need to be copied where]!
+
+[source]
+----
+
+pi@raspberrypi:~ $ unzip armv6hf-sdk-8.60.9.zip
+
+pi@raspberrypi:~ $ cp armv6hf-sdk/rt/lib/ext/jfxrt.jar /opt/jdk8/jre/lib/ext/
+
+pi@raspberrypi:~ $ cp armv6hf-sdk/rt/lib/arm/* /opt/jdk8/jre/lib/arm/
+
+pi@raspberrypi:~ $ cp armv6hf-sdk/rt/lib/javafx.platform.properties /opt/jdk8/jre/lib/
+
+pi@raspberrypi:~ $ cp armv6hf-sdk/rt/lib/javafx.properties /opt/jdk8/jre/lib/
+
+pi@raspberrypi:~ $ cp armv6hf-sdk/rt/lib/jfxswt.jar /opt/jdk8/jre/lib/
+
+----
+
+== Running a JavaFX application
+
+Just to get started with a very simple JavaFX application, we will take one of the javafxports samples. First clone the repository at https://bitbucket.org/javafxports/samples
+
+Build the HelloWorld sample using
+
+[source]
+----
+
+./gradlew :HelloWorld:build
+
+----
+
+Copy the created jar file to the Raspberry Pi:
+
+[source]
+----
+
+scp HelloWorld/build/libs/HelloWorld.jar pi@192.168.1.60:
+
+----
+
+Now open a terminal on the Raspberry Pi itself and start the application:
+
+[source]
+----
+
+sudo /opt/jdk8/bin/java -jar Helloworld.jar
+
+----
+
+NOTE: The `sudo` is needed to make the button click work. If you know of a way to avoid the `sudo` part to make it work, leave a comment below!
+
+Now you have JavaFX running on the Raspberry Pi:
+
+image:https://wimdeblauwe.files.wordpress.com/2017/08/javafx-on-pi.jpg[Javafx on pi,width=1280,height=960]
+
+There is no exit implemented in the demo application, so you have to kill it over SSH to stop it.
+
+== Conclusion
+
+We saw how get a JavaFX application running on the Raspberry Pi 3 hardware using the Gluon JavaFX Embedded SDK. I will explain how I combined JavaFX with https://projects.spring.io/spring-boot/[Spring Boot] for a real fun programming stack in https://wimdeblauwe.wordpress.com/2017/09/18/using-spring-boot-with-javafx/[a future post].
+
+_This know-how originated during the development of a https://www.pegusapps.com/[PegusApps] project._
