@@ -1,0 +1,22 @@
+---
+title: "Welcome to the new blog"
+date: 2020-02-05
+draft: false
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+This post marks the start of the new blog at https://www.wimdeblauwe.com[https://www.wimdeblauwe.com].
+
+The content of the old blog at https://wimdeblauwe.wordpress.com/[https://wimdeblauwe.wordpress.com/] has all been migrated here.
+Do let me know if there would be an error or something missing on a page.
+
+<!--more-->
+
+The site is build with https://gohugo.io/[Hugo] and the blog posts are written in https://asciidoctor.org/[Asciidoc].
+Automatic deployment has been set up via https://www.netlify.com/[Netlify].
+
+For those interested, the source code can be viewed at https://github.com/wimdeblauwe/wimdeblauwe.com[https://github.com/wimdeblauwe/wimdeblauwe.com]
