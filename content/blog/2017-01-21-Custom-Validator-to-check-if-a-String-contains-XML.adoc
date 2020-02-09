@@ -17,19 +17,15 @@ For the purpose of the example, suppose you have this entity:
 
 [source,java]
 ----
-
 @Entity
-
 public class MyEntity {
 
-private String name;
+    private String name;
 
-@Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
+    private String xml;
 
-private String xml;
-
-// getters and setters omitted...
-
+    // getters and setters omitted...
 }
 
 ----
@@ -40,27 +36,19 @@ This will be the resulting entity:
 
 [source,java]
 ----
-
 @Entity
-
 public class MyEntity {
 
-@NotNull
+    @NotNull
+    @Size(min = 1, max = 50)
+    private String name;
 
-@Size(min=1,max=50)
+    @XmlString(xsdLocation = "/xsd/my-xsd.xsd")
+    @Column(columnDefinition = "TEXT")
+    private String xml;
 
-private String name;
-
-@XmlString(xsdLocation="/xsd/my-xsd.xsd")
-
-@Column(columnDefinition = "TEXT")
-
-private String xml;
-
-// getters and setters omitted...
-
+    // getters and setters omitted...
 }
-
 ----
 
 To make this work, we first need to declare our new `@XmlString` annotation:
@@ -69,31 +57,24 @@ To make this work, we first need to declare our new `@XmlString` annotation:
 ----
 
 import javax.validation.Constraint;
-
 import javax.validation.Payload;
-
 import java.lang.annotation.*;
 
 @Documented
-
 @Constraint(validatedBy = XmlStringValidator.class)
-
 @Target({ElementType.TYPE, ElementType.FIELD, ElementType.ANNOTATION_TYPE})
-
 @Retention(RetentionPolicy.RUNTIME)
-
 public @interface XmlString {
 
-String message() default "Invalid XML String";
+    String message() default "Invalid XML String";
 
-Class<?>[] groups() default {};
+    Class<?>[] groups() default {};
 
-Class<? extends Payload>[] payload() default {};
+    Class<? extends Payload>[] payload() default {};
 
-String xsdLocation() default "";
+    String xsdLocation() default "";
 
 }
-
 ----
 
 Next, we need to create the validator itself:
@@ -102,135 +83,85 @@ Next, we need to create the validator itself:
 ----
 
 import org.apache.commons.lang3.StringUtils;
-
 import org.slf4j.Logger;
-
 import org.slf4j.LoggerFactory;
-
 import org.xml.sax.InputSource;
-
 import org.xml.sax.SAXException;
-
 import org.xml.sax.XMLReader;
 
 import javax.validation.ConstraintValidator;
-
 import javax.validation.ConstraintValidatorContext;
-
 import javax.xml.XMLConstants;
-
 import javax.xml.parsers.ParserConfigurationException;
-
 import javax.xml.parsers.SAXParser;
-
 import javax.xml.parsers.SAXParserFactory;
-
 import javax.xml.transform.stream.StreamSource;
-
 import javax.xml.validation.Schema;
-
 import javax.xml.validation.SchemaFactory;
-
 import javax.xml.validation.Validator;
-
 import java.io.IOException;
-
 import java.io.StringReader;
 
 public class XmlStringValidator implements ConstraintValidator<XmlString, String> {
 
-private static final Logger LOGGER = LoggerFactory.getLogger(XmlStringValidator.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(XmlStringValidator.class);
 
 // ------------------------------ FIELDS ------------------------------
 
-private Schema schema;
+    private Schema schema;
 
 // ------------------------ INTERFACE METHODS ------------------------
 
 // --------------------- Interface ConstraintValidator ---------------------
 
-@Override
+    @Override
+    public void initialize(XmlString xmlString) {
 
-public void initialize(XmlString xmlString) {
+        if (StringUtils.isNotEmpty(xmlString.xsdLocation())) {
+            try {
+                SchemaFactory sf = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
+                schema = sf.newSchema(new StreamSource(getClass().getResourceAsStream(xmlString.xsdLocation())));
+            } catch (SAXException e) {
+                LOGGER.error("Unable to read the XSD file " + xmlString.xsdLocation() + ". The XmlString will not validated against the XSD!", e);
+            }
+        }
+    }
 
-if (StringUtils.isNotEmpty(xmlString.xsdLocation())) {
+    @Override
+    public boolean isValid(String xmlString, ConstraintValidatorContext context) {
+        boolean result = true;
+        if (StringUtils.isNotEmpty(xmlString)) {
+            try {
+                if (schema != null) {
+                    validateXmlAgainstXsd(xmlString);
+                } else {
+                    validateIfXml(xmlString);
+                }
 
-try {
+            } catch (ParserConfigurationException | SAXException | IOException e) {
+                LOGGER.trace("Invalid XML", e);
+                result = false;
+            }
+        } else {
+            result = false;
+        }
 
-SchemaFactory sf = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
-
-schema = sf.newSchema(new StreamSource(getClass().getResourceAsStream(xmlString.xsdLocation())));
-
-} catch (SAXException e) {
-
-LOGGER.error("Unable to read the XSD file " + xmlString.xsdLocation() + ". The XmlString will not validated against the XSD!", e );
-
-}
-
-}
-
-}
-
-@Override
-
-public boolean isValid(String xmlString, ConstraintValidatorContext context) {
-
-boolean result = true;
-
-if (StringUtils.isNotEmpty(xmlString)) {
-
-try {
-
-if (schema != null) {
-
-validateXmlAgainstXsd(xmlString);
-
-} else {
-
-validateIfXml(xmlString);
-
-}
-
-} catch (ParserConfigurationException | SAXException | IOException e) {
-
-LOGGER.trace("Invalid XML", e);
-
-result = false;
-
-}
-
-} else {
-
-result = false;
-
-}
-
-return result;
-
-}
+        return result;
+    }
 
 // -------------------------- PRIVATE METHODS --------------------------
 
-private static void validateIfXml(String xmlString) throws ParserConfigurationException, SAXException, IOException {
+    private static void validateIfXml(String xmlString) throws ParserConfigurationException, SAXException, IOException {
+        SAXParserFactory spf = SAXParserFactory.newInstance();
+        SAXParser sp = spf.newSAXParser();
+        XMLReader xr = sp.getXMLReader();
+        xr.parse(new InputSource(new StringReader(xmlString)));
+    }
 
-SAXParserFactory spf = SAXParserFactory.newInstance();
-
-SAXParser sp = spf.newSAXParser();
-
-XMLReader xr = sp.getXMLReader();
-
-xr.parse(new InputSource(new StringReader(xmlString)));
-
-}
-
-private void validateXmlAgainstXsd(String xmlString) throws SAXException, IOException {
-
-Validator validator = schema.newValidator();
-
-validator.validate(new StreamSource(new StringReader(xmlString)));
-
-}
-
+    private void validateXmlAgainstXsd(String xmlString) throws SAXException, IOException {
+        Validator validator = schema.newValidator();
+        validator.validate(new StreamSource(new StringReader(xmlString)));
+    }
 }
 
 ----
@@ -247,82 +178,54 @@ Of course, no code really works without having unit tests in place, so this is a
 
 public class XmlStringValidatorTest {
 
-@Test
+    @Test
+    public void givenEmptyString_notValid() {
+        ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+        Validator validator = factory.getValidator();
+        TestObject testObject = new TestObject("");
+        Set<ConstraintViolation<TestObject>> violationSet = validator.validate(testObject);
+        assertThat(violationSet).hasViolationOnPath("xml");
+    }
 
-public void givenEmptyString_notValid() {
+    @Test
+    public void givenNoXml_notValid() {
+        ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+        Validator validator = factory.getValidator();
+        TestObject testObject = new TestObject("This is no XML string");
 
-ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+        Set<ConstraintViolation<TestObject>> violationSet = validator.validate(testObject);
+        assertThat(violationSet).hasViolationOnPath("xml");
+    }
 
-Validator validator = factory.getValidator();
+    @Test
+    public void givenXml_valid() {
+        ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+        Validator validator = factory.getValidator();
 
-TestObject testObject = new TestObject("");
+        TestObject testObject = new TestObject("<Node>test</Node>");
+        Set<ConstraintViolation<TestObject>> violationSet = validator.validate(testObject);
 
-Set<ConstraintViolation<TestObject>> violationSet = validator.validate(testObject);
+        assertThat(violationSet).hasNoViolations();
+    }
 
-assertThat(violationSet).hasViolationOnPath("xml");
+    static class TestObject {
 
+        @XmlString
+        private String xml;
+
+        TestObject(String xml) {
+            this.xml = xml;
+        }
+
+        public String getXml() {
+            return xml;
+        }
+
+        public void setXml(String xml) {
+            this.xml = xml;
+        }
+    }
 }
-
-@Test
-
-public void givenNoXml_notValid() {
-
-ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
-
-Validator validator = factory.getValidator();
-
-TestObject testObject = new TestObject("This is no XML string");
-
-Set<ConstraintViolation<TestObject>> violationSet = validator.validate(testObject);
-
-assertThat(violationSet).hasViolationOnPath("xml");
-
-}
-
-@Test
-
-public void givenXml_valid() {
-
-ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
-
-Validator validator = factory.getValidator();
-
-TestObject testObject = new TestObject("<Node>test</Node>");
-
-Set<ConstraintViolation<TestObject>> violationSet = validator.validate(testObject);
-
-assertThat(violationSet).hasNoViolations();
-
-}
-
-static class TestObject {
-
-@XmlString
-
-private String xml;
-
-TestObject(String xml) {
-
-this.xml = xml;
-
-}
-
-public String getXml() {
-
-return xml;
-
-}
-
-public void setXml(String xml) {
-
-this.xml = xml;
-
-}
-
-}
-
-}
-
 ----
 
 That wraps it up. Our custom validator can be used on an Entity so we avoid invalid XML in our database, or it can be used on a Spring Controller in combination with `@Valid @ModelAttribute` annotations.

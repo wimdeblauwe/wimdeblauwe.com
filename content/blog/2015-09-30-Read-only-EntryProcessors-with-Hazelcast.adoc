@@ -20,76 +20,42 @@ We can get the list of names without using an entry processor. For example:
 [source,java]
 ----
 
-public class ReadOnlyEntryProcessorTest0
+public class ReadOnlyEntryProcessorTest0 {
 
-{
+    public static void main(String[] args) throws InterruptedException {
 
-public static void main( String[] args ) throws InterruptedException
+        Config config = new Config();
+        config.setProperty("hazelcast.initial.min.cluster.size", "2");
 
-{
+        HazelcastInstance hazelcastInstance = Hazelcast.newHazelcastInstance(config);
 
-Config config = new Config();
+        // Take a lock so only 1 of the 2 nodes will execute the entry processor
+        ILock doItLock = hazelcastInstance.getLock("doItLock");
 
-config.setProperty("hazelcast.initial.min.cluster.size","2");
+        doItLock.lock();
 
-HazelcastInstance hazelcastInstance = Hazelcast.newHazelcastInstance( config );
+        IMap<Long, User> testMap;
+        try {
+            testMap = hazelcastInstance.getMap("testMap");
+            if (!testMap.containsKey(1L)) {
+                IntStream.rangeClosed(1, 10)
+                         .mapToObj(ReadOnlyEntryProcessorTest0::createUser)
+                         .forEach(user -> testMap.put(user.getId(), user));
 
-// Take a lock so only 1 of the 2 nodes will execute the entry processor
+                testMap.values().stream().map(User::getName).forEach(name -> System.out.println("name = " + name));
+            }
+        } finally {
+            doItLock.unlock();
+        }
+    }
 
-ILock doItLock = hazelcastInstance.getLock( "doItLock" );
-
-doItLock.lock();
-
-IMap<Long, User> testMap;
-
-try
-
-{
-
-testMap = hazelcastInstance.getMap( "testMap" );
-
-if( !testMap.containsKey( 1L ))
-
-{
-
-IntStream.rangeClosed( 1, 10 )
-
-.mapToObj( ReadOnlyEntryProcessorTest0::createUser )
-
-.forEach( user -> testMap.put( user.getId(), user ) );
-
-testMap.values().stream().map( User::getName ).forEach( name -> System.out.println( "name = " + name ) );
-
+    private static User createUser(int i) {
+        User user = new User();
+        user.setId(i);
+        user.setName("Wim" + i);
+        return user;
+    }
 }
-
-}
-
-finally
-
-{
-
-doItLock.unlock();
-
-}
-
-}
-
-private static User createUser( int i )
-
-{
-
-User user = new User();
-
-user.setId( i );
-
-user.setName( "Wim" + i );
-
-return user;
-
-}
-
-}
-
 ----
 
 So the example first adds 10 User objects in the cache and then retrieves them again, getting the "name" of each User object and printing this. This means Hazelcast has to fetch (and serialize) the full User object from the other nodes running in the cluster.
@@ -103,130 +69,75 @@ This the same example, but this time using the AbstractEntryProcessor class:
 [source,java]
 ----
 
-public class ReadOnlyEntryProcessorTest1
+public class ReadOnlyEntryProcessorTest1 {
 
-{
+    public static void main(String[] args) throws InterruptedException {
 
-public static void main( String[] args ) throws InterruptedException
+        Config config = new Config();
+        config.setProperty("hazelcast.initial.min.cluster.size", "2");
 
-{
+        HazelcastInstance hazelcastInstance = Hazelcast.newHazelcastInstance(config);
 
-Config config = new Config();
+        // Take a lock so only 1 of the 2 nodes will execute the entry processor
+        ILock doItLock = hazelcastInstance.getLock("doItLock");
 
-config.setProperty("hazelcast.initial.min.cluster.size","2");
+        doItLock.lock();
 
-HazelcastInstance hazelcastInstance = Hazelcast.newHazelcastInstance( config );
+        IMap<Long, User> testMap;
+        try {
+            testMap = hazelcastInstance.getMap("testMap");
+            if (!testMap.containsKey(1L)) {
+                IntStream.rangeClosed(1, 10)
+                         .mapToObj(ReadOnlyEntryProcessorTest1::createUser)
+                         .forEach(user -> testMap.put(user.getId(), user));
 
-// Take a lock so only 1 of the 2 nodes will execute the entry processor
+                System.out.println("Calling the entry processor");
 
-ILock doItLock = hazelcastInstance.getLock( "doItLock" );
+                Map<Long, Object> userNames = testMap.executeOnEntries(new ReadUserNamesEntryProcessor());
+                userNames.values().forEach(name -> System.out.println("name = " + name));
+            }
+        } finally {
+            doItLock.unlock();
+        }
+    }
 
-doItLock.lock();
+    private static User createUser(int i) {
+        User user = new User();
+        user.setId(i);
+        user.setName("Wim" + i);
+        return user;
+    }
 
-IMap<Long, User> testMap;
+    private static class ReadUserNamesEntryProcessor extends AbstractEntryProcessor<Long, User> {
 
-try
+        public ReadUserNamesEntryProcessor() {
+        }
 
-{
-
-testMap = hazelcastInstance.getMap( "testMap" );
-
-if( !testMap.containsKey( 1L ))
-
-{
-
-IntStream.rangeClosed( 1, 10 )
-
-.mapToObj( ReadOnlyEntryProcessorTest1::createUser )
-
-.forEach( user -> testMap.put( user.getId(), user ) );
-
-System.out.println( "Calling the entry processor" );
-
-Map<Long, Object> userNames = testMap.executeOnEntries( new ReadUserNamesEntryProcessor() );
-
-userNames.values().forEach( name -> System.out.println( "name = " + name ) );
-
+        @Override
+        public Object process(Map.Entry<Long, User> entry) {
+            String name = entry.getValue().getName();
+            System.out.println("Returning name from primary entry: " + name);
+            return name;
+        }
+    }
 }
-
-}
-
-finally
-
-{
-
-doItLock.unlock();
-
-}
-
-}
-
-private static User createUser( int i )
-
-{
-
-User user = new User();
-
-user.setId( i );
-
-user.setName( "Wim" + i );
-
-return user;
-
-}
-
-private static class ReadUserNamesEntryProcessor extends AbstractEntryProcessor<Long,User>
-
-{
-
-public ReadUserNamesEntryProcessor()
-
-{
-
-}
-
-@Override
-
-public Object process( Map.Entry<Long,User> entry )
-
-{
-
-String name = entry.getValue().getName();
-
-System.out.println("Returning name from primary entry: " + name );
-
-return name;
-
-}
-
-}
-
-}
-
 ----
 
 The printing of the names has now changed from this (not using an entry processor):
 
 [source,java]
 ----
-
 testMap.values().stream()
-
 .map( User::getName )
-
 .forEach( name -> System.out.println( "name = " + name ) );
-
 ----
 
 to this (using an entry processor):
 
 [source,java]
 ----
-
 Map<Long, Object> userNames = testMap.executeOnEntries( new ReadUserNamesEntryProcessor() );
-
 userNames.values().forEach( name -> System.out.println( "name = " + name ) );
-
 ----
 
 The advantage here is that Hazelcast only has to serialize (and send over the network) the "name" String instead of the full User object.
@@ -239,78 +150,43 @@ This is now the code for our optimal EntryProcessor:
 
 [source,java]
 ----
+private static class ReadUserNamesEntryProcessor extends AbstractEntryProcessor<Long, User> {
 
-private static class ReadUserNamesEntryProcessor extends AbstractEntryProcessor<Long,User>
+    public ReadUserNamesEntryProcessor() {
+        super(false);
+    }
 
-{
+    @Override
+    public Object process(Map.Entry<Long, User> entry) {
 
-public ReadUserNamesEntryProcessor()
-
-{
-
-super( false );
-
+        String name = entry.getValue().getName();
+        System.out.println("Returning name from primary entry: " + name);
+        return name;
+    }
 }
-
-@Override
-
-public Object process( Map.Entry<Long,User> entry )
-
-{
-
-String name = entry.getValue().getName();
-
-System.out.println("Returning name from primary entry: " + name );
-
-return name;
-
-}
-
-}
-
 ----
 
 An alternative would be to implement the interface and return null yourself:
 
 [source,java]
 ----
+private static class ReadUserNamesEntryProcessor implements EntryProcessor<Long, User> {
 
-private static class ReadUserNamesEntryProcessor implements EntryProcessor<Long,User>
+    public ReadUserNamesEntryProcessor() {
+    }
 
-{
+    @Override
+    public Object process(Map.Entry<Long, User> entry) {
+        String name = entry.getValue().getName();
+        System.out.println("Returning name from primary entry: " + name);
+        return name;
+    }
 
-public ReadUserNamesEntryProcessor()
-
-{
-
+    @Override
+    public EntryBackupProcessor<Long, User> getBackupProcessor() {
+        return null;
+    }
 }
-
-@Override
-
-public Object process( Map.Entry<Long,User> entry )
-
-{
-
-String name = entry.getValue().getName();
-
-System.out.println("Returning name from primary entry: " + name );
-
-return name;
-
-}
-
-@Override
-
-public EntryBackupProcessor<Long,User> getBackupProcessor()
-
-{
-
-return null;
-
-}
-
-}
-
 ----
 
 It would be nice if Hazelcast provided a ReadOnlyEntryProcessor abstract class. It would be more explicit that remembering having to call the super with 'false'. Maybe it could even throw an Exception if you would try to call 'entry.setValue' from such an EntryProcessor.

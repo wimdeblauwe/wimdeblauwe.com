@@ -9,83 +9,63 @@ draft: false
 :imagesdir: /images
 :icons: font
 
-http://www.iterm2.com/[iTerm] is great, but if you are working with a cluster of servers, it quickly becomes tedious to open an SSH session to each server and to configure splits so you can talk to all servers at once. Based upon the scripts http://hints.macworld.com/article.php?story=20070711123202297[here] (but does not use splits) and https://github.com/MarkReddy/iTerm2-Multi-SSH[here] (but does not work with 7 servers which I needed in my case), I came up with the following AppleScript that works for me.
+http://www.iterm2.com/[iTerm] is great, but if you are working with a cluster of servers, it quickly becomes tedious to open an SSH session to each server and to configure splits so you can talk to all servers at once.
+Based upon the scripts http://hints.macworld.com/article.php?story=20070711123202297[here] (but does not use splits) and https://github.com/MarkReddy/iTerm2-Multi-SSH[here] (but does not work with 7 servers which I needed in my case), I came up with the following AppleScript that works for me.
 
 [source]
 ----
-
 -- Launch iTerm and log into multiple servers using SSH
-
 launch application "iTerm"
-
 tell application "iTerm"
+    activate
 
-activate
+    -- Read serverlist from file path below
+    set Servers to paragraphs of (do shell script "/bin/cat $HOME/serverlist")
+    set num_hosts to count of Servers
+    set current_host to 1
+    repeat with nextLine in Servers
 
--- Read serverlist from file path below
+        -- If line in file is not empty (blank line) do the rest
+        if length of nextLine is greater than 0 then
+            set server to "nextLine"
+            set term to (current terminal)
 
-set Servers to paragraphs of (do shell script "/bin/cat $HOME/serverlist")
+            -- Open a new tab
+            tell term
+                if current_host ≥ num_hosts / 2 then
+                    tell i term application "System Events" to keystroke "]" using command down
+                    tell i term application "System Events" to keystroke "D" using {command down, shift down}
+                else
+                    tell i term application "System Events" to keystroke "d" using command down
+                end if
 
-set num_hosts to count of Servers
+                delay 1
 
-set current_host to 1
+                -- launch session "Default Session"
+                tell the current session
+                    write text "ssh root@" & nextLine
 
-repeat with nextLine in Servers
+                    -- sleep to prevent errors if we spawn too fast
+                    do shell script "/bin/sleep 0.01"
 
--- If line in file is not empty (blank line) do the rest
+                end tell
 
-if length of nextLine is greater than 0 then
+            end tell
 
-set server to "nextLine"
+        end if
 
-set term to (current terminal)
+        set current_host to current_host + 1
 
--- Open a new tab
+    end repeat
 
-tell term
-
-if current_host ≥ num_hosts / 2 then
-
-tell i term application "System Events" to keystroke "]" using command down
-
-tell i term application "System Events" to keystroke "D" using {command down, shift down}
-
-else
-
-tell i term application "System Events" to keystroke "d" using command down
-
-end if
-
-delay 1
-
--- launch session "Default Session"
-
-tell the current session
-
-write text "ssh root@" & nextLine
-
--- sleep to prevent errors if we spawn too fast
-
-do shell script "/bin/sleep 0.01"
-
+    -- Close the first tab since we do not need it
+    terminate the first session of the current terminal
 end tell
-
-end tell
-
-end if
-
-set current_host to current_host + 1
-
-end repeat
-
--- Close the first tab since we do not need it
-
-terminate the first session of the current terminal
-
-end tell
-
 ----
 
-The script will launch iTerm and open as many split panes as is needed. The server ip addresses are read from `~/serverlist` which you have to populate with the ip addresses of the servers you want to connect to (each on a separate line)
+The script will launch iTerm and open as many split panes as is needed.
+The server ip addresses are read from `~/serverlist` which you have to populate with the ip addresses of the servers you want to connect to (each on a separate line).
 
-http://mobaxterm.mobatek.net/[Mobaxterm] solves this better I think (but is not available on Mac OS X, only on Windows). They have a single button that allows you to turn the tabs to each server into a split view and back. Would be great if iTerm would also implement this.
+http://mobaxterm.mobatek.net/[Mobaxterm] solves this better I think (but is not available on Mac OS X, only on Windows).
+They have a single button that allows you to turn the tabs to each server into a split view and back.
+Would be great if iTerm would also implement this.

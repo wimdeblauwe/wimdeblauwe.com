@@ -17,102 +17,67 @@ If you want to unit test a https://docs.oracle.com/javaee/7/api/javax/validation
 import org.assertj.core.api.AbstractAssert;
 
 import javax.validation.ConstraintViolation;
-
 import java.util.Set;
-
 import java.util.stream.Collectors;
 
 public class ConstraintViolationSetAssert extends AbstractAssert<ConstraintViolationSetAssert, Set<? extends ConstraintViolation>> {
 
-public ConstraintViolationSetAssert(Set<? extends ConstraintViolation> actual) {
+    public ConstraintViolationSetAssert(Set<? extends ConstraintViolation> actual) {
+        super(actual, ConstraintViolationSetAssert.class);
+    }
 
-super(actual, ConstraintViolationSetAssert.class);
+    public static ConstraintViolationSetAssert assertThat(Set<? extends ConstraintViolation> actual) {
+        return new ConstraintViolationSetAssert(actual);
+    }
 
+    public ConstraintViolationSetAssert hasViolationOnPath(String path) {
+        isNotNull();
+
+        // check condition
+        if (!containsViolationWithPath(actual, path)) {
+            failWithMessage("There was no violation with path <%s>. Violation paths: <%s>", path, actual.stream()
+                                                                                                        .map(violation -> violation
+                                                                                                                .getPropertyPath()
+                                                                                                                .toString())
+                                                                                                        .collect(
+                                                                                                                Collectors
+                                                                                                                        .toList()));
+        }
+
+        return this;
+    }
+
+    private boolean containsViolationWithPath(Set<? extends ConstraintViolation> violations, String path) {
+        boolean result = false;
+
+        for (ConstraintViolation violation : violations) {
+            if (violation.getPropertyPath().toString().equals(path)) {
+                result = true;
+                break;
+            }
+        }
+        return result;
+    }
 }
-
-public static ConstraintViolationSetAssert assertThat(Set<? extends ConstraintViolation> actual) {
-
-return new ConstraintViolationSetAssert(actual);
-
-}
-
-public ConstraintViolationSetAssert hasViolationOnPath(String path) {
-
-isNotNull();
-
-// check condition
-
-if (!containsViolationWithPath(actual, path)) {
-
-failWithMessage("There was no violation with path <%s>. Violation paths: <%s>", path, actual.stream()
-
-.map(violation -> violation
-
-.getPropertyPath()
-
-.toString())
-
-.collect(
-
-Collectors
-
-.toList()));
-
-}
-
-return this;
-
-}
-
-private boolean containsViolationWithPath(Set<? extends ConstraintViolation> violations, String path) {
-
-boolean result = false;
-
-for (ConstraintViolation violation : violations) {
-
-if (violation.getPropertyPath().toString().equals(path)) {
-
-result = true;
-
-break;
-
-}
-
-}
-
-return result;
-
-}
-
-}
-
 ----
 
 An example unit test that uses this:
 
 [source,java]
 ----
-
 @Test
-
 public void givenInvalidUsername_violationConstraint() {
+    CreateUserParameters p = new CreateUserParameters();
+    p.setUsername("x");
 
-CreateUserParameters p = new CreateUserParameters();
+    ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+    Validator validator = factory.getValidator();
 
-p.setUsername("x");
+    Set<ConstraintViolation<CreateUserParameters>> violationSet = validator.validate(parameters);
 
-ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
-
-Validator validator = factory.getValidator();
-
-Set<ConstraintViolation<CreateUserParameters>> violationSet = validator.validate(parameters);
-
-// static import for ConstraintViolationSetAssert
-
-assertThat(violationSet).hasViolationOnPath("username");
-
+    // static import for ConstraintViolationSetAssert
+    assertThat(violationSet).hasViolationOnPath("username");
 }
-
 ----
 
 See http://joel-costigliola.github.io/assertj/assertj-core-custom-assertions.html for the documentation if you want to create your own custom assertions using AssertJ. There is even a Maven plugin that allows to generate custom assertions automatically: http://joel-costigliola.github.io/assertj/assertj-assertions-generator-maven-plugin.html

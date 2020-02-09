@@ -14,14 +14,14 @@ I just entered my https://plugins.atlassian.com/plugin/details/4969[JIRA Databas
 
 I uploaded a video with it to make it more visual. I was quite surprised to find it so easy to do on my Ubuntu (just updated to 11.04).
 
-{empty}1) Installed http://recordmydesktop.sourceforge.net/about.php[recordMyDesktop] to do the actual screencast recording:
-
+1. Installed http://recordmydesktop.sourceforge.net/about.php[recordMyDesktop] to do the actual screencast recording:
++
 `sudo apt-get install gtk-recordmydesktop`
-
++
 This will install a program shortcut called 'Desktop recorder'. Once running, there is a handy systray icon to start and stop the recording.
 
-{empty}2) Installed `mencoder` and used this command line to convert the `.ogv` file to xvid:
-
+2. Installed `mencoder` and used this command line to convert the `.ogv` file to xvid:
++
 `mencoder out.ogv -ovc xvid -xvidencopts pass=1 -o jdvp.avi`
 
 That is it!

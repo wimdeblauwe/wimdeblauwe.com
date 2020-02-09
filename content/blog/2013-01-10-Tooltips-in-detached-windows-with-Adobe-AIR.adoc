@@ -14,11 +14,15 @@ I just had an issue where we display a tooltip on a custom component in Flex. Th
 This is the code we used before in the custom component:
 
 [source]
-----m_tooltip = ToolTipManager.createToolTip( tooltip, event.stageX + 10, event.stageY + 10 );[/code]
+----
+m_tooltip = ToolTipManager.createToolTip( tooltip, event.stageX + 10, event.stageY + 10 );
+----
 
 This is what fixed it:
 
 [source]
-----m_tooltip = ToolTipManager.createToolTip( tooltip, event.stageX + 10, event.stageY + 10, null, this );[/code]
+----
+m_tooltip = ToolTipManager.createToolTip( tooltip, event.stageX + 10, event.stageY + 10, null, this );
+----
 
 The important part is the `this` parameter passed into the createToolTip method. If not passed into the method, the framework will always use the `FlexGlobals.topLevelApplication`, which is not your detached window. By passing in the reference to custom component to the tooltip manager, it will use the correct native window to display the tooltip in.

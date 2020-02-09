@@ -38,7 +38,7 @@ Customer not in dbValuesMatching("Country", "Belgium")
 
 This shows it in action in JIRA 4.2:
 
-image::{imagesdir}//2011/01/selection_016.png[]
+image::{imagesdir}/2011/01/selection_016.png[]
 
 See https://studio.plugins.atlassian.com/wiki/display/JDVP/JIRA+Database+Values+Plugin#JIRADatabaseValuesPlugin-ConfigurationoftheJQLfunction[Configuration of the JQL function] on how you need to set this up.
 
@@ -56,7 +56,7 @@ _Thanks to Frédéric Beuserie and Miguel Maldonado for providing a patch for th
 
 If you want your query to depend on the current logged in user, this new feature makes it possible. This is an example:
 
-[source,sql]
+[source,properties]
 ----
 
 sql.query=select id, firstname, lastname, city, country from customer where jira_user like '${jira.user}'
@@ -69,11 +69,11 @@ _Thanks to David Corley for providing a patch for this._
 
 Previous versions would display something like this if the properties file cannot be found:
 
-image::{imagesdir}//2011/01/selection_006.png[]
+image::{imagesdir}/2011/01/selection_006.png[]
 
 The new version is a bit friendlier and shows this:
 
-image::{imagesdir}//2011/01/selection_012.png[]
+image::{imagesdir}/2011/01/selection_012.png[]
 
 *6) Log what the database returns*
 
@@ -83,7 +83,7 @@ To help with debugging if something goes wrong, the plugin now prints the first 
 
 If you use your custom field in a 'Issue Statistics' dashboard gadget, you can now click through on any item to further inspect the issues:
 
-image::{imagesdir}//2011/01/selection_014.png[]
+image::{imagesdir}/2011/01/selection_014.png[]
 
 _Thanks to Cyrille Courtière for providing a patch for this._
 

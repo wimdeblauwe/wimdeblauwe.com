@@ -22,21 +22,13 @@ The first step is talking to the REST APIs. This is how it is done for JIRA:
 
 [source,groovy]
 ----
-
 def HTTPBuilder jira = new HTTPBuilder(JIRA_API_URL);
 
 jira.client.addRequestInterceptor(new HttpRequestInterceptor()
-
 {
-
-void process(HttpRequest httpRequest, HttpContext httpContext)
-
-{
-
-httpRequest.addHeader('Authorization', 'Basic ' + JIRA_LOGIN.bytes.encodeBase64().toString())
-
-}
-
+    void process(HttpRequest httpRequest, HttpContext httpContext) {
+        httpRequest.addHeader('Authorization', 'Basic ' + JIRA_LOGIN.bytes.encodeBase64().toString())
+    }
 })
 
 ----
@@ -66,25 +58,19 @@ This is the main iteration loop:
 
 [source,groovy]
 ----
-
 tasks.each {
+    def String ref = it.external_reference;
 
-def String ref = it.external_reference;
+    logger.debug("ref: {}", ref);
 
-logger.debug("ref: {}", ref);
+    def String[] projectAndVersion = ref.split('/');
+    def project = projectAndVersion[0];
+    def version = projectAndVersion[1];
 
-def String[] projectAndVersion = ref.split('/');
+    def String userName = getJiraUserName(it.owner_id);
+    def int remainingHours = getRemainingEstimateFromJira(project, version, userName);
 
-def project = projectAndVersion[0];
-
-def version = projectAndVersion[1];
-
-def String userName = getJiraUserName(it.owner_id);
-
-def int remainingHours = getRemainingEstimateFromJira(project, version, userName);
-
-setTaskEstimate(it.id, remainingHours);
-
+    setTaskEstimate(it.id, remainingHours);
 }
 
 ----
@@ -95,69 +81,37 @@ Each task in LiquidPlanner has an `owner_id` which is like an internal id of eac
 
 [source,groovy]
 ----
-
 def lpOwnerIdTolpUserName = [:]
 
 def JSONArray members = liquidPlanner.get(path: 'workspaces/' + lpWorkspaceId + '/members');
-
 logger.debug("LiquidPlanner members: {}", members.size());
 
 List<String> unmappedMembers = new ArrayList<String>();
-
 members.each {
 
-def ownerId = it.id;
-
-def String userName = it.user_name;
-
-if (!userName.equals('unassigned') && !userName.equals('everyone'))
-
-{
-
-try
-
-{
-
-def JSONObject user = jira.get(path: 'user', query: ['username': userName])
-
-logger.debug( "Username $userName from LP exists in JIRA as well. Has displayName: {}", user.displayName);
-
-lpOwnerIdTolpUserName.put(ownerId, userName.toUpperCase())
-
+    def ownerId = it.id;
+    def String userName = it.user_name;
+    if (!userName.equals('unassigned') && !userName.equals('everyone')) {
+        try {
+            def JSONObject user = jira.get(path: 'user', query: ['username': userName])
+            logger.debug("Username $userName from LP exists in JIRA as well. Has displayName: {}", user.displayName);
+            lpOwnerIdTolpUserName.put(ownerId, userName.toUpperCase())
+        }
+        catch (Exception e) {
+            unmappedMembers.add(userName);
+            logger.debug("ERROR: User $userName does not exist in JIRA!!");
+        };
+    }
 }
 
-catch (Exception e)
+if (!unmappedMembers.isEmpty()) {
+    int nrOfUnmappedMembers = unmappedMembers.size();
+    logger.error("There are $nrOfUnmappedMembers users in LiquidPlanner that do not exist in JIRA:");
 
-{
-
-unmappedMembers.add( userName );
-
-logger.debug("ERROR: User $userName does not exist in JIRA!!");
-
-};
-
+    for (String userName : unmappedMembers) {
+        logger.error("- $userName");
+    }
 }
-
-}
-
-if( !unmappedMembers.isEmpty() )
-
-{
-
-int nrOfUnmappedMembers = unmappedMembers.size();
-
-logger.error("There are $nrOfUnmappedMembers users in LiquidPlanner that do not exist in JIRA:" );
-
-for( String userName : unmappedMembers )
-
-{
-
-logger.error( "- $userName" );
-
-}
-
-}
-
 ----
 
 We first create an empty map `lpOwnerIdTolpUserName`. We than iterate over all members in our workspace. For each member we do a HTTP GET on JIRA to see if the user exists. When it does exist we add the mapping, so we can map the `owner_id` to the owner username (which in our case is also the JIRA username)
@@ -168,41 +122,23 @@ Next up, ask JIRA all matching issues and add up all the estimates:
 
 [source,groovy]
 ----
+int getRemainingEstimateFromJira(String projectKey, String versionString, String userName) {
+    logger.debug("Searching remaining estimate for $userName in version $versionString in project $projectKey");
+    int remainingEstimateInHours = 0;
+    m_jira.request(Method.POST, ContentType.JSON) { req ->
+        uri.path = 'search'
+        def jqlSearchString = 'project=' + projectKey + ' and fixVersion=\"' + versionString + '\" and resolution = unresolved and assignee=' + userName
+        body = [jql: jqlSearchString]
+        response.success = { resp, json ->
+            remainingEstimateInHours += getRemainingEstimateFromJira(json);
+        }
 
-int getRemainingEstimateFromJira(String projectKey, String versionString, String userName)
-
-{
-
-logger.debug("Searching remaining estimate for $userName in version $versionString in project $projectKey");
-
-int remainingEstimateInHours = 0;
-
-m_jira.request(Method.POST, ContentType.JSON) { req ->
-
-uri.path = 'search'
-
-def jqlSearchString = 'project=' + projectKey + ' and fixVersion=\"' + versionString + '\" and resolution = unresolved and assignee=' + userName
-
-body = [jql: jqlSearchString]
-
-response.success = { resp, json ->
-
-remainingEstimateInHours += getRemainingEstimateFromJira(json);
-
+        response.failure = { resp ->
+            addError(resp)
+        }
+    }
+    return remainingEstimateInHours;
 }
-
-response.failure = {resp ->
-
-addError( resp )
-
-}
-
-}
-
-return remainingEstimateInHours;
-
-}
-
 ----
 
 We do a http://confluence.atlassian.com/display/JIRA/Advanced+Searching[JQL search] which returns all matching issues is JSON format. The JQL looks as follows:
@@ -213,37 +149,23 @@ When we get the issues, we pass them to the `getRemainingEstimateFromJira(JSONOb
 
 [source,groovy]
 ----
+int getRemainingEstimateFromJira(JSONObject searchResult) {
 
-int getRemainingEstimateFromJira(JSONObject searchResult)
+    int remainingEstimateInHours = 0;
 
-{
+    searchResult.each
+            {
+                if (it.getKey().equals('issues')) {
+                    def JSONArray issues = it.getValue();
 
-int remainingEstimateInHours = 0;
+                    issues.each {
+                        def jiraIssue = jira.get(path: 'issue/' + it.key);
+                        remainingEstimateInHours += jiraIssue.fields.timetracking.value.timeestimate / 60;
+                    }
+                }
+            }
 
-searchResult.each
-
-{
-
-if (it.getKey().equals('issues'))
-
-{
-
-def JSONArray issues = it.getValue();
-
-issues.each {
-
-def jiraIssue = jira.get(path: 'issue/' + it.key);
-
-remainingEstimateInHours += jiraIssue.fields.timetracking.value.timeestimate / 60;
-
-}
-
-}
-
-}
-
-return remainingEstimateInHours;
-
+    return remainingEstimateInHours;
 }
 
 ----
@@ -256,31 +178,19 @@ Now that we calculated how much work the person still has to do, we can update L
 
 [source,groovy]
 ----
+private def setTaskEstimate(int taskId, int remainingHours) {
+    liquidPlanner.request(Method.POST, ContentType.JSON) { req ->
+        uri.path = 'workspaces/' + m_lpWorkspaceId + '/tasks/' + taskId + '/estimates';
+        body = [estimate: [low: remainingHours + "h", high: (remainingHours * (1 + HIGH_ESTIMATE_PERCENTAGE)) + "h"]]
 
-private def setTaskEstimate(int taskId, int remainingHours)
+        response.success = { resp, json ->
+            logger.debug "Succesfully set estimate to (" + remainingHours + "h," + (remainingHours * (1 + HIGH_ESTIMATE_PERCENTAGE)) + "h) for task " + taskId
+        }
 
-{
-
-liquidPlanner.request(Method.POST, ContentType.JSON) { req ->
-
-uri.path = 'workspaces/' + m_lpWorkspaceId + '/tasks/' + taskId + '/estimates';
-
-body = [estimate: [low: remainingHours + "h", high: (remainingHours * (1 + HIGH_ESTIMATE_PERCENTAGE)) + "h"]]
-
-response.success = {resp, json ->
-
-logger.debug "Succesfully set estimate to (" + remainingHours + "h," + (remainingHours * (1 + HIGH_ESTIMATE_PERCENTAGE)) + "h) for task " + taskId
-
-}
-
-response.failure = {resp ->
-
-addError(resp);
-
-}
-
-}
-
+        response.failure = { resp ->
+            addError(resp);
+        }
+    }
 }
 
 ----

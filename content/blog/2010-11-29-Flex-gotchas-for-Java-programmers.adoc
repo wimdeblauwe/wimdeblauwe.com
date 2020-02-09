@@ -32,13 +32,9 @@ In Flex, you have 2 ways to do it:
 
 [source]
 ----
-
 var obj:Object = ...
-
 var str:String = String(obj);
-
 var str2:String = obj as String;
-
 ----
 
 The difference is that the first form will throw an exception when `obj` is not of type `String`. With the 2nd form, `str2` would be `null` if `obj` is not a `String`. I like the first form most, because of it's fail-fast behavior (just like Java does).
@@ -49,7 +45,6 @@ There are however a few exceptions to the rule:
 ----
 
 var array1:Array = ["Joe","Jack"];
-
 var array2:Array = Array(array1); //creates a new array!
 
 ----
@@ -60,38 +55,29 @@ The same applies to Error:
 
 [source]
 ----
-
 var error1:Object = ..;
-
 var error2:Error = Error(error1); //creates a new error
-
 ----
 
 The only solution is to use the `as` keyword:
 
 [source]
 ----
-
 var error2:Error = error1 as Error;
-
 ----
 
 I ran into this one when enabling the global error handler as explained here for example: http://www.summa-tech.com/blog/2010/01/04/global-error-handling-in-flex/. We change the line:
 
 [source]
 ----
-
 var error:Error = DynamicEvent(event).error as Error;
-
 ----
 
 into
 
 [source]
 ----
-
 var error:Error = Error(DynamicEvent(event).error); //incorrect!
-
 ----
 
 but this gives you the wrong stacktrace in the end, because you create a new `Error` object.
@@ -121,23 +107,16 @@ I searched a long time on this one, because it was so strange at first. In Flex,
 ----
 
 public function set points( points:Integer ):void
-
 {
+    m_points = points;
 
-m_points = points;
-
-sendEmailThatNewPointsAreSet();
-
+    sendEmailThatNewPointsAreSet();
 }
 
-{empty}[Bindable]
-
+[Bindable]
 public function get points():Integer
-
 {
-
-return m_points;
-
+    return m_points;
 }
 
 ----
@@ -148,11 +127,8 @@ Suppose this code is in a class called `Person` and you do this:
 ----
 
 var person:Person = new Person();
-
 person.points = 50;
-
 person.points = 60;
-
 person.points = 60; // Setter will not be called anymore!
 
 ----

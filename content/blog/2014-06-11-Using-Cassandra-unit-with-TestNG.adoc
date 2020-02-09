@@ -15,77 +15,43 @@ To start, add the following dependencies in your Maven pom:
 
 [source,xml]
 ----
-
 <dependency>
-
-<groupId>org.springframework.data</groupId>
-
-<artifactId>spring-data-cassandra</artifactId>
-
-<version>1.0.0.RELEASE</version>
-
+    <groupId>org.springframework.data</groupId>
+    <artifactId>spring-data-cassandra</artifactId>
+    <version>1.0.0.RELEASE</version>
 </dependency>
 
 <dependency>
-
-<groupId>org.apache.cassandra</groupId>
-
-<artifactId>cassandra-all</artifactId>
-
-<version>2.0.5</version>
-
+    <groupId>org.apache.cassandra</groupId>
+    <artifactId>cassandra-all</artifactId>
+    <version>2.0.5</version>
 </dependency>
 
 <dependency>
-
-<groupId>org.cassandraunit</groupId>
-
-<artifactId>cassandra-unit</artifactId>
-
-<version>2.0.2.1</version>
-
-<scope>test</scope>
-
-<exclusions>
-
-<exclusion>
-
-<artifactId>cassandra-all</artifactId>
-
-<groupId>org.apache.cassandra</groupId>
-
-</exclusion>
-
-<exclusion>
-
-<groupId>com.datastax.cassandra</groupId>
-
-<artifactId>cassandra-driver-core</artifactId>
-
-</exclusion>
-
-<exclusion>
-
-<groupId>org.slf4j</groupId>
-
-<artifactId>slf4j-log4j12</artifactId>
-
-</exclusion>
-
-</exclusions>
-
+    <groupId>org.cassandraunit</groupId>
+    <artifactId>cassandra-unit</artifactId>
+    <version>2.0.2.1</version>
+    <scope>test</scope>
+    <exclusions>
+        <exclusion>
+            <artifactId>cassandra-all</artifactId>
+            <groupId>org.apache.cassandra</groupId>
+        </exclusion>
+        <exclusion>
+            <groupId>com.datastax.cassandra</groupId>
+            <artifactId>cassandra-driver-core</artifactId>
+        </exclusion>
+        <exclusion>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+        </exclusion>
+    </exclusions>
 </dependency>
-
 <dependency>
-
-<groupId>org.cassandraunit</groupId>
-
-<artifactId>cassandra-unit-spring</artifactId>
-
-<version>2.0.2.1</version>
-
-<scope>test</scope>
-
+    <groupId>org.cassandraunit</groupId>
+    <artifactId>cassandra-unit-spring</artifactId>
+    <version>2.0.2.1</version>
+    <scope>test</scope>
 </dependency>
 
 ----
@@ -94,102 +60,65 @@ Now we can setup Spring context loading with TestNG (using Java Config):
 
 [source,java]
 ----
-
 @Test
-
 @ContextConfiguration
+public class CassandraMessageRepositoryTest extends AbstractTestNGSpringContextTests {
 
-public class CassandraMessageRepositoryTest extends AbstractTestNGSpringContextTests
+    public void testStoreMessage() {
+    }
 
-{
-
-public void testStoreMessage()
-
-{
-
-}
-
-@Configuration
-
-static class ContextConfiguration
-
-{
-
-// Add your @Bean's here
+    @Configuration
+    static class ContextConfiguration {
+        // Add your @Bean's here
+    }
 
 }
+----
 
-}[/code]
 
-After this, we need to start an embedded Cassandra _before_ the Spring context loads, since the spring context needs to connect to the Cassandra server. For this, I have http://stackoverflow.com/questions/4589052/how-to-make-beforeclass-run-prior-spring-testcontext-loads-up[found no better way] than overriding the @TestExecutionListeners. First create a new class:
+After this,we need to start an embedded Cassandra _before_ the Spring context loads, since the spring context needs to connect to the Cassandra server.
+For this, I have http://stackoverflow.com/questions/4589052/how-to-make-beforeclass-run-prior-spring-testcontext-loads-up[found no better way] than overriding the @TestExecutionListeners.
 
-{empty}[code langauge="java"]
+First create a new class:
+
+[source,java]
+----
 
 import org.apache.cassandra.exceptions.ConfigurationException;
-
 import org.apache.thrift.transport.TTransportException;
-
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
-
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
-
 import org.springframework.test.context.TestContext;
-
 import org.springframework.test.context.support.DependencyInjectionTestExecutionListener;
 
 import java.io.IOException;
 
-public class PreContextLoadingTestExecutionListener extends DependencyInjectionTestExecutionListener
+public class PreContextLoadingTestExecutionListener extends DependencyInjectionTestExecutionListener {
 
-{
+    protected void injectDependencies(final TestContext testContext) throws Exception {
+        doInitBeforeContextIsLoaded();
+        Object bean = testContext.getTestInstance();
+        AutowireCapableBeanFactory beanFactory = testContext.getApplicationContext().getAutowireCapableBeanFactory();
+        beanFactory.autowireBeanProperties(bean, AutowireCapableBeanFactory.AUTOWIRE_NO, false);
+        beanFactory.initializeBean(bean, testContext.getTestClass().getName());
+        testContext.removeAttribute(REINJECT_DEPENDENCIES_ATTRIBUTE);
+    }
 
-protected void injectDependencies( final TestContext testContext ) throws Exception
-
-{
-
-doInitBeforeContextIsLoaded();
-
-Object bean = testContext.getTestInstance();
-
-AutowireCapableBeanFactory beanFactory = testContext.getApplicationContext().getAutowireCapableBeanFactory();
-
-beanFactory.autowireBeanProperties( bean, AutowireCapableBeanFactory.AUTOWIRE_NO, false );
-
-beanFactory.initializeBean( bean, testContext.getTestClass().getName() );
-
-testContext.removeAttribute( REINJECT_DEPENDENCIES_ATTRIBUTE );
-
+    private void doInitBeforeContextIsLoaded() throws InterruptedException, TTransportException, ConfigurationException, IOException {
+        EmbeddedCassandraServerHelper.startEmbeddedCassandra();
+    }
 }
-
-private void doInitBeforeContextIsLoaded() throws InterruptedException, TTransportException, ConfigurationException, IOException
-
-{
-
-EmbeddedCassandraServerHelper.startEmbeddedCassandra();
-
-}
-
-}
-
 ----
 
 And register this listener in the test:
 
 [source,java]
 ----
-
 @Test
-
 @ContextConfiguration
-
 @TestExecutionListeners(inheritListeners = false, value = {DirtiesContextTestExecutionListener.class,
-
-PreContextLoadingTestExecutionListener.class})
-
-public class CassandraMessageRepositoryTest extends AbstractTestNGSpringContextTests
-
-{
-
+        PreContextLoadingTestExecutionListener.class})
+public class CassandraMessageRepositoryTest extends AbstractTestNGSpringContextTests {
 }
 
 ----
@@ -198,115 +127,61 @@ The inner class ContextConfiguration looks like this in my example:
 
 [source,java]
 ----
-
 @Bean
-
-public MessageSourceService messageSourceService()
-
-{
-
-return mock( MessageSourceService.class );
-
+public MessageSourceService messageSourceService() {
+    return mock(MessageSourceService.class);
 }
 
 @Bean
-
-public MessageRepository messageRepository() throws Exception
-
-{
-
-return new CassandraMessageRepository( cassandraTemplate(), messageSourceService(), objectMapper() );
-
+public MessageRepository messageRepository() throws Exception {
+    return new CassandraMessageRepository(cassandraTemplate(), messageSourceService(), objectMapper());
 }
 
 @Bean
-
-public CassandraClusterFactoryBean cluster()
-
-{
-
-CassandraClusterFactoryBean cluster = new CassandraClusterFactoryBean();
-
-cluster.setContactPoints( "127.0.0.1" );
-
-cluster.setPort( 9142 );
-
-return cluster;
-
+public CassandraClusterFactoryBean cluster() {
+    CassandraClusterFactoryBean cluster = new CassandraClusterFactoryBean();
+    cluster.setContactPoints("127.0.0.1");
+    cluster.setPort(9142);
+    return cluster;
 }
 
 @Bean
-
-public CassandraSessionFactoryBean session() throws Exception
-
-{
-
-CassandraSessionFactoryBean session = new CassandraSessionFactoryBean();
-
-session.setCluster( cluster().getObject() );
-
-session.setConverter( converter() );
-
-session.setSchemaAction( SchemaAction.NONE );
-
-return session;
-
+public CassandraSessionFactoryBean session() throws Exception {
+    CassandraSessionFactoryBean session = new CassandraSessionFactoryBean();
+    session.setCluster(cluster().getObject());
+    session.setConverter(converter());
+    session.setSchemaAction(SchemaAction.NONE);
+    return session;
 }
 
 @Bean
-
-public CassandraOperations cassandraTemplate() throws Exception
-
-{
-
-return new CassandraTemplate( session().getObject() );
-
+public CassandraOperations cassandraTemplate() throws Exception {
+    return new CassandraTemplate(session().getObject());
 }
 
 @Bean
-
-public CassandraMappingContext mappingContext()
-
-{
-
-return new BasicCassandraMappingContext();
-
+public CassandraMappingContext mappingContext() {
+    return new BasicCassandraMappingContext();
 }
 
 @Bean
-
-public CassandraConverter converter()
-
-{
-
-return new MappingCassandraConverter( mappingContext() );
-
+public CassandraConverter converter() {
+    return new MappingCassandraConverter(mappingContext());
 }
 
 @Bean
-
-public ObjectMapper objectMapper()
-
-{
-
-ObjectMapper objectMapper = new ObjectMapper();
-
-objectMapper.registerModule( new MyCustomJacksonModule() );
-
-return objectMapper;
-
+public ObjectMapper objectMapper() {
+    ObjectMapper objectMapper = new ObjectMapper();
+    objectMapper.registerModule(new MyCustomJacksonModule());
+    return objectMapper;
 }
-
 ----
 
 A few points to note:
 
 * `CassandraMessageRepository` is the class I want to test here
-
 * The port of the embedded server is 9142, while the default port in a Cassandra installation is 9042.
-
 * `mock()` is a Mockito static method to mock a collaborator to my class under test
-
 * `CassandraSessionFactoryBean` should _not_ declare the keyspace to use. A keyspace is created by cassandra-unit automatically.
 
 With this in place, I can autowire what I need in my test:
@@ -315,15 +190,12 @@ With this in place, I can autowire what I need in my test:
 ----
 
 @Autowired
-
 private CassandraMessageRepository m_messageRepository;
 
 @Autowired
-
 private CassandraOperations m_cassandraOperations;
 
 @Autowired
-
 private Session m_session;
 
 ----
@@ -333,49 +205,33 @@ And then finally, the actual test:
 [source,java]
 ----
 
-public void testStoreMessage()
+public void testStoreMessage() {
 
-{
+    ClassPathCQLDataSet dataSet = new ClassPathCQLDataSet( "com/mycompany/myapp/infrastructure/message/cassandra/create-event_message-table.cql" );
+    CQLDataLoader loader = new CQLDataLoader( m_session );
+    loader.load( dataSet );
 
-ClassPathCQLDataSet dataSet = new ClassPathCQLDataSet( "com/mycompany/myapp/infrastructure/message/cassandra/create-event_message-table.cql" );
+    assertThat( m_cassandraOperations.queryForObject( "select count(*) from event_message", Long.class ) ).isEqualTo( 0 );
+    m_messageRepository.storeMessage( Messages.createEventMessage() );
 
-CQLDataLoader loader = new CQLDataLoader( m_session );
-
-loader.load( dataSet );
-
-assertThat( m_cassandraOperations.queryForObject( "select count(*) from event_message", Long.class ) ).isEqualTo( 0 );
-
-m_messageRepository.storeMessage( Messages.createEventMessage() );
-
-assertThat( m_cassandraOperations.queryForObject( "select count(*) from event_message", Long.class ) ).isEqualTo( 1 );
-
+    assertThat( m_cassandraOperations.queryForObject( "select count(*) from event_message", Long.class ) ).isEqualTo( 1 );
 }
-
 ----
 
 There are basically 4 steps in this method:
 
 * First we load the CQL script from the classpath. For this we need the autowired `Session`
-
 * We assert that the event_message table is empty (Using http://joel-costigliola.github.io/assertj/[AssertJ] statements)
-
 * We store a message through our repository
-
 * We check that there is 1 record in our table
 
 If you have more then 1 test, you need to clean your database in between:
 
 [source,java]
 ----
-
 @AfterMethod
-
-public void cleanCassandra() throws InterruptedException, TTransportException, ConfigurationException, IOException
-
-{
-
-EmbeddedCassandraServerHelper.cleanEmbeddedCassandra();
-
+public void cleanCassandra() throws InterruptedException, TTransportException, ConfigurationException, IOException {
+    EmbeddedCassandraServerHelper.cleanEmbeddedCassandra();
 }
 
 ----

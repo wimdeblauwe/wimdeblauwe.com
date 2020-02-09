@@ -18,49 +18,31 @@ First, I needed an entity class:
 ----
 
 import javax.persistence.Entity;
-
 import javax.persistence.GeneratedValue;
-
 import javax.persistence.Id;
 
 @Entity
+public class SensorEndpoint {
 
-public class SensorEndpoint
+    @Id
+    @GeneratedValue()
+    private long id;
 
-{
+    private String name;
 
-@Id
+    private String endpointUrl;
 
-@GeneratedValue()
+    // for hibernate
+    public SensorEndpoint() {
+    }
 
-private long id;
+    public SensorEndpoint(String name, String endpointUrl) {
+        this.name = name;
+        this.endpointUrl = endpointUrl;
+    }
 
-private String name;
-
-private String endpointUrl;
-
-// for hibernate
-
-public SensorEndpoint()
-
-{
-
+    // Getters and Setters omitted
 }
-
-public SensorEndpoint( String name, String endpointUrl )
-
-{
-
-this.name = name;
-
-this.endpointUrl = endpointUrl;
-
-}
-
-// Getters and Setters omitted
-
-}
-
 ----
 
 My entity just has an id which will be used as primary key in the database, a descriptive name and an other String (purpose of this one is not important now).
@@ -74,12 +56,8 @@ import org.springframework.data.repository.CrudRepository;
 
 import java.util.List;
 
-public interface SensorEndpointRepository extends CrudRepository<SensorEndpoint,Long>
-
-{
-
-List<SensorEndpoint> findByName(String name);
-
+public interface SensorEndpointRepository extends CrudRepository<SensorEndpoint, Long> {
+    List<SensorEndpoint> findByName(String name);
 }
 
 ----
@@ -92,95 +70,45 @@ Now we need to expose this over HTTP REST API. For this we create a Controller:
 ----
 
 import com.google.common.collect.Lists;
-
 import org.springframework.beans.factory.annotation.Autowired;
-
-import org.springframework.jmx.export.annotation.ManagedAttribute;
-
-import org.springframework.jmx.export.annotation.ManagedOperation;
-
-import org.springframework.jmx.export.annotation.ManagedResource;
-
-import org.springframework.web.bind.annotation.PathVariable;
-
-import org.springframework.web.bind.annotation.RequestMapping;
-
-import org.springframework.web.bind.annotation.RequestMethod;
-
-import org.springframework.web.bind.annotation.RequestParam;
-
-import org.springframework.web.bind.annotation.RestController;
-
-import java.util.ArrayList;
-
-import java.util.Date;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
+public class HelloController {
 
-public class HelloController
+    @Autowired
+    private SensorEndpointRepository m_repository;
 
-{
+    @RequestMapping("/")
+    public String index() {
+        return "Greetings from Spring Boot!";
+    }
 
-@Autowired
+    @RequestMapping(value = "/endpoints", method = RequestMethod.GET)
+    public List<SensorEndpoint> getAllEndpoints() {
+        Iterable<SensorEndpoint> all = m_repository.findAll();
+        return Lists.newArrayList(all);
+    }
 
-private SensorEndpointRepository m_repository;
+    @RequestMapping(value = "/endpoints/{id}", method = RequestMethod.GET)
+    public SensorEndpoint getEndpoint(@PathVariable("id") long id) {
+        return m_repository.findOne(id);
+    }
 
-@RequestMapping("/")
-
-public String index()
-
-{
-
-return "Greetings from Spring Boot!";
-
+    @RequestMapping(value = "/endpoints/add", method = RequestMethod.POST)
+    public SensorEndpoint addEndpoint(@RequestParam("name") String name,
+                                      @RequestParam("url") String endpointUrl) {
+        return m_repository.save(new SensorEndpoint(name, endpointUrl));
+    }
 }
-
-@RequestMapping(value="/endpoints", method = RequestMethod.GET)
-
-public List<SensorEndpoint> getAllEndpoints()
-
-{
-
-Iterable<SensorEndpoint> all = m_repository.findAll();
-
-return Lists.newArrayList( all );
-
-}
-
-@RequestMapping(value="/endpoints/{id}", method = RequestMethod.GET)
-
-public SensorEndpoint getEndpoint( @PathVariable("id") long id )
-
-{
-
-return m_repository.findOne( id );
-
-}
-
-@RequestMapping(value="/endpoints/add", method=RequestMethod.POST)
-
-public SensorEndpoint addEndpoint( @RequestParam("name") String name,
-
-@RequestParam("url") String endpointUrl )
-
-{
-
-return m_repository.save( new SensorEndpoint( name, endpointUrl ) );
-
-}
-
-}
-
 ----
 
 The controller is annotated with @RestController to tell Spring that this class is a web controller for REST. Using the @RequestMapping, @PathVariable and @RequestParam annoations makes it great to define the URLs in a very simple way. With this controller the following URLs can be hit:
 
 * http://localhost:8080/endpoints -> Will return all the objects in the repository in JSON
-
 * http://localhost:8080/endpoints/1 -> Will return the object with primary key 1 in JSON
-
 * http://localhost:8080/endpoints/add -> if you do a POST with a 'name' and 'url' request parameters, it will be added to the database.
 
 Note how I can just return the object or a list of objects and it gets marshalled into JSON automatically.
@@ -193,296 +121,171 @@ The last class we need is to start the application:
 package hello;
 
 import org.springframework.boot.SpringApplication;
-
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-
 import org.springframework.context.ApplicationContext;
-
 import org.springframework.context.annotation.Bean;
-
 import org.springframework.context.annotation.ComponentScan;
-
 import org.springframework.context.annotation.Configuration;
-
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
-
-import org.springframework.jmx.export.annotation.AnnotationMBeanExporter;
-
 import org.springframework.orm.jpa.JpaTransactionManager;
-
 import org.springframework.orm.jpa.JpaVendorAdapter;
-
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
-
 import org.springframework.orm.jpa.vendor.Database;
-
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
-
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
 
-import java.util.Arrays;
-
 import static org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType.H2;
 
 @Configuration
-
 @EnableAutoConfiguration
-
 @ComponentScan
-
 @EnableJpaRepositories
+public class Application {
 
-public class Application
+    @Bean
+    public DataSource dataSource() {
+        return new EmbeddedDatabaseBuilder().setType(H2).build();
+    }
 
-{
+    @Bean
+    public LocalContainerEntityManagerFactoryBean entityManagerFactory(DataSource dataSource, JpaVendorAdapter jpaVendorAdapter) {
+        LocalContainerEntityManagerFactoryBean lef = new LocalContainerEntityManagerFactoryBean();
+        lef.setDataSource(dataSource);
+        lef.setJpaVendorAdapter(jpaVendorAdapter);
+        lef.setPackagesToScan("hello");
+        return lef;
+    }
 
-@Bean
+    @Bean
+    public JpaVendorAdapter jpaVendorAdapter() {
+        HibernateJpaVendorAdapter hibernateJpaVendorAdapter = new HibernateJpaVendorAdapter();
+        hibernateJpaVendorAdapter.setShowSql(false);
+        hibernateJpaVendorAdapter.setGenerateDdl(true);
+        hibernateJpaVendorAdapter.setDatabase(Database.H2);
+        return hibernateJpaVendorAdapter;
+    }
 
-public DataSource dataSource()
+    @Bean
+    public PlatformTransactionManager transactionManager() {
+        return new JpaTransactionManager();
+    }
 
-{
+    public static void main(String[] args) {
+        ApplicationContext ctx = SpringApplication.run(Application.class, args);
 
-return new EmbeddedDatabaseBuilder().setType( H2 ).build();
-
+        // Put in some test data
+        SensorEndpointRepository bean = ctx.getBean(SensorEndpointRepository.class);
+        bean.save(new SensorEndpoint("Kortrijk", "http://www.kortrijk.be/api"));
+        bean.save(new SensorEndpoint("Gent", "http://www.gent.be/api"));
+    }
 }
-
-@Bean
-
-public LocalContainerEntityManagerFactoryBean entityManagerFactory( DataSource dataSource, JpaVendorAdapter jpaVendorAdapter )
-
-{
-
-LocalContainerEntityManagerFactoryBean lef = new LocalContainerEntityManagerFactoryBean();
-
-lef.setDataSource( dataSource );
-
-lef.setJpaVendorAdapter( jpaVendorAdapter );
-
-lef.setPackagesToScan( "hello" );
-
-return lef;
-
-}
-
-@Bean
-
-public JpaVendorAdapter jpaVendorAdapter()
-
-{
-
-HibernateJpaVendorAdapter hibernateJpaVendorAdapter = new HibernateJpaVendorAdapter();
-
-hibernateJpaVendorAdapter.setShowSql( false );
-
-hibernateJpaVendorAdapter.setGenerateDdl( true );
-
-hibernateJpaVendorAdapter.setDatabase( Database.H2 );
-
-return hibernateJpaVendorAdapter;
-
-}
-
-@Bean
-
-public PlatformTransactionManager transactionManager()
-
-{
-
-return new JpaTransactionManager();
-
-}
-
-public static void main( String[] args )
-
-{
-
-ApplicationContext ctx = SpringApplication.run( Application.class, args );
-
-// Put in some test data
-
-SensorEndpointRepository bean = ctx.getBean( SensorEndpointRepository.class );
-
-bean.save( new SensorEndpoint( "Kortrijk", "http://www.kortrijk.be/api") );
-
-bean.save( new SensorEndpoint( "Gent", "http://www.gent.be/api") );
-
-}
-
-}
-
 ----
 
 This uses Spring Boot and Spring java configuration to bootstrap the application. The final piece of the puzzel is the Maven pom.xml with the dependencies (Note that Gradle can also be used, but I am more familiar with Maven):
 
 [source,xml]
 ----
-
 <?xml version="1.0" encoding="UTF-8"?>
 
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 
-xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-
-<modelVersion>4.0.0</modelVersion>
-
-<groupId>org.springframework</groupId>
-
-<artifactId>gs-spring-boot</artifactId>
-
-<version>0.1.0</version>
-
-<parent>
-
-<groupId>org.springframework.boot</groupId>
-
-<artifactId>spring-boot-starter-parent</artifactId>
-
-<version>0.5.0.M6</version>
-
-</parent>
-
-<dependencies>
-
-<dependency>
-
-<groupId>org.springframework.boot</groupId>
-
-<artifactId>spring-boot-starter-web</artifactId>
-
-</dependency>
-
-<dependency>
-
-<groupId>org.springframework.boot</groupId>
-
-<artifactId>spring-boot-starter-actuator</artifactId>
-
-</dependency>
-
-<dependency>
-
-<groupId>org.springframework.data</groupId>
-
-<artifactId>spring-data-jpa</artifactId>
-
-<version>1.4.2.RELEASE</version>
-
-</dependency>
-
-<dependency>
-
-<groupId>org.springframework</groupId>
-
-<artifactId>spring-orm</artifactId>
-
-<version>4.0.0.RC1</version>
-
-</dependency>
-
-<dependency>
-
-<groupId>org.hibernate</groupId>
-
-<artifactId>hibernate-entitymanager</artifactId>
-
-<version>4.2.1.Final</version>
-
-</dependency>
-
-<dependency>
-
-<groupId>com.h2database</groupId>
-
-<artifactId>h2</artifactId>
-
-<version>1.3.172</version>
-
-</dependency>
-
-<dependency>
-
-<groupId>com.google.guava</groupId>
-
-<artifactId>guava</artifactId>
-
-<version>12.0</version>
-
-</dependency>
-
-</dependencies>
-
-<properties>
-
-<start-class>hello.Application</start-class>
-
-</properties>
-
-<build>
-
-<plugins>
-
-<plugin>
-
-<artifactId>maven-compiler-plugin</artifactId>
-
-<version>2.3.2</version>
-
-</plugin>
-
-<plugin>
-
-<groupId>org.springframework.boot</groupId>
-
-<artifactId>spring-boot-maven-plugin</artifactId>
-
-</plugin>
-
-</plugins>
-
-</build>
-
-<repositories>
-
-<repository>
-
-<id>spring-snapshots</id>
-
-<url>http://repo.spring.io/libs-snapshot</url>
-
-<snapshots>
-
-<enabled>true</enabled>
-
-</snapshots>
-
-</repository>
-
-</repositories>
-
-<pluginRepositories>
-
-<pluginRepository>
-
-<id>spring-snapshots</id>
-
-<url>http://repo.spring.io/libs-snapshot</url>
-
-<snapshots>
-
-<enabled>true</enabled>
-
-</snapshots>
-
-</pluginRepository>
-
-</pluginRepositories>
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.springframework</groupId>
+    <artifactId>gs-spring-boot</artifactId>
+    <version>0.1.0</version>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>0.5.0.M6</version>
+    </parent>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-jpa</artifactId>
+            <version>1.4.2.RELEASE</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-orm</artifactId>
+            <version>4.0.0.RC1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-entitymanager</artifactId>
+            <version>4.2.1.Final</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>1.3.172</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>12.0</version>
+        </dependency>
+
+    </dependencies>
+
+    <properties>
+        <start-class>hello.Application</start-class>
+    </properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>2.3.2</version>
+            </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+    <repositories>
+        <repository>
+            <id>spring-snapshots</id>
+            <url>http://repo.spring.io/libs-snapshot</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>spring-snapshots</id>
+            <url>http://repo.spring.io/libs-snapshot</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </pluginRepository>
+    </pluginRepositories>
 
 </project>
-
 ----
 
 We depend on 2 Spring Boot starter projects: spring-boot-starter-web and spring-boot-starter-actuator. Next to that we need Spring Data, so we pull in 'spring-data-jpa', 'spring-orm' and 'hibernate-entitymanager'. As a database, I use an embedded H2 database. If you want to run this example with MySQL, just import the MySQL driver instead.

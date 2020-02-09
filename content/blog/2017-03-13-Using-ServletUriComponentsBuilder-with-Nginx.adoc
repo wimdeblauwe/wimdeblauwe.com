@@ -14,5 +14,8 @@ Spring's `ServletUriComponentsBuilder.fromCurrentRequest()` can be really convi
 The solution is simple, just add these headers to your Nginx configuration file:
 
 ....
-proxy_set_header        X-Forwarded-Host   $host:443;proxy_set_header        X-Forwarded-Server $host;proxy_set_header        X-Forwarded-Port   443;proxy_set_header        X-Forwarded-Proto  https;
+proxy_set_header        X-Forwarded-Host   $host:443;
+proxy_set_header        X-Forwarded-Server $host;
+proxy_set_header        X-Forwarded-Port   443;
+proxy_set_header        X-Forwarded-Proto  https;
 ....

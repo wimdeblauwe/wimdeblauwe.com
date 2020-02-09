@@ -15,29 +15,17 @@ To get started with flex-mojos, you just need to configure the plugin in your bu
 
 [source,xml]
 ----
-
 <build>
-
-<sourceDirectory>src/main/flex</sourceDirectory>
-
-<plugins>
-
-<plugin>
-
-<groupId>org.sonatype.flexmojos</groupId>
-
-<artifactId>flexmojos-maven-plugin</artifactId>
-
-<version>3.7.1</version>
-
-<extensions>true</extensions>
-
-</plugin>
-
-</plugins>
-
+    <sourceDirectory>src/main/flex</sourceDirectory>
+    <plugins>
+        <plugin>
+            <groupId>org.sonatype.flexmojos</groupId>
+            <artifactId>flexmojos-maven-plugin</artifactId>
+            <version>3.7.1</version>
+            <extensions>true</extensions>
+        </plugin>
+    </plugins>
 </build>
-
 ----
 
 In this example, we have our main code in `src/main/flex` and our flexunit tests in `src/test/flex`. What we want to do is expose the code in the test directory in a separate swc file so we can re-use some of those in other maven modules. It is quite straight forward to do, but I could not find a good description in a single place, so that is why I am putting is up. I hope it helps someone.
@@ -46,45 +34,25 @@ Edit the pom.xml of the module that you want to expose the test code of:
 
 [source,xml]
 ----
-
-        <build>
-
-                <sourceDirectory>src/main/flex</sourceDirectory>
-
-                <testSourceDirectory>src/test/flex</testSourceDirectory>
-
-                <plugins>
-
-                        <plugin>
-
-                                <groupId>org.sonatype.flexmojos</groupId>
-
-                                <artifactId>flexmojos-maven-plugin</artifactId>
-
-                                <version>${flex-mojos.version}</version>
-
-                                <extensions>true</extensions>
-
-                                <executions>
-
-                                        <execution>
-
-                                                <goals>
-
-                                                        <goal>test-swc</goal>
-
-                                                </goals>
-
-                                        </execution>
-
-                                </executions>
-
-                        </plugin>
-
-                </plugins>
-
-        </build>
-
+<build>
+    <sourceDirectory>src/main/flex</sourceDirectory>
+    <testSourceDirectory>src/test/flex</testSourceDirectory>
+    <plugins>
+        <plugin>
+            <groupId>org.sonatype.flexmojos</groupId>
+            <artifactId>flexmojos-maven-plugin</artifactId>
+            <version>${flex-mojos.version}</version>
+            <extensions>true</extensions>
+            <executions>
+                <execution>
+                    <goals>
+                        <goal>test-swc</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+    </plugins>
+</build>
 ----
 
 You need to add 2 things:
@@ -102,23 +70,14 @@ This shows that Flex-mojos created an additional swc with a 'test' classifier. I
 
 [source,xml]
 ----
-
 <dependency>
-
-<groupId>testproject</groupId>
-
-<artifactId>testproject</artifactId>
-
-<version>1.0-SNAPSHOT</version>
-
-<classifier>test</classifier>
-
-<type>swc</type>
-
-<scope>test</scope>
-
+    <groupId>testproject</groupId>
+    <artifactId>testproject</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <classifier>test</classifier>
+    <type>swc</type>
+    <scope>test</scope>
 </dependency>
-
 ----
 
 In this example I gave it `test` scope, because I only use it in the tests of my own project. You can choose the scope you want ofcourse.

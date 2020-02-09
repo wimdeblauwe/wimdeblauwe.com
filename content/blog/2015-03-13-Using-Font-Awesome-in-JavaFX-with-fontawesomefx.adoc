@@ -18,15 +18,10 @@ First import the library. I am using Maven, so I just add this dependency:
 
 [source,xml]
 ----
-
 <dependency>
-
-<groupId>de.jensd</groupId>
-
-<artifactId>fontawesomefx</artifactId>
-
-<version>8.2</version>
-
+    <groupId>de.jensd</groupId>
+    <artifactId>fontawesomefx</artifactId>
+    <version>8.2</version>
 </dependency>
 
 ----
@@ -35,53 +30,34 @@ We will start with a simple app that uses a BorderPane to put some content at th
 
 [source,java]
 ----
+public class FontAwesomeTest extends Application {
 
-public class FontAwesomeTest extends Application
+    @Override
+    public void start(Stage stage) throws Exception {
 
-{
+        StackPane root = new StackPane();
+        BorderPane borderPane = new BorderPane();
 
-@Override
+        HBox headerBox = new HBox();
+        headerBox.getStyleClass().add( "header - component");
+        borderPane.setTop(headerBox);
 
-public void start( Stage stage ) throws Exception
+        Label centerComponent = new Label( "CENTER COMPONENT" );
+        centerComponent.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        centerComponent.getStyleClass().add( "center - component");
+        borderPane.setCenter(centerComponent);
 
-{
+        root.getChildren().add(borderPane);
 
-StackPane root = new StackPane();
+        Scene scene = new Scene(root);
+        scene.getStylesheets().add( "font - awesome - test.css");
 
-BorderPane borderPane = new BorderPane();
-
-HBox headerBox = new HBox();
-
-headerBox.getStyleClass().add( &quot;header-component&quot; );
-
-borderPane.setTop( headerBox );
-
-Label centerComponent = new Label( &quot;CENTER COMPONENT&quot; );
-
-centerComponent.setPrefSize( Double.MAX_VALUE, Double.MAX_VALUE );
-
-centerComponent.getStyleClass().add( &quot;center-component&quot; );
-
-borderPane.setCenter( centerComponent );
-
-root.getChildren().add( borderPane );
-
-Scene scene = new Scene( root );
-
-scene.getStylesheets().add( &quot;font-awesome-test.css&quot; );
-
-stage.setScene( scene );
-
-stage.setWidth( 300 );
-
-stage.setHeight( 400 );
-
-stage.setTitle( &quot;JavaFX 8 app&quot; );
-
-stage.show();
-
-}
-
+        stage.setScene(scene);
+        stage.setWidth(300);
+        stage.setHeight(400);
+        stage.setTitle( "JavaFX 8 app");
+        stage.show();
+    }
 }
 
 ----
@@ -90,84 +66,60 @@ The CSS file used:
 
 [source,css]
 ----
-
 .center-component {
-
--fx-background-color: coral;
-
--fx-alignment: center;
-
+    -fx-background-color: coral;
+    -fx-alignment: center;
 }
-
 ----
 
 The app looks like this initially:
 
-image::{imagesdir}//2015/03/screen-shot-2015-03-13-at-17-59-59.png[]
+image::{imagesdir}/2015/03/screen-shot-2015-03-13-at-17-59-59.png[]
 
 We will now add an icon in the header:
 
 [source,java]
 ----
-
 HBox headerBox = new HBox();
-
-headerBox.getStyleClass().add( &quot;header-component&quot; );
-
+headerBox.getStyleClass().add( "header-component" );
 headerBox.getChildren()
-
 .addAll( GlyphsDude.createIcon( FontAwesomeIcons.BARS,
-
-&quot;40px&quot; ) );
-
+"40px" ) );
 ----
 
 Notice how we use the static factory method `createIcon` to build us a `Node` with the icon from the constants in the enum `FontAwesomeIcons`. As a 2nd argument, we can specify the size of the icon.
 
 We get the following result:
 
-image::{imagesdir}//2015/03/screen-shot-2015-03-13-at-18-03-49.png[]
+image::{imagesdir}/2015/03/screen-shot-2015-03-13-at-18-03-49.png[]
 
 We can add some CSS to add a border so the icon does not stick to the side:
 
 [source,css]
 ----
-
 .header-component {
-
--fx-border-width: 7px;
-
--fx-border-color: transparent;
-
+    -fx-border-width: 7px;
+    -fx-border-color: transparent;
 }
-
 ----
 
 _*NOTE:* Do not forget to set the `-fx-border-color` style as well as the `-fx-border-width`. Only setting the width will not do anything!_
 
-image::{imagesdir}//2015/03/screen-shot-2015-03-13-at-18-10-06.png[]
+image::{imagesdir}/2015/03/screen-shot-2015-03-13-at-18-10-06.png[]
 
 If we want to add some text next to the icon, we can use the static factory method `createIconLabel`:
 
 [source,java]
 ----
-
 HBox headerBox = new HBox();
-
-headerBox.getStyleClass().add( &quot;header-component&quot; );
+headerBox.getStyleClass().add( "header-component" );
 
 Label iconLabel = GlyphsDude.createIconLabel( FontAwesomeIcons.BARS,
-
-&quot;Menu&quot;,
-
-&quot;40px&quot;,
-
-&quot;40px&quot;,
-
-ContentDisplay.LEFT );
-
-iconLabel.getStyleClass().add( &quot;header-label&quot; );
-
+                                            "Menu",
+                                            "40px",
+                                            "40px",
+                                            ContentDisplay.LEFT );
+iconLabel.getStyleClass().add( "header-label" );
 headerBox.getChildren().addAll( iconLabel );
 
 ----
@@ -180,21 +132,15 @@ Finally, we can color the icon and the text by applying this CSS:
 
 [source,css]
 ----
-
-.header-label &gt; .text {
-
--fx-fill: #8A0808;
-
+.header-label > .text {
+    -fx-fill: #8A0808;
 }
 
-.header-label &gt; .glyph-icon {
-
--fx-fill: #8A0808;
-
+.header-label > .glyph-icon {
+    -fx-fill: #8A0808;
 }
-
 ----
 
 Final result:
 
-image::{imagesdir}//2015/03/screen-shot-2015-03-13-at-18-15-09.png[]
+image::{imagesdir}/2015/03/screen-shot-2015-03-13-at-18-15-09.png[]

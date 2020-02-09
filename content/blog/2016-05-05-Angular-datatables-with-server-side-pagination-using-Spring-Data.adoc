@@ -18,127 +18,85 @@ First, add the dependency in your pom.xml:
 
 [source,xml]
 ----
-
 <dependency>
-
-<groupId>com.github.darrachequesne</groupId>
-
-<artifactId>spring-data-jpa-datatables</artifactId>
-
-<version>2.1</version>
-
+    <groupId>com.github.darrachequesne</groupId>
+    <artifactId>spring-data-jpa-datatables</artifactId>
+    <version>2.1</version>
 </dependency>
-
 ----
 
 In my UserController, I have currently this:
 
 [source,java]
 ----
-
 @RequestMapping(method = RequestMethod.GET)
-
 @Secured(Roles.ADMIN)
-
 public List<UserDto> getUsers() {
-
-return StreamSupport.stream(userRepository.findAll().spliterator(), false)
-
-.map(UserDto::fromUser)
-
-.collect(Collectors.toList());
-
+    return StreamSupport.stream(userRepository.findAll().spliterator(), false)
+                        .map(UserDto::fromUser)
+                        .collect(Collectors.toList());
 }
-
 ----
 
 I added a new method that would be used for the server side pagination and searching (I could have replaced the old method as well, as it will no longer be used):
 
 [source,java]
 ----
-
 @RequestMapping(value = "/datatables-view", method = RequestMethod.POST)
-
 @Secured(Roles.ADMIN)
-
 public DataTablesOutput<UserDto> getUsersForDatatables(@Valid @RequestBody DataTablesInput input) {
+    DataTablesOutput<User> usersTest = userRepository.findAll(input);
 
-DataTablesOutput<User> usersTest = userRepository.findAll(input);
+    if (usersTest.getError() != null) {
+        throw new IllegalArgumentException(usersTest.getError());
+    }
 
-if( usersTest.getError() != null ) {
-
-throw new IllegalArgumentException(usersTest.getError());
-
+    DataTablesOutput<UserDto> result = new DataTablesOutput<>();
+    result.setData(usersTest.getData().stream().map(UserDto::fromUser).collect(Collectors.toList()));
+    result.setDraw(usersTest.getDraw());
+    result.setError(usersTest.getError());
+    result.setRecordsFiltered(usersTest.getRecordsFiltered());
+    result.setRecordsTotal(usersTest.getRecordsTotal());
+    return result;
 }
-
-DataTablesOutput<UserDto> result = new DataTablesOutput<>();
-
-result.setData(usersTest.getData().stream().map( UserDto::fromUser ).collect(Collectors.toList()));
-
-result.setDraw(usersTest.getDraw());
-
-result.setError(usersTest.getError());
-
-result.setRecordsFiltered(usersTest.getRecordsFiltered());
-
-result.setRecordsTotal(usersTest.getRecordsTotal());
-
-return result;
-
-}
-
 ----
 
 To support this controller, you need to update the UserRepository to extend from DataTablesRepository, so change this:
 
 [source,java]
 ----
-
 public interface UserRepository extends CrudRepository<User, UserId>, UserRepositoryCustom {
-
 ----
 
 to
 
 [source,java]
 ----
-
 public interface UserRepository extends DataTablesRepository<User, UserId>, UserRepositoryCustom {
-
 ----
 
 On the client side, I had this code:
 
 [source,javascript]
 ----
-
-$scope.dtOptions = DTOptionsBuilder.fromFnPromise(function(){
-
-return Users.query().$promise;
-
+$scope.dtOptions = DTOptionsBuilder.fromFnPromise(function () {
+    return Users.query().$promise;
 })
 
-.withBootstrap()
+    .withBootstrap()
+    .withPaginationType('simple_numbers')
+    .withDisplayLength(20)
+    .withOption('createdRow', function (row) {
+        // Recompiling so we can bind Angular directive to the DT
+        $compile(angular.element(row).contents())($scope);
+    })
+    .withOption('saveState', true)
+    .withOption('order', [0, 'asc']);
 
-.withPaginationType('simple_numbers')
+    // Datatables columns builder
 
-.withDisplayLength(20)
-
-.withOption('createdRow', function (row) {
-
-// Recompiling so we can bind Angular directive to the DT
-
-$compile(angular.element(row).contents())($scope);
-
-})
-
-.withOption('saveState', true)
-
-.withOption('order', [0, 'asc']);
-
-// Datatables columns builder
-
-$scope.dtColumns = [ .. ] //column definitions here
+    $scope.dtColumns = [..
+        ] //column definitions here
 
 ----
 
@@ -146,65 +104,38 @@ This code now changes to:
 
 [source,javascript]
 ----
-
 $scope.dtOptions = DTOptionsBuilder.newOptions()
-
 .withOption('ajax', {
-
-contentType: 'application/json',
-
-url: '/api/users/datatables-view',
-
-type: 'POST',
-
-beforeSend: function(xhr){
-
-xhr.setRequestHeader("Authorization",
-
-"Bearer " + AuthenticationService.getAccessToken());
-
+    contentType: 'application/json',
+    url: '/api/users/datatables-view',
+    type: 'POST',
+    beforeSend: function(xhr) {
+        xhr.setRequestHeader("Authorization",
+        "Bearer " + AuthenticationService.getAccessToken());
 },
 
 data: function(data, dtInstance) {
+    // The returned object has 'email' as property, but the server entity has 'emailAddress'
+    // We need to override what we ask to the server here otherwise search will not work
+    data.columns[1].data = "emailAddress";
 
-// The returned object has 'email' as property, but the server entity has 'emailAddress'
-
-// We need to override what we ask to the server here otherwise search will not work
-
-data.columns[1].data = "emailAddress";
-
-// Any values you set on the data object will be passed along as parameters to the server
-
-//data.access_token = AuthenticationService.getAccessToken();
-
-return JSON.stringify(data);
-
+    // Any values you set on the data object will be passed along as parameters to the server
+    //data.access_token = AuthenticationService.getAccessToken();
+    return JSON.stringify(data);
 }
-
 })
-
 .withDataProp('data') // This is the name of the value in the returned recordset which contains the actual data
-
 .withOption('serverSide', true)
-
 .withBootstrap()
-
 .withPaginationType('simple_numbers')
-
 .withDisplayLength(20)
-
 .withOption('createdRow', function (row) {
-
-// Recompiling so we can bind Angular directive to the DT
-
-$compile(angular.element(row).contents())($scope);
-
+    // Recompiling so we can bind Angular directive to the DT
+    $compile(angular.element(row).contents())($scope);
 })
 
 .withOption('saveState', true)
-
 .withOption('order', [0, 'asc']);
-
 ----
 
 The most important things are:

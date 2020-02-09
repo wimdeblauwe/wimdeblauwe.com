@@ -28,53 +28,30 @@ I have been meaning to give http://confluence.atlassian.com/display/DEVNET/Speak
 
 [source,javascript]
 ----
-
 /**
-
-* The main module
-
-*
-
-* @context atl.general
-
-*/
+ * The main module
+ *
+ * @context atl.general
+ */
 
 var $ = require('speakeasy/jquery').jQuery;
 
-$(document).ready(function() {
+$(document).ready(function () {
+    var key = $("#key-val").text();
+    var summary = $("#issue_header_summary:first").text();
 
-var key = $("#key-val").text();
-
-var summary = $("#issue_header_summary:first").text();
-
-var inlineDialog = AJS.InlineDialog(AJS.$("#key-val"),1,
-
-function(content,trigger,showPopup)
-
-{
-
-var dialogContent = '<div id="key-summary-popup">'+key + ' - ' + summary +'</div>';
-
-inlineDialog.refresh();
-
-$(content).html(dialogContent);
-
-showPopup();
-
-}
-
-,
-
-{
-
-onHover:true,hideDelay:1000
-
-}
-
-);
-
+    var inlineDialog = AJS.InlineDialog(AJS.$("#key-val"), 1,
+        function (content, trigger, showPopup) {
+            var dialogContent = '<div id="key-summary-popup">' + key + ' - ' + summary + '</div>';
+            inlineDialog.refresh();
+            $(content).html(dialogContent);
+            showPopup();
+        },
+        {
+            onHover: true, hideDelay: 1000
+        }
+    );
 });
-
 ----
 
 I am using an AUI http://confluence.atlassian.com/display/AUI/Inline+Dialog[Inline Dialog] to show the content, so I can easily copy/paste it.
@@ -104,11 +81,8 @@ Finally, add a splash of CSS to make it look nicer:
 
 [source,css]
 ----
-
 #key-summary-popup {
-
-padding: 5px;
-
+    padding: 5px;
 }
 
 ----

@@ -20,58 +20,42 @@ At first, I was afraid that it would be difficult to do from Groovy/Java, but it
 
 To connect to exchange we just need the credentials of a domain user. The auto discovery mechanism will automatically find the Exchange server:
 
-[source,java]
+[source,groovy]
 ----
 
-private static ExchangeService createExchangeService( LiquidPlannerToolsConfiguration configuration )
+private static ExchangeService createExchangeService( LiquidPlannerToolsConfiguration configuration ) {
 
-{
+    logger.info( "Connecting to Exchange..." )
+    ExchangeService service = new ExchangeService( ExchangeVersion.Exchange2010_SP2 )
+    ExchangeCredentials credentials = new WebCredentials( configuration.exchangeUser,
+    configuration.exchangePassword,
+    configuration.exchangeDomain )
 
-logger.info( "Connecting to Exchange..." )
+    service.setCredentials( credentials )
+    service.autodiscoverUrl( configuration.exchangeAutodiscoverEmail )
 
-ExchangeService service = new ExchangeService( ExchangeVersion.Exchange2010_SP2 )
-
-ExchangeCredentials credentials = new WebCredentials( configuration.exchangeUser,
-
-configuration.exchangePassword,
-
-configuration.exchangeDomain )
-
-service.setCredentials( credentials )
-
-service.autodiscoverUrl( configuration.exchangeAutodiscoverEmail )
-
-return service
-
+    return service
 }
 
 ----
 
 The `LiquidPlannerToolsConfiguration` class is a simple POJO that contains the configuration parameters for the script. Now that we are connected, we can query Exchange for the calendar of a user:
 
-[source,java]
+[source,groovy]
 ----
+private static def getAppointments(ExchangeService service, String emailAddress) {
 
-private static def getAppointments( ExchangeService service, String emailAddress )
+    def Mailbox mailbox = new Mailbox(emailAddress)
 
-{
+    def folderId = new FolderId(WellKnownFolderName.Calendar, mailbox)
+    def startDate = DateTime.now().toDate()
+    def endDate = DateTime.now().plusMonths(6).toDate()
 
-def Mailbox mailbox = new Mailbox( emailAddress )
+    def allAppointments = service.findAppointments(folderId, new CalendarView(startDate, endDate))
+    def relevantAppointments = allAppointments.findAll { Appointment appointment -> appointment.duration.hours >= 4 }
+    logger.debug "Found ${allAppointments.items.size()} appointments of which ${relevantAppointments.size()} are relevant"
 
-def folderId = new FolderId( WellKnownFolderName.Calendar, mailbox )
-
-def startDate = DateTime.now().toDate()
-
-def endDate = DateTime.now().plusMonths( 6 ).toDate()
-
-def allAppointments = service.findAppointments( folderId, new CalendarView( startDate, endDate ) )
-
-def relevantAppointments = allAppointments.findAll { Appointment appointment -> appointment.duration.hours >= 4 }
-
-logger.debug "Found ${allAppointments.items.size()} appointments of which ${relevantAppointments.size()} are relevant"
-
-return relevantAppointments
-
+    return relevantAppointments
 }
 
 ----
@@ -82,39 +66,23 @@ With the `ExchangeService` and the email address of a user, we ask for all the a
 
 Now that I have all the relevant appointments, I need to create an entry for each of those in LiquidPlanner:
 
-[source,java]
+[source,groovy]
 ----
+private static def createAppointmentInLP(LiquidPlannerService liquidPlannerService,
+                                         Appointment appointment,
+                                         LiquidPlannerUserVacationPackage userVacationPackage) {
 
-private static def createAppointmentInLP( LiquidPlannerService liquidPlannerService,
-
-Appointment appointment,
-
-LiquidPlannerUserVacationPackage userVacationPackage )
-
-{
-
-liquidPlannerService.createAppointment( userVacationPackage,
-
-getAppointmentIdForExternalReference( appointment ),
-
-appointment.subject,
-
-new DateTime( appointment.start, getTimeZone( appointment.startTimeZone ) ),
-
-new DateTime( appointment.end, getTimeZone( appointment.endTimeZone ) ) )
-
+    liquidPlannerService.createAppointment(userVacationPackage,
+            getAppointmentIdForExternalReference(appointment),
+            appointment.subject,
+            new DateTime(appointment.start, getTimeZone(appointment.startTimeZone)),
+            new DateTime(appointment.end, getTimeZone(appointment.endTimeZone)))
 }
 
-private static String getAppointmentIdForExternalReference( Appointment appointment )
-
-{
-
-// LiquidPlanner has trouble matching the id afterwards if there is a '+' in there, so we replace it with something else to work around it.
-
-return appointment.id.uniqueId.replace( '+', "_" )
-
+private static String getAppointmentIdForExternalReference(Appointment appointment) {
+    // LiquidPlanner has trouble matching the id afterwards if there is a '+' in there, so we replace it with something else to work around it.
+    return appointment.id.uniqueId.replace('+', "_")
 }
-
 ----
 
 Everything in LiquidPlanner has a field 'External Reference' which is great if you have to integrate with external systems. Here, I use this field to put in the unique id that exchange associates with each calendar entry (You would be amazed that there are enough unique id's in the world for all the meetings). I can use this id later to know if an appointment is already created in LiquidPlanner or not.
@@ -123,98 +91,63 @@ _Note: I had issues with putting in the unique id from Exchange in the External 
 
 The `LiquidPlannerService` hides all the HTTP/JSON stuff to interact with the http://www.liquidplanner.com/support/articles/developer-tools/[LiquidPlanner API]. This is the `createAppoinment` method:
 
-[source,java]
+[source,groovy]
 ----
-
-public void createAppointment( LiquidPlannerUserVacationPackage userVacationPackage, String exchangeAppointmentId, String subject, DateTime startDateTime, DateTime endDateTime )
-
+public void createAppointment(LiquidPlannerUserVacationPackage userVacationPackage, String exchangeAppointmentId, String subject, DateTime startDateTime, DateTime endDateTime)
 {
 
-String requestPath = 'workspaces/' + LP_WORKSPACE_ID + '/events/';
+    String requestPath = 'workspaces/' + LP_WORKSPACE_ID + '/events/';
+    liquidPlanner.request(Method.POST, ContentType.JSON) { req ->
+        uri.path = requestPath;
+        def startTime = LP_DATE_FORMATTER.print(startDateTime)
+        def endTime = LP_DATE_FORMATTER.print(endDateTime)
 
-liquidPlanner.request( Method.POST, ContentType.JSON ) { req ->
+        logger.debug "$startTime - $endTime : ${subject}"
+        body = [event: [
+                name              : subject,
+                owner_id          : userVacationPackage.ownerId,
+                parent_id         : userVacationPackage.id,
+                external_reference: exchangeAppointmentId,
+                start_date        : startTime,
+                finish_date       : endTime]]
 
-uri.path = requestPath;
+        response.success = { resp, json ->
+            logger.debug "Succesfully created appointment in LP"
+        }
 
-def startTime = LP_DATE_FORMATTER.print( startDateTime )
+        response.failure = { resp ->
+            throw new RuntimeException("Unable to create appointment in LP: ${resp.status} - ${requestPath}")
+        }
+    }
 
-def endTime = LP_DATE_FORMATTER.print( endDateTime )
+    Thread.sleep(m_sleepBetweenLPRequests);
 
-logger.debug "$startTime - $endTime : ${subject}"
-
-body = [event: [
-
-name: subject,
-
-owner_id: userVacationPackage.ownerId,
-
-parent_id: userVacationPackage.id,
-
-external_reference: exchangeAppointmentId,
-
-start_date: startTime,
-
-finish_date: endTime]]
-
-response.success = { resp, json ->
-
-logger.debug "Succesfully created appointment in LP"
-
+    // Sleep a bit to avoid hitting the liquidplanner server too fast (See http://www.liquidplanner.com/api-guide/technical-reference/request-throttling.html)
 }
-
-response.failure = { resp ->
-
-throw new RuntimeException( "Unable to create appointment in LP: ${resp.status} - ${requestPath}" )
-
-}
-
-}
-
-Thread.sleep( m_sleepBetweenLPRequests );
-
-// Sleep a bit to avoid hitting the liquidplanner server too fast (See http://www.liquidplanner.com/api-guide/technical-reference/request-throttling.html)
-
-}
-
 ----
 
 The `liquidPlanner` is a http://groovy.codehaus.org/HTTP+Builder[Groovy HTTP Builder] object. The `LiquidPlannerUserVacationPackage` represents a vacation in the http://en.wikipedia.org/wiki/Domain-driven_design#Bounded_context[bounded context] of LiquidPlanner (I had just finished reading https://vaughnvernon.co/?page_id=168[Implementing Domain-Driven Design] when I implemented this, and incorporating some of the ideas really made my code a lot better):
 
-[source,java]
+[source,groovy]
 ----
-
 import net.sf.json.JSONObject
 
-class LiquidPlannerUserVacationPackage
+class LiquidPlannerUserVacationPackage {
 
-{
+    String id
+    String ownerId
+    String name
+    String emailAddress
 
-String id
+    public static LiquidPlannerUserVacationPackage fromJSON(JSONObject jsonObject) {
 
-String ownerId
-
-String name
-
-String emailAddress
-
-public static LiquidPlannerUserVacationPackage fromJSON( JSONObject jsonObject )
-
-{
-
-return new LiquidPlannerUserVacationPackage(
-
-id: jsonObject.id,
-
-ownerId: jsonObject.owner_id,
-
-name: jsonObject.name,
-
-emailAddress: jsonObject.external_reference )
-
+        return new LiquidPlannerUserVacationPackage(
+                id: jsonObject.id,
+                ownerId: jsonObject.owner_id,
+                name: jsonObject.name,
+                emailAddress: jsonObject.external_reference)
+    }
 }
-
-}
-
 ----
 
 *Step 3. Prepare LiquidPlanner so the script has enough information*
@@ -229,62 +162,40 @@ Note that all the users will need to have shared their calendar with the user yo
 
 This is the code that retrieves all the LiquidPlanner packages (1 per user):
 
-[source,java]
+[source,groovy]
 ----
+public Set<LiquidPlannerUserVacationPackage> getVacationPackages() {
 
-public Set<LiquidPlannerUserVacationPackage> getVacationPackages()
+    def JSONObject outlookCalendarFolder = liquidPlanner.get(path: 'workspaces/' + LP_WORKSPACE_ID + '/packages', query: ['filter[]': ['name="Vacations"']]);
+    logger.debug "Outlook calendars package found under id " + outlookCalendarFolder.id
 
-{
-
-def JSONObject outlookCalendarFolder = liquidPlanner.get( path: 'workspaces/' + LP_WORKSPACE_ID + '/packages', query: ['filter[]': ['name="Vacations"']] );
-
-logger.debug "Outlook calendars package found under id " + outlookCalendarFolder.id
-
-def JSONArray userFolders = liquidPlanner.get( path: 'workspaces/' + LP_WORKSPACE_ID + "/treeitems/" + outlookCalendarFolder.id, query: ['depth': '1'] ).children
-
-return userFolders.findAll {
-
-!(it.external_reference instanceof JSONNull) && isNotBlank( it.external_reference )
-
-}.collect {
-
-LiquidPlannerUserVacationPackage.fromJSON( it )
-
+    def JSONArray userFolders = liquidPlanner.get(path: 'workspaces/' + LP_WORKSPACE_ID + "/treeitems/" + outlookCalendarFolder.id, query: ['depth': '1']).children
+    return userFolders.findAll {
+        !(it.external_reference instanceof JSONNull) && isNotBlank(it.external_reference)
+    }.collect {
+        LiquidPlannerUserVacationPackage.fromJSON(it)
+    }
 }
-
-}
-
 ----
 
 What this does is first searching for a package called 'Vacations'. Then it takes all the children at the first depth level, which are our user packages. The returned JSON is then converted into `LiquidPlannerUserVacationPackage` so that the rest of the script does not need to know that we are using a JSON REST API to talk to LiquidPlanner.
 
 To check if an appointment already exists in LiquidPlanner, we need this piece of code:
 
-[source,java]
+[source,groovy]
 ----
+public boolean doesAppointmentExist(String exchangeAppointmentId) {
 
-public boolean doesAppointmentExist( String exchangeAppointmentId )
+    def queryFilter = 'external_reference="' + exchangeAppointmentId + '"'
+    JSONArray appointmentInLP = liquidPlanner.get(path: 'workspaces/' + LP_WORKSPACE_ID + '/events', query: ['filter[]': [queryFilter]]);
+    def result = appointmentInLP.size() > 0
 
-{
+    if (!result) {
+        logger.debug "Could not find appointment with id ${exchangeAppointmentId} in LP"
+    }
 
-def queryFilter = 'external_reference="' + exchangeAppointmentId + '"'
-
-JSONArray appointmentInLP = liquidPlanner.get( path: 'workspaces/' + LP_WORKSPACE_ID + '/events', query: ['filter[]': [queryFilter]] );
-
-def result = appointmentInLP.size() > 0
-
-if (!result)
-
-{
-
-logger.debug "Could not find appointment with id ${exchangeAppointmentId} in LP"
-
+    return result;
 }
-
-return result;
-
-}
-
 ----
 
 Notice how we can directly get the event in LiquidPlanner with the matching external reference. I use this to avoid creating new entries in LiquidPlanner for appointments that already exist.
