@@ -41,8 +41,10 @@ class TodoControllerCypressIntegrationTest {
     List<DynamicContainer> runCypressTests() throws InterruptedException, IOException, TimeoutException {
         Testcontainers.exposeHostPorts(port);
 
-        DynamicContainer chromeTests = DynamicContainer.dynamicContainer("Chrome", runCypressTestsOnBrowser("chrome")); // <.>
-        DynamicContainer firefoxTests = DynamicContainer.dynamicContainer("Firefox", runCypressTestsOnBrowser("firefox")); // <.>
+        DynamicContainer chromeTests = DynamicContainer.dynamicContainer("Chrome",
+                                            runCypressTestsOnBrowser("chrome")); // <.>
+        DynamicContainer firefoxTests = DynamicContainer.dynamicContainer("Firefox",
+                                            runCypressTestsOnBrowser("firefox")); // <.>
         return List.of(chromeTests, firefoxTests);
     }
 
