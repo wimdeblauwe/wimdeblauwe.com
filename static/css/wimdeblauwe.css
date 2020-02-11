@@ -131,6 +131,9 @@ table {
 table td {
     border: 0;
 }
+.fa {
+    font-family: "Font Awesome 5 Free";
+}
 
 .admonitionblock td.content > .title, .audioblock > .title, .exampleblock > .title, .imageblock > .title, .listingblock > .title, .literalblock > .title, .stemblock > .title, .openblock > .title, .paragraph > .title, .quoteblock > .title, table.tableblock > .title, .verseblock > .title, .videoblock > .title, .dlist > .title, .olist > .title, .ulist > .title, .qlist > .title, .hdlist > .title {
     text-rendering: optimizeLegibility;
@@ -197,7 +200,7 @@ table.tableblock #preamble > .sectionbody > [class="paragraph"]:first-of-type p 
 
 .admonitionblock td.icon .icon-note::before {
     content: "\f05a";
-    color: #19407c
+    color: #0066a1
 }
 
 .admonitionblock td.icon .icon-tip::before {
