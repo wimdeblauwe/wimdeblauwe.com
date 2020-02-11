@@ -2,6 +2,7 @@
 title: "Testcontainers-cypress release 0.4.0"
 date: 2020-02-11
 draft: false
+tags: ["spring-boot", "junit", "testcontainers-cypress"]
 ---
 :source-highlighter: rouge
 :rouge-css: style

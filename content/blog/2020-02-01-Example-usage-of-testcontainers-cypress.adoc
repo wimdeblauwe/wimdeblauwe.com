@@ -2,7 +2,7 @@
 title: "Example usage of testcontainers cypress"
 date: 2020-02-01
 draft: false
-tags: ["spring-boot"]
+tags: ["spring-boot","testcontainers-cypress"]
 ---
 :source-highlighter: rouge
 :rouge-css: style
