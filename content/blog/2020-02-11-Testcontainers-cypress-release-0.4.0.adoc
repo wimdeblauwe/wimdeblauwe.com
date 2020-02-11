@@ -1,0 +1,115 @@
+---
+title: "Testcontainers-cypress release 0.4.0"
+date: 2020-02-11
+draft: false
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+https://github.com/wimdeblauwe/testcontainers-cypress/releases/tag/testcontainers-cypress-0.4.0[Testcontainers-cypress 0.4.0] is released with support for Cypress 4.0.1 which has Firefox support.
+
+
+<!--more-->
+
+== Multiple browsers
+
+With testcontainers-cypress 0.4.0, it is now possible to specify which browser to use:
+
+[source,java]
+----
+try (CypressContainer container = new CypressContainer().withLocalServerPort(port)
+                                                        .withBrowser("firefox")) {
+    container.start();
+    CypressTestResults testResults = container.getTestResults();
+    ...
+}
+----
+
+If we combine this with JUnit 5 DynamicTest support, we can do this:
+
+[source,java]
+----
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+class TodoControllerCypressIntegrationTest {
+    @LocalServerPort
+    private int port;
+
+    @TestFactory
+    List<DynamicContainer> runCypressTests() throws InterruptedException, IOException, TimeoutException {
+        Testcontainers.exposeHostPorts(port);
+
+        DynamicContainer chromeTests = DynamicContainer.dynamicContainer("Chrome", runCypressTestsOnBrowser("chrome")); // <.>
+        DynamicContainer firefoxTests = DynamicContainer.dynamicContainer("Firefox", runCypressTestsOnBrowser("firefox")); // <.>
+        return List.of(chromeTests, firefoxTests);
+    }
+
+    @NotNull
+    private List<DynamicContainer> runCypressTestsOnBrowser(String browser) throws InterruptedException, TimeoutException, IOException {
+        try (CypressContainer container = new CypressContainer().withLocalServerPort(port)
+                                                                .withBrowser(browser)) {
+            container.start();
+            CypressTestResults testResults = container.getTestResults();
+
+            return convertToJUnitDynamicTests(testResults); // <.>
+        }
+    }
+
+    @NotNull
+    private List<DynamicContainer> convertToJUnitDynamicTests(CypressTestResults testResults) {
+        List<DynamicContainer> dynamicContainers = new ArrayList<>();
+        List<CypressTestSuite> suites = testResults.getSuites();
+        for (CypressTestSuite suite : suites) {
+            createContainerFromSuite(dynamicContainers, suite);
+        }
+        return dynamicContainers;
+    }
+
+    private void createContainerFromSuite(List<DynamicContainer> dynamicContainers, CypressTestSuite suite) {
+        List<DynamicTest> dynamicTests = new ArrayList<>();
+        for (CypressTest test : suite.getTests()) {
+            dynamicTests.add(DynamicTest.dynamicTest(test.getDescription(), () -> assertTrue(test.isSuccess())));
+        }
+        dynamicContainers.add(DynamicContainer.dynamicContainer(suite.getTitle(), dynamicTests));
+    }
+}
+----
+<.> Run the tests in Chrome
+<.> Run the tests in Firefox
+<.> Convert the results of the Cypress tests into `DynamicContainer` and `DynamicTest` objects
+
+When running the test in IntelliJ, we see this nice hierarchy of the tests, grouped per browser:
+
+image::{imagesdir}/2020/02/intellij-test-results-multiple-browsers.png[]
+
+== Specify what tests to run
+
+With this release, a new `withSpec(String spec)` method is added.
+This allows to specify a single spec file to run or to run multiple by specifying a wildcard.
+
+For example to specify a single spec file:
+
+[source,java]
+----
+try (CypressContainer container = new CypressContainer().withLocalServerPort(port)
+                                                        .withSpec("cypress/integration/todos.spec.js")) {
+    container.start();
+    CypressTestResults testResults = container.getTestResults();
+
+----
+
+Example with wildcards:
+
+[source,java]
+----
+try (CypressContainer container = new CypressContainer().withLocalServerPort(port)
+                                                        .withSpec("cypress/integration/login/**")) {
+    container.start();
+    CypressTestResults testResults = container.getTestResults();
+----
+
+== Conclusion
+
+See https://github.com/wimdeblauwe/blog-example-code/tree/master/testcontainers-cypress-0.4.0-example[testcontainers-cypress-0.4.0-example] for the full source of this example.
