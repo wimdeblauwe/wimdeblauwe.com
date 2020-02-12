@@ -2,6 +2,7 @@
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge"> {{- $title := ( .Title ) -}} {{- $siteTitle := ( .Site.Title ) -}} {{- if .IsHome -}}
     <title>{{ $siteTitle }} {{ if isset .Site.Params "subtitle" }}- {{ .Site.Params.Subtitle }}{{ end }} </title>
+    {{ template "_internal/google_analytics_async.html" . }}
     {{- else -}}
     <title>{{ $title }} - {{ $siteTitle }}</title>
     {{- end -}} {{- if isset .Site.Params "favicon" -}}
