@@ -1,8 +1,9 @@
 ---
-title: "Synchronisation of Atlassian JIRA with LiquidPlanner   Part 2"
+title: "Synchronisation of Atlassian JIRA with LiquidPlanner - Part 2"
 date: 2011-10-13
 draft: false
 tags: ["jira"]
+aliases: [/2011/10/13/Synchronisation-of-Atlassian-JIRA-with-LiquidPlanner---Part-2]
 ---
 :source-highlighter: rouge
 :rouge-css: style

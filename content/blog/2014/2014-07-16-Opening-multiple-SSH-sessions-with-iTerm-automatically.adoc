@@ -2,6 +2,7 @@
 title: "Opening multiple SSH sessions with iTerm automatically"
 date: 2014-07-16
 draft: false
+aliases: [/2014/07/16/Opening-multiple-SSH-sessions-with-iTerm-automatically/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

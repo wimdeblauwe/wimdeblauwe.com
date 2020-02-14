@@ -3,6 +3,7 @@ title: "Updating JIRA links in Confluence when migrating to new server"
 date: 2012-03-08
 draft: false
 tags: ["jira"]
+aliases: [/2012/03/08/Updating-JIRA-links-in-Confluence-when-migrating-to-new-server/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

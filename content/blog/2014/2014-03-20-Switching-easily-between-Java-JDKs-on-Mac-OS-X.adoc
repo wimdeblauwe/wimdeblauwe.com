@@ -2,6 +2,7 @@
 title: "Switching easily between Java JDKs on Mac OS X"
 date: 2014-03-20
 draft: false
+aliases: [/2014/03/20/Switching-easily-between-Java-JDKs-on-Mac-OS-X/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

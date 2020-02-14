@@ -3,6 +3,7 @@ title: "Angular datatables with server side pagination using Spring Data"
 date: 2016-05-05
 draft: false
 tags: ["spring-boot"]
+aliases: [/2016/05/05/Angular-datatables-with-server-side-pagination-using-Spring-Data/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

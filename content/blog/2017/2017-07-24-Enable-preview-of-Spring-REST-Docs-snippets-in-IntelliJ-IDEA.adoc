@@ -2,6 +2,7 @@
 title: "Enable preview of Spring REST Docs snippets in IntelliJ IDEA"
 date: 2017-07-24
 draft: false
+aliases: [/2017/07/24/enable-preview-of-spring-rest-docs-snippets-in-intellij-idea/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

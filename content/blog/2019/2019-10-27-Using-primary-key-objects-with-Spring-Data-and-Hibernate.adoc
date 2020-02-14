@@ -3,6 +3,7 @@ title: "Using primary key objects with Spring Data and Hibernate"
 date: 2019-10-27
 draft: false
 tags: ["spring-boot"]
+aliases: [/2019/10/27/using-primary-key-objects-with-spring-data-and-hibernate/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

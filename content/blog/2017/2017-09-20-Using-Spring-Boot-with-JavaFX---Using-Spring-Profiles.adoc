@@ -2,8 +2,8 @@
 title: "Using Spring Boot with JavaFX - Using Spring Profiles"
 date: 2017-09-20
 draft: false
-tags: ["javafx"]
-tags: ["spring-boot"]
+tags: ["javafx","spring-boot"]
+aliases: [/2017/09/20/using-spring-boot-with-javafx-using-spring-profiles/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

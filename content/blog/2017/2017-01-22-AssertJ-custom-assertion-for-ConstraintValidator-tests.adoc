@@ -2,6 +2,7 @@
 title: "AssertJ custom assertion for ConstraintValidator tests"
 date: 2017-01-22
 draft: false
+aliases: [/2017/01/22/AssertJ-custom-assertion-for-ConstraintValidator-tests/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

@@ -3,6 +3,7 @@ title: "Running Cypress tests with TestContainers for a Spring Boot with Thymele
 date: 2019-06-15
 draft: false
 tags: ["spring-boot"]
+aliases: [/2019/06/15/running-cypress-tests-with-testcontainers-for-a-spring-boot-with-thymeleaf-application/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

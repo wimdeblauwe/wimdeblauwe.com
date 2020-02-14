@@ -2,6 +2,8 @@
 title: "Building an AsciidoctorJ extension to execute JavaScript"
 date: 2017-10-08
 draft: false
+tags: ["asciidoctor"]
+aliases: [/2017/10/08/building-an-asciidoctorj-extension-to-execute-javascript/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

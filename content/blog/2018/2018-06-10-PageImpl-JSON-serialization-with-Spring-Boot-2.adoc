@@ -3,6 +3,7 @@ title: "PageImpl JSON serialization with Spring Boot 2"
 date: 2018-06-10
 draft: false
 tags: ["spring-boot"]
+aliases: [/2018/06/10/pageimpl-json-serialization-with-spring-boot-2/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

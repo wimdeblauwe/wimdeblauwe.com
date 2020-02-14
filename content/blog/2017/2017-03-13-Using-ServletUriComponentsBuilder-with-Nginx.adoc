@@ -2,6 +2,7 @@
 title: "Using ServletUriComponentsBuilder with Nginx"
 date: 2017-03-13
 draft: false
+aliases: [/2017/03/13/using-servleturicomponentsbuilder-with-nginx/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

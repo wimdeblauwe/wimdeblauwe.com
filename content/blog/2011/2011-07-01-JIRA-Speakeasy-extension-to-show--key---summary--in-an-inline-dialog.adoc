@@ -1,8 +1,9 @@
 ---
-title: "JIRA Speakeasy extension to show  key   summary  in an inline dialog"
+title: "JIRA Speakeasy extension to show 'key - summary' in an inline dialog"
 date: 2011-07-01
 draft: false
 tags: ["jira"]
+aliases: [/2011/07/01/JIRA-Speakeasy-extension-to-show--key---summary--in-an-inline-dialog]
 ---
 :source-highlighter: rouge
 :rouge-css: style

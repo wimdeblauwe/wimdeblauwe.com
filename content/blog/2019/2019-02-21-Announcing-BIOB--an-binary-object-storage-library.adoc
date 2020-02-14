@@ -3,6 +3,7 @@ title: "Announcing BIOB  an binary object storage library"
 date: 2019-02-21
 draft: false
 tags: ["spring-boot"]
+aliases: [/2019/02/21/announcing-biob-an-binary-object-storage-library/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

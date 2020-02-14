@@ -2,6 +2,7 @@
 title: "Flex gotchas for Java programmers"
 date: 2010-11-29
 draft: false
+aliases: [/2010/11/29/Flex-gotchas-for-Java-programmers/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

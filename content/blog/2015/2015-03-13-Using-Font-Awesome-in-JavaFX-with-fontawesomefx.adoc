@@ -3,6 +3,7 @@ title: "Using Font Awesome in JavaFX with fontawesomefx"
 date: 2015-03-13
 draft: false
 tags: ["javafx"]
+aliases: [/2015/03/13/Using-Font-Awesome-in-JavaFX-with-fontawesomefx/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

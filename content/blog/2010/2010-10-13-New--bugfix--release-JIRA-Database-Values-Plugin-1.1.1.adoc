@@ -1,8 +1,9 @@
 ---
-title: "New  bugfix  release JIRA Database Values Plugin 1.1.1"
+title: "New (bugfix) release JIRA Database Values Plugin 1.1.1"
 date: 2010-10-13
 draft: false
 tags: ["jira"]
+aliases: [/2010/10/13/New--bugfix--release-JIRA-Database-Values-Plugin-1.1.1]
 ---
 :source-highlighter: rouge
 :rouge-css: style

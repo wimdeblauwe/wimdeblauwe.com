@@ -1,8 +1,9 @@
 ---
-title: "JIRA Database Values Plugin for JIRA 5.1 released "
+title: "JIRA Database Values Plugin for JIRA 5.1 released"
 date: 2013-01-16
 draft: false
 tags: ["jira"]
+aliases: [/2013/01/16/JIRA-Database-Values-Plugin-for-JIRA-5.1-released]
 ---
 :source-highlighter: rouge
 :rouge-css: style

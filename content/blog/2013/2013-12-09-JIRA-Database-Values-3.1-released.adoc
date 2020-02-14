@@ -3,6 +3,7 @@ title: "JIRA Database Values 3.1 released"
 date: 2013-12-09
 draft: false
 tags: ["jira"]
+aliases: [/2013/12/09/JIRA-Database-Values-3.1-released/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

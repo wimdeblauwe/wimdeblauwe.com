@@ -3,6 +3,7 @@ title: "JQL query for the jira database values plugin"
 date: 2011-01-13
 draft: false
 tags: ["jira"]
+aliases: [/2011/01/13/JQL-query-for-the-jira-database-values-plugin]
 ---
 :source-highlighter: rouge
 :rouge-css: style

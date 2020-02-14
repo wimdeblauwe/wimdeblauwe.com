@@ -2,6 +2,7 @@
 title: "EntryProcessors and EntryBackupProcessors with Hazelcast"
 date: 2015-09-29
 draft: false
+aliases: [/2015/09/29/EntryProcessors-and-EntryBackupProcessors-with-Hazelcast/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

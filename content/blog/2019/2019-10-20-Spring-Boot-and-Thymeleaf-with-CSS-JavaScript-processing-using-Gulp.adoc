@@ -3,6 +3,7 @@ title: "Spring Boot and Thymeleaf with CSS JavaScript processing using Gulp"
 date: 2019-10-20
 draft: false
 tags: ["spring-boot"]
+aliases: [/2019/10/20/spring-boot-and-thymeleaf-with-css-javascript-processing-using-gulp/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

@@ -3,6 +3,7 @@ title: "Release JIRA Database Values plugin 3.3"
 date: 2014-05-24
 draft: false
 tags: ["jira"]
+aliases: [/2014/05/24/Release-JIRA-Database-Values-plugin-3.3/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

@@ -3,6 +3,7 @@ title: "Creating a REST web application in 4 classes"
 date: 2013-12-16
 draft: false
 tags: ["spring-boot"]
+aliases: [/2013/12/16/Creating-a-REST-web-application-in-4-classes]
 ---
 :source-highlighter: rouge
 :rouge-css: style

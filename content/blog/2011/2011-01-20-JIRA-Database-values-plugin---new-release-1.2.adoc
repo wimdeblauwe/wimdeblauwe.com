@@ -3,6 +3,7 @@ title: "JIRA Database values plugin   new release 1.2"
 date: 2011-01-20
 draft: false
 tags: ["jira"]
+aliases: [/2011/01/20/JIRA-Database-values-plugin---new-release-1.2]
 ---
 :source-highlighter: rouge
 :rouge-css: style

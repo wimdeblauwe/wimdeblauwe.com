@@ -2,6 +2,8 @@
 title: "Customization of Asciidoctor PDF output"
 date: 2019-12-20
 draft: false
+tags: ["asciidoctor"]
+aliases: [/2019/12/20/customization-of-asciidoctor-pdf-output/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

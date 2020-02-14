@@ -3,6 +3,7 @@ title: "Datadog integration with AWS Elastic Beanstalk for Spring Boot applicati
 date: 2018-07-06
 draft: false
 tags: ["spring-boot"]
+aliases: [/2018/07/06/datadog-integration-with-aws-elastic-beanstalk-for-spring-boot-application/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

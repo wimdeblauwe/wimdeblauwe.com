@@ -3,6 +3,7 @@ title: "Database Values Plugin upgraded for JIRA 6"
 date: 2013-05-22
 draft: false
 tags: ["jira"]
+aliases: [/2013/05/22/Database-Values-Plugin-upgraded-for-JIRA-6]
 ---
 :source-highlighter: rouge
 :rouge-css: style

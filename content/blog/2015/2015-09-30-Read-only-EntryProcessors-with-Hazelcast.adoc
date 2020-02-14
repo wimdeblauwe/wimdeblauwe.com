@@ -2,6 +2,8 @@
 title: "Read only EntryProcessors with Hazelcast"
 date: 2015-09-30
 draft: false
+tags: ["hazelcast"]
+aliases: [/2015/09/30/Read-only-EntryProcessors-with-Hazelcast]
 ---
 :source-highlighter: rouge
 :rouge-css: style

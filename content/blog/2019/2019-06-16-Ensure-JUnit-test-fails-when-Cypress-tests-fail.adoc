@@ -3,6 +3,7 @@ title: "Ensure JUnit test fails when Cypress tests fail"
 date: 2019-06-16
 draft: false
 tags: ["spring-boot"]
+aliases: [/2019/06/16/ensure-junit-test-fails-when-cypress-tests-fail/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

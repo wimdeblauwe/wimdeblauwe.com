@@ -2,8 +2,8 @@
 title: "Using JavaFX on Raspberry Pi 3 with Gluon"
 date: 2017-08-26
 draft: false
-tags: ["javafx"]
-tags: ["spring-boot"]
+tags: ["javafx","spring-boot"]
+aliases: [/2017/08/26/using-javafx-on-raspberry-pi-3-with-gluon/]
 ---
 :source-highlighter: rouge
 :rouge-css: style
@@ -17,7 +17,7 @@ In this post, I am going to detail the steps to get a simple JavaFX application 
 
 For this setup, I used the Raspberry Pi 3 with the official 7" touchscreen connected.
 
-image:https://wimdeblauwe.files.wordpress.com/2017/08/img_1296.jpg[Raspberry Pi with touchscreen,width=1280,height=960]
+image:{imagesdir}/2017/08/img_1296.jpg[Raspberry Pi with touchscreen,width=1280,height=960]
 
 == Raspbian Installation
 
@@ -25,7 +25,7 @@ First off, download Raspbian from https://www.raspberrypi.org/downloads/raspbian
 
 Insert the SD-card in the Raspberry Pi and let it boot. The screen should look like this when done:
 
-image:https://wimdeblauwe.files.wordpress.com/2017/08/img_2384.jpg[Raspbian start screen,width=1280,height=960]
+image:{imagesdir}/2017/08/img_2384.jpg[Raspbian start screen,width=1280,height=960]
 
 Find out the IP address of the Raspberry Pi by running `ifconfig` on the Pi itself or looking at the DHCP clients list of your router.
 
@@ -148,12 +148,14 @@ NOTE: The `sudo` is needed to make the button click work. If you know of a way t
 
 Now you have JavaFX running on the Raspberry Pi:
 
-image:https://wimdeblauwe.files.wordpress.com/2017/08/javafx-on-pi.jpg[Javafx on pi,width=1280,height=960]
+image:{imagesdir}/2017/08/javafx-on-pi.jpg[Javafx on pi,width=1280,height=960]
 
 There is no exit implemented in the demo application, so you have to kill it over SSH to stop it.
 
 == Conclusion
 
-We saw how get a JavaFX application running on the Raspberry Pi 3 hardware using the Gluon JavaFX Embedded SDK. I will explain how I combined JavaFX with https://projects.spring.io/spring-boot/[Spring Boot] for a real fun programming stack in https://wimdeblauwe.wordpress.com/2017/09/18/using-spring-boot-with-javafx/[a future post].
+We saw how get a JavaFX application running on the Raspberry Pi 3 hardware using the Gluon JavaFX Embedded SDK.
+I will explain how I combined JavaFX with https://projects.spring.io/spring-boot/[Spring Boot] for a real fun
+programming stack in https://www.wimdeblauwe.com/2017/09/18/using-spring-boot-with-javafx/[a future post].
 
 _This know-how originated during the development of a https://www.pegusapps.com/[PegusApps] project._

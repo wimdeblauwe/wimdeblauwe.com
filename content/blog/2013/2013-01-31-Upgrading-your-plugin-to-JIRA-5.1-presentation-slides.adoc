@@ -3,6 +3,7 @@ title: "Upgrading your plugin to JIRA 5.1 presentation slides"
 date: 2013-01-31
 draft: false
 tags: ["jira"]
+aliases: [/2013/01/31/Upgrading-your-plugin-to-JIRA-5.1-presentation-slides/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

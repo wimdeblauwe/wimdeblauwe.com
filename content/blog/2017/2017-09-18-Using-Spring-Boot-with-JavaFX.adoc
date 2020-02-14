@@ -3,6 +3,7 @@ title: "Using Spring Boot with JavaFX"
 date: 2017-09-18
 draft: false
 tags: ["javafx","spring-boot"]
+aliases: [/2017/09/18/using-spring-boot-with-javafx/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

@@ -3,6 +3,7 @@ title: "Using AspectJ and Annotations to document framework pollution in the dom
 date: 2010-10-05
 draft: false
 tags: ["aspectj"]
+aliases: [/2010/10/05/Using-AspectJ-and-Annotations-to-document-framework-pollution-in-the-domain-model/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

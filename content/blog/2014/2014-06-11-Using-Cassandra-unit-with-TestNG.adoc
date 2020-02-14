@@ -2,6 +2,7 @@
 title: "Using Cassandra unit with TestNG"
 date: 2014-06-11
 draft: false
+aliases: [/2014/06/11/Using-Cassandra-unit-with-TestNG]
 ---
 :source-highlighter: rouge
 :rouge-css: style

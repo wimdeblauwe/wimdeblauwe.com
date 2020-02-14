@@ -3,6 +3,7 @@ title: "Entering the JIRA database values plugin in the Atlassian codegeist comp
 date: 2011-05-03
 draft: false
 tags: ["jira"]
+aliases: [/2011/05/03/Entering-the-JIRA-database-values-plugin-in-the-Atlassian-codegeist-competition/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

@@ -3,6 +3,7 @@ title: "Introduction to using JavaFX with afterburner.fx"
 date: 2015-03-24
 draft: false
 tags: ["javafx"]
+aliases: [/2015/03/24/Introduction-to-using-JavaFX-with-afterburner.fx/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

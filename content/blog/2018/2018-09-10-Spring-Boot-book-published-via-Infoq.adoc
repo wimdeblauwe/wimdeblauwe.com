@@ -3,6 +3,7 @@ title: "Spring Boot book published via Infoq"
 date: 2018-09-10
 draft: false
 tags: ["spring-boot"]
+aliases: [/2018/09/10/spring-boot-book-published-via-infoq/]
 ---
 :source-highlighter: rouge
 :rouge-css: style

@@ -2,6 +2,7 @@
 title: "How to expose your flex test code to other Maven modules using flex mojos"
 date: 2010-10-18
 draft: false
+aliases: [/2010/10/18/How-to-expose-your-flex-test-code-to-other-Maven-modules-using-flex-mojos/]
 ---
 :source-highlighter: rouge
 :rouge-css: style
