@@ -91,7 +91,7 @@ tagline.innerHTML = 'Added with JavaScript';
 
 Running this application should show the following web page at http://localhost:8080/[http://localhost:8080] :
 
-image::{imagesdir}/2019/10/image.png[]
+image::{imagesdir}/2019/10/gulp-processing-1.png[]
 
 == Frontend tooling setup
 
@@ -213,12 +213,14 @@ Finally, add the babel processing in the `copy-js` task in the `gulpfile.js`:
 
 [source,javascript]
 ----
-gulp.task('copy-js', () => gulp.src(['src/main/resources/**/*.js']).pipe(babel()).pipe(gulp.dest('target/classes/')));
+gulp.task('copy-js', () => gulp.src(['src/main/resources/**/*.js'])
+    .pipe(babel())
+    .pipe(gulp.dest('target/classes/')));
 ----
 
 If you now run the Spring Boot application and `npm run watch`, and you edit the `application.js`, you'll see that the resulting JavaScript in the browser has been transpiled with Babel:
 
-image::{imagesdir}/2019/09/image-3.png[]
+image::{imagesdir}/2019/10/gulp-processing-2.png[]
 
 == Production builds
 
