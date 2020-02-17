@@ -429,7 +429,7 @@ The resulting `application.css` in `target/classes/static/css` will only contain
 
 It is perfectly possible to use Tailwind CSS in a Spring Boot project that uses Thymeleaf for server-side rendered HTML.
 
-The full source code is available on GitHub.
+The full source code is available on https://github.com/wimdeblauwe/blog-example-code/tree/master/thymeleaf-with-tailwind-css[GitHub].
 
 
 
