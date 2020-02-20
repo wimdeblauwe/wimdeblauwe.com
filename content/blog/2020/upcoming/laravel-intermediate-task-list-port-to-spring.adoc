@@ -1,0 +1,266 @@
+---
+title: "Port of the Laravel Intermediate Task List tutorial to Spring Boot with Thymeleaf"
+date: 2020-02-17
+draft: true
+tags: ["thymeleaf", "spring-boot", "laravel"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:numbered:
+https://laravel.com/[Laravel] is a very interesting PHP framework for building web applications.
+Their docs have https://laravel.com/docs/5.2/quickstart-intermediate[a nice tutorial] to build a task list to explain many of their concepts.
+This blog post basically mirrors that tutorial but shows how to build the same web application using https://spring.io/projects/spring-boot[Spring Boot] and https://www.thymeleaf.org/[Thymeleaf].
+
+<!--more-->
+
+toc::[]
+
+== Installation
+
+=== Prerequisites
+
+The preferred way to install Laravel is to use composer.
+For our Spring Boot port, we will be using http://maven.apache.org/[Maven] as our build tool.
+
+Installation of Java and Maven on macOS is very easy if you use https://sdkman.io/[SDKMAN!].
+Follow the installation instructions at https://sdkman.io/install to get started.
+
+* Install Java:
++
+[source]
+----
+sdk install java 11.0.5.hs-adpt
+----
+* Install Maven
++
+[source]
+----
+sdk install maven
+----
+
+We need to specify a version for Java since we want to have the current LTS (Long Term Support) version which is 11 at the time of writing.
+For Maven, we can just get the latest one (3.6.3 at the time of writing)
+
+To check if both are installed correctly, run:
+
+[source]
+----
+> mvn --version
+Apache Maven 3.6.3 (cecedd343002696d0abb50b32b541b8a6ba2883f)
+Maven home: /Users/wdb/.sdkman/candidates/maven/current
+Java version: 11.0.5, vendor: AdoptOpenJDK, runtime: /Users/wdb/.sdkman/candidates/java/11.0.5.hs-adpt
+Default locale: en_BE, platform encoding: UTF-8
+OS name: "mac os x", version: "10.15.3", arch: "x86_64", family: "mac"
+----
+
+=== Spring installation
+
+With Laravel, the project is created using the following command:
+
+[source]
+----
+composer create-project laravel/laravel quickstart --prefer-dist
+----
+
+Spring Boot has no such command.
+Instead, a project is generated via https://start.spring.io.
+Open that web page and select the following options:
+
+[cols="20,20,60"]
+|===
+|Option |Value|Description
+
+|Project
+|Maven
+|Allows to select the build tool to use. The 2 most widely used options are Maven and Gradle.
+
+|Language
+|Java
+|Java code runs on the JVM (Java Virtual Machine).
+However, there are also other languages that run in the same environment.
+https://kotlinlang.org/[Kotlin] and http://groovy-lang.org/[Groovy] are other options that are possible.
+
+|Spring Boot
+|2.2.4
+|Selection of the Spring Boot version to use.
+This also defines what compatible versions of dependencies that will be used.
+
+|Project Metadata
+a|* GroupId: `com.wimdeblauwe.examples`
+* ArtifactId: `laravel-intermediate-task-list`
+|The `groupId:artifactId` defines the "name" of the project.
+Don't worry about this too much now, you can always change it later.
+
+|Options
+|Java 11
+|The "Options" item hides some more advanced options.
+For now, the most important to select "Java 11" since that is the version of Java we want to use.
+
+|Dependencies
+|Spring Web, Thymeleaf, Spring Data JPA, Flyway Migration, Spring Security
+a|Spring Boot is a very modular system.
+When creating our project, we need to specify which modules we want to use.
+In this case, we need to following 4 modules:
+
+* Spring Web: Web server and routing
+* Thymeleaf: HTML templating (similar to Blade)
+* Spring Data JPA: Database access (similar to Eloquent)
+* Flyway Migration: Database migrations
+* Spring Security: Application security
+|===
+
+When everything is correctly selected, the page should look similar to this:
+
+image::{imagesdir}/2020/02/laravel-intermediate-task-list-01.png[]
+
+Press the 'Generate' button and a zip file with your project will be downloaded.
+Unzip the project and open it in your favorite IDE (I use https://www.jetbrains.com/idea/[IntelliJ IDEA])
+
+== Prepping the database
+
+=== Database migrations
+
+Laravel uses the Artisan CLI to generate PHP code that defines the database migration.
+With Spring Boot, we will be using https://flywaydb.org/[Flyway].
+
+Most important differences:
+
+* Flyway uses plain SQL script to define the migrations (although you can use Java classes as well if you want)
+* There is no code to reverse the migrations (like the `down()` method in Laravel migrations) by default.
+It is possible with https://flywaydb.org/download/[Flyway Pro] to use https://flywaydb.org/documentation/migrations#undo-migrations[Undo Migrations] if you require this.
+
+Spring Boot assumes Flyway migrations are put in `src/main/resources/db/migration` by default.
+
+After creating those directories, we can add our first migration file:
+
+.V1.0__init.sql
+[source,sql]
+----
+CREATE TABLE task_user
+(
+    id       SERIAL       NOT NULL,
+    name     VARCHAR(255) NOT NULL,
+    email    VARCHAR(255) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE task
+(
+    id      SERIAL       NOT NULL,
+    user_id SERIAL       NOT NULL,
+    name    VARCHAR(255) NOT NULL,
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE task
+    ADD CONSTRAINT FK_task_to_user FOREIGN KEY (user_id) REFERENCES task_user;
+----
+
+See the https://flywaydb.org/documentation/migrations#naming[Naming] chapter in the Flyway documentation for more information
+about how the name of the SQL file influences the order of the migrations.
+
+[NOTE]
+====
+We are using `SERIAL` to get auto-incremented primary keys.
+This is easiest now to get started, but it https://vladmihalcea.com/postgresql-serial-column-hibernate-identity/[might not always be the most performant option].
+====
+
+The database for this application will be https://www.postgresql.org/[PostgreSQL].
+Java needs a JDBC driver to talk to the database.
+
+We can add the PostgreSQL driver by adding a dependency in the `pom.xml` file that was generated by the Spring Boot website.
+Go to https://start.spring.io again and go straight for the "Dependencies" section.
+Type "PostgreSQL" and select the "PostgreSQL Driver" dependency that pops up.
+Now use the 'Explore' button to view the `pom.xml` that would be generated if we would create a project.
+In the popup, you will find the dependency section:
+
+[source,xml]
+----
+<dependency>
+    <groupId>org.postgresql</groupId>
+    <artifactId>postgresql</artifactId>
+    <scope>runtime</scope>
+</dependency>
+----
+
+Add this XML snippet to your own `pom.xml` inside the `<dependencies>` node.
+
+Next, we need to tell our application to connect to our PostgreSQL database.
+We do this by adding some properties to `src/main/resources/application.properties`:
+
+[source]
+----
+spring.datasource.url=jdbc:postgresql://localhost/taskdb
+spring.datasource.username=postgres
+spring.datasource.password=my-secret-pwd
+spring.jpa.hibernate.ddl-auto=validate
+----
+
+[TIP]
+This assumes that we already created a database called `taskdb` in the PostgreSQL database.
+
+[NOTE]
+====
+If you don't have a PostgreSQL database, you can use H2, which is an embedded database that can run in-memory so you don't have to install anything.
+
+In that case, add this dependency in the `pom.xml`:
+[source,xml]
+----
+<dependency>
+    <groupId>com.h2database</groupId>
+    <artifactId>h2</artifactId>
+    <scope>runtime</scope>
+</dependency>
+----
+
+Use this in `application.properties`:
+[source]
+----
+spring.datasource.url=jdbc:h2:mem:tasksdb;MODE=PostgreSQL
+----
+====
+
+If you now start the application, you should see output similar to this:
+
+[source]
+----
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::        (v2.2.4.RELEASE)
+
+2020-02-20 21:01:38.990  INFO 23191 --- [           main] l.LaravelIntermediateTaskListApplication : Starting LaravelIntermediateTaskListApplication on Wims-MacBook-Pro.local with PID 23191
+2020-02-20 21:01:38.997  INFO 23191 --- [           main] l.LaravelIntermediateTaskListApplication : No active profile set, falling back to default profiles: default
+2020-02-20 21:01:39.745  INFO 23191 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+
+...
+
+2020-02-20 21:01:41.794  INFO 23191 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 8080 (http) with context path ''
+2020-02-20 21:01:41.800  INFO 23191 --- [           main] l.LaravelIntermediateTaskListApplication : Started LaravelIntermediateTaskListApplication in 3.134 seconds (JVM running for 3.859)
+----
+
+If you get an error, carefully check all described steps. Or have a look to https://TODO[this commit] in the example code repository.
+
+We can now check using a database tool that the tables have been created according to our Flyway script:
+
+image::{imagesdir}/2020/02/laravel-intermediate-task-list-02.png[width=500]
+
+There is also the `flyway_schema_history` table.
+This is used internally by Flyway to keep track of what migration have already run.
+
+=== Models
+
+Laravel uses https://laravel.com/docs/5.2/eloquent[Eloquent] as ORM (object-relational mapper).
+In the Java world, there is a standard called JPA (Java Persistence API) that is similar to that.
+As JPA is only an API, you need an implementation as well.
+The most known implementation is https://hibernate.org/[Hibernate] and this is what we are going to use here.
+

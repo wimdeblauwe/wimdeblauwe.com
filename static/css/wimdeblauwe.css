@@ -2,6 +2,12 @@ body {
     font-family: 'Open Sans', sans-serif;
 }
 
+@media only screen and (min-width: 1150px) {
+    .wrapper {
+        max-width: 1024px;
+    }
+}
+
 h1,
 h2,
 h3,
@@ -110,6 +116,14 @@ h3.summary {
     flex: 1;
 }
 
+#toctitle {
+    font-style: italic;
+}
+.toc ul li {
+    margin-bottom: 0;
+    list-style: none;
+}
+
 @media only screen and (max-width: 670px) {
     div.desktop {
         display: none;
@@ -128,9 +142,15 @@ table {
     border-spacing: 0;
 }
 
-table td {
+.colist table td, .admonitionblock table td {
     border: 0;
 }
+
+p.tableblock {
+    margin-block-start: 0;
+    margin-block-end: 0;
+}
+
 .fa {
     font-family: "Font Awesome 5 Free";
 }
