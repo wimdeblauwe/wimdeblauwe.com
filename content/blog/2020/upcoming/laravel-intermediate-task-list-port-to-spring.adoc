@@ -11,6 +11,8 @@ tags: ["thymeleaf", "spring-boot", "laravel"]
 :icons: font
 :toc: macro
 :numbered:
+:table-caption!:
+
 https://laravel.com/[Laravel] is a very interesting PHP framework for building web applications.
 Their docs have https://laravel.com/docs/5.2/quickstart-intermediate[a nice tutorial] to build a task list to explain many of their concepts.
 This blog post basically mirrors that tutorial but shows how to build the same web application using https://spring.io/projects/spring-boot[Spring Boot] and https://www.thymeleaf.org/[Thymeleaf].
@@ -263,4 +265,182 @@ Laravel uses https://laravel.com/docs/5.2/eloquent[Eloquent] as ORM (object-rela
 In the Java world, there is a standard called JPA (Java Persistence API) that is similar to that.
 As JPA is only an API, you need an implementation as well.
 The most known implementation is https://hibernate.org/[Hibernate] and this is what we are going to use here.
+
+To start, we create our `User` class:
+
+[source,java]
+----
+package com.wimdeblauwe.examples.laravelintermediatetasklist.user;
+
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.Table;
+
+@Entity //<1>
+@Table(name = "task_user") //<2>
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id; //<3>
+    private String name;
+    private String email;
+    private String password;
+
+    protected User() { // <4>
+
+    }
+
+    public User(Long id, String name, String email, String password) {
+        this.id = id;
+        this.name = name;
+        this.email = email;
+        this.password = password;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+}
+----
+<1> The `@Entity` annotation indicates that this class is the object model for a database table
+<2> The `@Table` annotation allows to specify the name of the table in our database.
+If we don't specify the annotation at all, the name of the class is used converted to `snake_case`.
+<3> The `@Id` and `@GeneratedValue` annotations are used to indicate our `id` field is an auto-increment primary key in the database.
+<4> Hibernate requires a no-argument constructor.
+We hide from the rest of the application by making it `protected` as our application code should not use that constructor.
+
+We also create the `Task` class:
+
+[source,java]
+----
+package com.wimdeblauwe.examples.laravelintermediatetasklist.task;
+
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+
+@Entity //<1>
+public class Task {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String name;
+
+    protected Task() {
+
+    }
+
+    public Task(Long id, String name) {
+        this.id = id;
+        this.name = name;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+}
+----
+<1> We don't have the `@Table` annotation here since the database table is called `task`, which follows the default naming scheme.
+
+[WARNING]
+====
+Eloquent defaults to plural names for the database tables when deriving the table name from the model.
+In Spring Boot, it is singular by default
+
+.Default table name examples
+|===
+|Model |Eloquent |Spring Boot/Hibernate
+
+|`Task`
+|`tasks`
+|`task`
+
+|`ProductInfo`
+|`product_infos`
+|`product_info`
+|===
+====
+
+=== Relationships between models
+
+Now that our models are defined, we need to link them.
+For example, our `User` can have many `Task` instances, while a `Task` is assigned to a single `User`.
+Defining a relationship will allow us to fluently walk through our relations like so:
+
+[source,java]
+----
+User user = repository.findById(1);
+
+for (Task task : user.getTasks()) {
+    System.out.println(task.getName());
+}
+----
+
+The first relation is from `User` to `Task`:
+
+[source,java]
+----
+public class User {
+
+    ...
+
+    @OneToMany(mappedBy = "user", //<1>
+            cascade = CascadeType.ALL, //<2>
+            orphanRemoval = true) //<3>
+    private Set<Task> tasks;
+
+    ...
+
+    public Set<Task> getTasks() {
+        return tasks;
+    }
+
+    public void setTasks(Set<Task> tasks) {
+        this.tasks = tasks;
+    }
+}
+----
+<1> The `@OneToMany` annotation indicates that one `User` has many `Task` objects.
+The `mappedBy` property refers to the name of the property in the `Task` class that refers to the `User` class.
+<2> `cascade` defines how the persistence of the `Task` objects should be done when saving a `User` in the database.
+With `CascadeType.ALL`, we specify that we want all tasks to be saved when we save the `User` object.
+<3> `orphanRemoval` indicates that we want all task records removed from the database automatically when a user is removed.
+The inverse relation from `Task` to `User` should be coded like this:
+
+[source,java]
+----
+public class Task {
+    ...
+
+    @ManyToOne(fetch = FetchType.LAZY) //<1>
+    private User user;
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+}
+----
+<1> The `@ManyToOne` annotation indicates that one `Task` is linked to one `User`, but that a `User` can have many `Task` objects.
+See https://www.baeldung.com/hibernate-lazy-eager-loading[Eager/Lazy Loading In Hibernate] if you want to know more about the `FetchType.LAZY` value.
 
