@@ -444,3 +444,254 @@ public class Task {
 <1> The `@ManyToOne` annotation indicates that one `Task` is linked to one `User`, but that a `User` can have many `Task` objects.
 See https://www.baeldung.com/hibernate-lazy-eager-loading[Eager/Lazy Loading In Hibernate] if you want to know more about the `FetchType.LAZY` value.
 
+Now that our relationships are defined, we can start building our controllers.
+
+== Routing
+
+With Laravel, you use an `app/Http/routes.php` file to link URLs to methods on controllers.
+With Spring MVC, we annotate the controller methods with the URLs directly.
+
+For example:
+
+[source,java]
+----
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+
+@Controller // <1>
+public class RootController {
+
+    @GetMapping("/") // <2>
+    public String welcome() {
+        return "welcome";
+    }
+}
+----
+<.> Class must be annotated with `@Controller` to be picked up by Spring MVC.
+<.> The `@GetMapping` annotation indicates that a request on `/` should call this method.
+
+[NOTE]
+====
+Although not common, it is also possible to define routes in a central place with Spring.
+See https://www.baeldung.com/spring-mvc-functional-controllers for more info on that.
+====
+
+=== Displaying a view
+
+The controller methods return a `String`, which indicates the server-side view that will be rendered.
+With https://www.thymeleaf.org/[Thymeleaf], templates should be put in `src/main/resources/templates`
+
+Since we return `"welcome"` in our `welcome()` method in the `RootController`, we need to create a `src/main/resources/templates/welcome.html` file:
+
+[source,html]
+----
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Welcome</title>
+</head>
+<body>
+<h1>Welcome</h1>
+<div>
+    Your Application's Landing Page.
+</div>
+</body>
+</html>
+----
+
+If you now start the application and go to http://localhost:8080, you should see something like this:
+
+image::{imagesdir}/2020/02/laravel-intermediate-task-list-03.png[]
+
+[WARNING]
+====
+Since Spring Security is in the list of our dependencies (in the `pom.xml` file), it becomes active with a default configuration automatically.
+So there will be a default login page.
+
+Use `user` as username and check the logging for the generated password (It will change on each startup of the application)
+It is displayed like this in the output:
+[source]
+----
+2020-02-21 16:10:23.323  INFO 26411 --- [           main] .s.s.UserDetailsServiceAutoConfiguration :
+
+Using generated security password: 17536cd3-b0ac-4de6-bd96-a3a0eee40412
+
+----
+====
+
+=== Authentication
+
+As stated in the warning above, our application is "secure" by just adding the Spring Security dependency in our Maven project.
+However, having only a single user and a password that restarts every time we start the application is hardly convenient for any application.
+
+Let's configure our application to use a fixed password so we can get to know a bit about configuration of Spring Security.
+We will create a `WebSecurityConfiguration` class for this:
+
+[source,java]
+----
+package com.wimdeblauwe.examples.laravelintermediatetasklist.infrastructure.security;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+
+@Component // <1>
+public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter { // <2>
+
+    @Bean
+    public PasswordEncoder passwordEncoder() { // <3>
+        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+    }
+
+    @Autowired
+    public void configureGlobal(AuthenticationManagerBuilder auth, PasswordEncoder passwordEncoder) throws Exception {
+        auth.inMemoryAuthentication() // <4>
+            .withUser("user") // <5>
+            .password(passwordEncoder.encode("password")) // <6>
+            .roles("USER"); // <7>
+    }
+}
+----
+<1> The `@Component` annotation instructs Spring to create a Singleton instance of this class when our application starts.
+<2> By extending from `WebSecurityConfigurerAdapter`, we can override methods to configure the security
+<3> Define what `PasswordEncoder` should be used in our application
+<4> We want to "store" our users in-memory (We will switch to using our database later)
+<5> Specify the username of the user
+<6> Specify the password of the user using the password encoder
+<7> Specify the roles of the defined user. We use `USER` here as this is the default role that is needed on secured pages.
+
+If you now restart the application, you should be able to log on using `user`/`password`.
+
+==== Authentication views
+
+Laravel has the `make:auth` Artisan command to generate default registration and login templates, which are really convenient.
+There is no such thing in Spring (except for the default login form), so we will need code this ourselves.
+
+Let's start with the login form:
+
+.src/main/resources/templates/login.html
+[source,html]
+----
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Login</title>
+</head>
+<body>
+<h1>Tasks List - Login</h1>
+<div>
+    <form th:action="@{/login}" method="post"> <!--1-->
+        <div>
+            <div>
+                Username:
+                <input type="text" name="username" id="username"
+                       required
+                       autofocus>
+            </div>
+            <div>
+                Password:
+                <input type="password" name="password"
+                       required>
+            </div>
+            <div>
+                <button type="submit">Sign In</button>
+            </div>
+        </div>
+    </form>
+</div>
+</body>
+</html>
+----
+<.> Define a HTML form that does a `POST` to `/login`
+
+In this template we use a Thymeleaf link URL expression: `@{/login}`
+This defines on what URL the `POST` should be done when the form is submitted.
+
+Next, we create the corresponding controller:
+
+[source,java]
+----
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+
+import java.security.Principal;
+
+@Controller
+public class UserController {
+    @GetMapping("/login") // <1>
+    public String login(@AuthenticationPrincipal Principal principal) { // <2>
+        if (principal == null) {
+            return "login"; // <3>
+        } else {
+            return "redirect:/"; // <4>
+        }
+    }
+}
+----
+<.> Map the `GET` request on `/login` to the `login` method.
+<.> Inject the authenticated user, if there is already an authenticated user.
+Is `null` if there is none.
+<.> Show the `login.html` template when there is no authenticated user.
+<.> Redirect to the home page if there is already an authenticated user.
+
+Lastly, override the `configure(HttpSecurity http)` method in the `WebSecurityConfiguration` class:
+
+[source,java]
+----
+@Component
+public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
+
+    ...
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http.authorizeRequests() // <1>
+            .anyRequest() // <1>
+            .authenticated() // <1>
+            .and()
+                .formLogin() // <2>
+                .loginPage("/login") // <3>
+                .permitAll() // <4>
+            .and()
+                .logout() // <5>
+                .permitAll();
+    }
+}
+----
+<1> States that any request should be authenticated
+<2> Use form based login
+<3> Specify that the login page is available at the `/login` endpoint
+<4> Allow all users (also the not authenticated ones) to access the login page
+<5> Configure logout
+
+If you now restart the application and go to http://localhost:8080, you will be redirected to http://localhost:8080/login.
+Our (ugly 🙈) custom login page will be shown:
+
+image::{imagesdir}/2020/02/laravel-intermediate-task-list-04.png[]
+
+You can log in using `user`/`password` and after that you are redirected to the welcome page.
+
+[NOTE]
+====
+If you manually access http://localhost:8080/login after you are already logged on, then
+you are immediately redirected to the welcome page.
+This is due to the redirect we have set up in `UserController`.
+====
+
+== References
+
+* Source code for this blog entry: TODO
+* Source code PHP tutorial: https://github.com/laravel/quickstart-intermediate/
