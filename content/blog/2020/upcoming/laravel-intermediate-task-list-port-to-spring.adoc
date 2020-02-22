@@ -192,6 +192,12 @@ In the popup, you will find the dependency section:
 
 Add this XML snippet to your own `pom.xml` inside the `<dependencies>` node.
 
+[NOTE]
+====
+There is no need to specify a version for the dependency, because Spring Boot handles this for us via the `spring-boot-starter-parent` parent.
+See https://www.baeldung.com/spring-boot-starter-parent[The Spring Boot Starter Parent] for more info.
+====
+
 Next, we need to tell our application to connect to our PostgreSQL database.
 We do this by adding some properties to `src/main/resources/application.properties`:
 
@@ -690,6 +696,237 @@ If you manually access http://localhost:8080/login after you are already logged 
 you are immediately redirected to the welcome page.
 This is due to the redirect we have set up in `UserController`.
 ====
+
+=== The task controller
+
+To create and retrieve task, we'll need to build a `TaskController`.
+Artisan has a command `make:controller` to do this.
+With Spring, we just create the class manually:
+
+[source,java]
+----
+package com.wimdeblauwe.examples.laravelintermediatetasklist.task.web;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.*;
+
+@Controller
+@RequestMapping("/tasks") // <1>
+public class TaskController {
+
+    @GetMapping
+    public String index() {
+        return null;
+    }
+
+    @PostMapping // <2>
+    public String store() {
+        return null;
+    }
+
+    @DeleteMapping("/{taskId}") // <3>
+    public String destroy(@PathVariable Integer taskId) {
+        return null;
+    }
+}
+----
+<1> The `RequestMapping` annotation indicates that all methods in this class map to the `/tasks` URL (and below)
+<2> Declare a `POST` mapping on the root (below `/tasks`)
+<3> Declare a `DELETE` mapping on `/tasks/<taskId>`.
+The `<taskId>` part of the URL will be injected as the `taskId` variable in the method.
+
+==== Authenticating All Task Routes
+
+For this application, we want all of our task routes to require an authenticated user.
+In other words, the user must be "logged into" the application in order to create a task.
+So, we need to restrict access to our task routes to only authenticated users.
+
+In Laravel, you need to add a call to the `middleware` method.
+With Spring, we handle authentication centrally in our `WebSecurityConfiguration` class we have created before.
+Since we declared there that all routes should be authenticated, there is no extra work to do for our `TaskController`.
+
+=== Building Layouts & Views
+
+The primary part of this application only has a single view which contains a form for adding new tasks as well as a listing of all current tasks.
+To help you visualize the view, here is a screenshot of the finished application with basic Bootstrap CSS styling applied:
+
+TODO Add screenshot here
+
+==== Defining The Layout
+
+Almost all web applications share the same layout across pages.
+For example, this application has a top navigation bar that would be typically present on every page (if we had more than one).
+Laravel makes it easy to share these common features across every page using Blade layouts.
+
+Thymeleaf has a very similar layout feature as well called *Thymeleaf Layout Dialect*.
+
+We need to start with adding the necessairy dependency in our `pom.xml`:
+
+[source,xml]
+----
+<project>
+    <dependencies>
+        ...
+        <dependency>
+            <groupId>nz.net.ultraq.thymeleaf</groupId>
+            <artifactId>thymeleaf-layout-dialect</artifactId>
+        </dependency>
+    </dependencies>
+</project>
+----
+
+Now we can create our layout template file:
+
+[source,html]
+.src/main/resources/templates/layouts/app.html
+----
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"> <!--1-->
+<head>
+    <title>Tasks</title>
+
+    <!-- Fonts -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.4.0/css/font-awesome.min.css" rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/css?family=Lato:100,300,400,700" rel='stylesheet' type='text/css'>
+
+    <!-- Styles -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Lato';
+        }
+        .fa-btn {
+            margin-right: 6px;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+    <nav class="navbar navbar-default">
+        <!-- Navbar Contents here (See GitHub sources) -->
+    </nav>
+</div>
+
+<div layout:fragment="content"> <!--2-->
+
+</div>
+
+<!-- JavaScript -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+</body>
+</html>
+----
+<1> Declare the `layout` namespace
+<2> Declare an extension point `content` for the pages using this layout (The `@yield` statement in the blade templates)
+
+==== Defining The Child View
+
+Great, our application layout is finished.
+Next, we need to define a view that contains a form to create a new task as well as a table that lists all existing tasks.
+Let's define this view in `src/main/resources/task/index.html`, which will correspond to the `index()` method in our `TaskController`.
+
+We'll skip over some of the Bootstrap CSS boilerplate and only focus on the things that matter.
+Remember, you can download the full source for this application on https://TODO[GitHub]:
+
+[source,html]
+.src/main/resources/templates/task/index.html
+----
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/app}"> <!--1-->
+<body>
+<div layout:fragment="content"> <!--2-->
+    <div class="panel-body">
+
+        <!-- New Task Form -->
+        <form th:action="@{/tasks}" method="POST" class="form-horizontal">
+
+            <!-- Task Name -->
+            <div class="form-group">
+                <label for="task-name" class="col-sm-3 control-label">Task</label>
+
+                <div class="col-sm-6">
+                    <input type="text" name="name" id="task-name" class="form-control">
+                </div>
+            </div>
+
+            <!-- Add Task Button -->
+            <div class="form-group">
+                <div class="col-sm-offset-3 col-sm-6">
+                    <button type="submit" class="btn btn-default">
+                        <i class="fa fa-plus"></i> Add Task
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- TODO: Current Tasks -->
+</div>
+</body>
+</html>
+----
+<1> The `layout:decorate` attribute indicates that this file should be decorated with the layout defined by `layouts/app.html`.
+<2> All HTML inside this `div` will put in the `content` section of the layout
+
+
+Now we have defined a basic layout and view for our application.
+Let's go ahead and return this view from the `index()` method of our `TaskController`:
+
+[source,java]
+.filename.java
+----
+@Controller
+@RequestMapping("/tasks")
+public class TaskController {
+
+    @GetMapping
+    public String index() {
+        return "task/index"; // <1>
+    }
+
+    ...
+}
+----
+<.> Indicate the view that should be used. The path is relative to `src/main/resources/templates`.
+Since our `index.html` is located in the `src/main/resources/templates/task` directory, we need to return `task/index` (so without the `.html` extension).
+
+The resulting web page will look like this:
+
+[.image-border]
+image::{imagesdir}/2020/02/laravel-intermediate-task-list-05.png[width=400px]
+
+Now that we have our nice layout, we will also update the login page to use this.
+Check out the source code for details. The result looks like this:
+
+[.image-border]
+image::{imagesdir}/2020/02/laravel-intermediate-task-list-06.png[width=400px]
+
+One thing to note is the error handling if there was a problem to log on:
+
+[.image-border]
+image::{imagesdir}/2020/02/laravel-intermediate-task-list-07.png[width=400px]
+
+This is done via this piece of HTML:
+
+[source,html]
+----
+<div th:if="${param.error}" class="help-block">
+    <p class="text-danger">There was an error logging in. Please check your email address and password.</p>
+</div>
+----
+
+When there is an error, Spring will add the `error` query parameter to the URL.
+We can use this in our Thymeleaf template to show an error message.
+
+Next, we're ready to add code to our `POST` `/tasks` route's controller method to handle the incoming form input and add a new task to the database.
 
 == References
 

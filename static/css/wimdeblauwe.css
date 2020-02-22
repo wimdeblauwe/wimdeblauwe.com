@@ -119,9 +119,14 @@ h3.summary {
 #toctitle {
     font-style: italic;
 }
+
 .toc ul li {
     margin-bottom: 0;
     list-style: none;
+}
+
+.image-border > div > img {
+    box-shadow: 0 0 10px 1px #ccc;
 }
 
 @media only screen and (max-width: 670px) {
