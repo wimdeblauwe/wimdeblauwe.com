@@ -745,14 +745,14 @@ In Laravel, you need to add a call to the `middleware` method.
 With Spring, we handle authentication centrally in our `WebSecurityConfiguration` class we have created before.
 Since we declared there that all routes should be authenticated, there is no extra work to do for our `TaskController`.
 
-=== Building Layouts & Views
+== Building Layouts & Views
 
 The primary part of this application only has a single view which contains a form for adding new tasks as well as a listing of all current tasks.
 To help you visualize the view, here is a screenshot of the finished application with basic Bootstrap CSS styling applied:
 
 TODO Add screenshot here
 
-==== Defining The Layout
+=== Defining The Layout
 
 Almost all web applications share the same layout across pages.
 For example, this application has a top navigation bar that would be typically present on every page (if we had more than one).
@@ -824,7 +824,7 @@ Now we can create our layout template file:
 <1> Declare the `layout` namespace
 <2> Declare an extension point `content` for the pages using this layout (The `@yield` statement in the blade templates)
 
-==== Defining The Child View
+=== Defining The Child View
 
 Great, our application layout is finished.
 Next, we need to define a view that contains a form to create a new task as well as a table that lists all existing tasks.
