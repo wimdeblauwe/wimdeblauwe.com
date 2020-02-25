@@ -128,6 +128,71 @@ h3.summary {
     }
 }
 
+#signup-block {
+    background-color: rgba(0, 102, 161, 0.58);
+    border-radius: 0.5rem;
+    padding: 1rem 4rem;
+    margin-top: 1.5rem;
+}
+
+#signup-block-title {
+    color: #eef1ff;
+    font-size: 1.3rem;
+}
+
+#signup-block-subtitle {
+    color: #00183e;
+    font-size: 0.9rem;
+}
+
+#signup-block input.email {
+    padding: 1.3rem 1.5rem;
+    line-height: 1.5rem;
+}
+
+
+#signup-block input.button {
+    height: 100%;
+}
+
+#mc_embed_signup_scroll {
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+}
+
+@media only screen and (max-width: 768px) {
+    #mc_embed_signup_scroll {
+        display: grid;
+        grid-auto-rows: 1fr;
+        justify-content: normal;
+    }
+
+    #signup-block-title {
+        font-size: 1rem;
+    }
+
+    #signup-block-subtitle {
+        font-size: 0.8rem;
+    }
+
+    #signup-block input.button {
+        height: 90%;
+    }
+}
+
+/* Mailchimp CSS */
+#mc_embed_signup {
+    clear: left;
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+#mc_embed_signup .button {
+    background-color: #0066a1;
+    color: #eef1ff;
+}
+
 /* AsciiDoctor*/
 table {
     border-collapse: collapse;
@@ -137,6 +202,7 @@ table {
 table td {
     border: 0;
 }
+
 .fa {
     font-family: "Font Awesome 5 Free";
 }

@@ -31,6 +31,7 @@
 			{{ .Content }}
 		</div>
 
+		{{ partial "newsletter-signup-form.html" . }}
 		{{- $.Scratch.Set "isDisqus" true -}}
 
 		<!-- Disable if content type is excluded in config -->
