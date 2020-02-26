@@ -14,7 +14,7 @@
                 {{ $pages := where .Site.RegularPages "Type" "in" .Site.Params.mainSections }} {{ $paginator := .Paginate (where $pages "Params.hidden" "ne" true) }} {{ range $paginator.Pages }}
                 <div class="post">
                     <div class="meta">{{ dateFormat "Jan 2, 2006" .Date }}{{ if .Draft }} <span class="draft-label">DRAFT</span> {{ end }}</div>
-                    <h3 class="summary">{{.Title}}</h3>
+                    <h3 class="summary"><a href="{{ .RelPermalink }}">{{.Title}}</a></h3>
                     <div>
                         <span class="description">{{ .Summary | plainify | htmlUnescape }}</span>
                     </div>

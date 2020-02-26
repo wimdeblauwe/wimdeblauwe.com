@@ -82,7 +82,8 @@ img.align-left {
 }
 
 h3.summary {
-    margin-top: 0.5rem;
+    margin-top: 0.4rem;
+    margin-bottom: 0.8rem;
 }
 
 
@@ -114,6 +115,14 @@ h3.summary {
 
 .fill {
     flex: 1;
+}
+
+h3.summary a {
+    color: #333;
+}
+
+h3.summary a:hover {
+    text-decoration: none;
 }
 
 @media only screen and (max-width: 670px) {
@@ -166,6 +175,10 @@ h3.summary {
 }
 
 @media only screen and (max-width: 768px) {
+    #signup-block {
+        padding: 1rem 2rem;
+    }
+
     #mc_embed_signup_scroll {
         display: grid;
         grid-auto-rows: 1fr;
