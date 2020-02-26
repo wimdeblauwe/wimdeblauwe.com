@@ -1,0 +1,296 @@
+---
+title: "Value Objects with Spring Boot REST API"
+date: 2020-02-26
+draft: false
+tags: ["spring-boot"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+
+In https://www.wimdeblauwe.com/blog/2019/2019-10-27-using-primary-key-objects-with-spring-data-and-hibernate/[Using primary key objects with Spring Data and Hibernate], I explained how
+to use https://martinfowler.com/bliki/ValueObject.html[Value Object]s for interaction with the database.
+This time, I will focus on how to do something similar at "the other end" of the application, in the REST API.
+
+<!--more-->
+
+== Path variables
+
+To get started, generate a Spring Boot project at https://start.spring.io with the "Web" dependency.
+The version of Spring Boot I used is 2.2.4.
+
+Most REST API's will define their controller similar to this:
+
+[source,java]
+----
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
+
+    @GetMapping("{id}")
+    public UserInfo getUserInfo(@PathVariable("id") long userId) { <1>
+        ...
+    }
+}
+----
+<1> The path variable is typed to `long`
+
+Notice how the path variable is typed to `long`.
+What we want to do is use a Value Object, for example `UserId`:
+
+[source,java]
+----
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
+
+    @GetMapping("{id}")
+    public UserInfo getUserInfo(@PathVariable("id") UserId userId) {
+        ...
+    }
+}
+----
+
+The `UserId` class:
+[source,java]
+----
+public class UserId {
+    private long id;
+
+    public UserId(long id) {
+        this.id = id;
+    }
+
+    public long getId() {
+        return id;
+    }
+
+    @Override
+    public String toString() {
+        return new StringJoiner(", ", UserId.class.getSimpleName() + "[", "]")
+                .add(String.format("id=%s", id))
+                .toString();
+    }
+}
+----
+
+However, this will not work out-of-the-box.
+Spring has no way of knowing how to convert the `String` from the URL to a `UserId` instance.
+
+Just try this test:
+[source,java]
+----
+@WebMvcTest
+class UserControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Test
+    void testGetUserInfo() throws Exception {
+        mockMvc.perform(get("/api/users/{id}", 1L))
+               .andExpect(status().isOk());
+    }
+}
+----
+
+If you run it, it fails with:
+[source]
+----
+Failed to convert value of type 'java.lang.String' to required type 'com.wimdeblauwe.examples.valueobjectswithrestapi.user.UserId'
+----
+
+To fix this, we can define a `Converter` instance that will tell Spring how to convert from `String` to `UserId`:
+
+[source,java]
+----
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.lang.NonNull;
+import org.springframework.stereotype.Component;
+
+@Component // <1>
+public class StringToUserIdConverter implements Converter<String, UserId> { //<2>
+    @Override
+    public UserId convert(@NonNull String s) {
+        return new UserId(Long.parseLong(s)); //<3>
+    }
+}
+----
+<1> Annotate with `@Component` so a singleton instance is added to the Spring context
+<2> Use generics to indicate what is converted
+<3> Implement the conversion logic
+
+Run the test again, it should be ok now.
+
+== Request bodies
+
+Another place where we can use Value Objects is in request bodies.
+Assume we have a `TodoController` with maps a `POST` request:
+
+[source,java]
+----
+@RestController
+@RequestMapping("/api/todos")
+public class TodoController {
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public void addTodo(@RequestBody CreateTodoParameters parameters) {
+        ...
+    }
+}
+----
+
+The body is expected to look like this:
+
+[source,json]
+----
+{
+  "userId": 2,
+  "description": "Test Description"
+}
+----
+
+The matching class for this is:
+
+[source,java]
+----
+public class CreateTodoParameters {
+    private final UserId userId;
+    private final String description;
+
+    @JsonCreator
+    public CreateTodoParameters(@JsonProperty("userId") UserId userId,
+                                @JsonProperty("description") String description) {
+        this.userId = userId;
+        this.description = description;
+    }
+
+    public UserId getUserId() {
+        return userId;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    @Override
+    public String toString() {
+        return new StringJoiner(", ", CreateTodoParameters.class.getSimpleName() + "[", "]")
+                .add(String.format("userId=%s", userId))
+                .add(String.format("description='%s'", description))
+                .toString();
+    }
+}
+----
+
+As this class is immutable, we use `@JsonCreator` and `@JsonProperty` annotations to ensure the JSON that will be POST'ed can be deserialized.
+
+To ensure serialization and deserialization is ok, we write this test:
+
+[source,java]
+----
+import com.wimdeblauwe.examples.valueobjectswithrestapi.user.UserId;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.json.JsonTest;
+import org.springframework.boot.test.json.JacksonTester;
+import org.springframework.boot.test.json.JsonContent;
+
+import java.io.IOException;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@JsonTest
+class CreateTodoParametersTest {
+
+    @Autowired
+    private JacksonTester<CreateTodoParameters> tester;
+
+    @Test
+    void testSerialization() throws IOException {
+        CreateTodoParameters parameters = new CreateTodoParameters(new UserId(3L),
+                                                                   "Test Description");
+        JsonContent<CreateTodoParameters> content = tester.write(parameters);
+        assertThat(content).hasJsonPathNumberValue("userId", 3L);
+        assertThat(content).hasJsonPathStringValue("description", "Test Description");
+    }
+
+    @Test
+    void testDeserialization() throws IOException {
+        CreateTodoParameters parameters = tester.parseObject("{\n" +
+                                                                     "  \"userId\": 2,\n" +
+                                                                     "  \"description\": \"Test Description\"\n" +
+                                                                     "}");
+        assertThat(parameters).isNotNull();
+        assertThat(parameters.getUserId()).isNotNull().extracting(UserId::getId).isEqualTo(2L);
+        assertThat(parameters.getDescription()).isEqualTo("Test Description");
+    }
+}
+----
+
+If we run this, the serialization test fails because we have not stated anything special for Jackson.
+By default, Jackson will create a nested `id` property for `UserId`:
+
+[source,json]
+----
+{
+  "userId": {
+    "id": 2
+  },
+  "description": "Test Description"
+}
+----
+
+To avoid this, annotated the `getId()` method in `UserId` with `@JsonValue`:
+
+[source,java]
+----
+public class UserId {
+
+    ...
+
+    @JsonValue
+    public long getId() {
+        return id;
+    }
+}
+----
+
+It might come as a surprise, but the deserialization test succeeds immediately.
+
+Jackson will notice that it needs a `UserId` to instantiate the `CreateTodoParameters` object,
+but all it has in the JSON is a number.
+If we look at the `UserId` code, we see there is a constructor that takes a `long`.
+So Jackson will use that constructor to create the `UserId` instance, and use that in turn to create the `CreateTodoParameters` object.
+
+We can finally test everything together in a `@WebMvcTest` that tests the controller:
+
+[source,java]
+----
+@WebMvcTest
+class TodoControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Test
+    void testAddTodo() throws Exception {
+        String content = objectMapper.writeValueAsString(new CreateTodoParameters(new UserId(1L), "Item 1"));
+        mockMvc.perform(post("/api/todos")
+                                .content(content)
+                                .contentType(MediaType.APPLICATION_JSON))
+               .andExpect(status().isCreated());
+    }
+}
+----
+
+== Conclusion
+
+With a minimal effort, we can use Value Objects in our REST API's to ensure a maximum expressiveness of our code.
+
+Source code is available on https://github.com/wimdeblauwe/blog-example-code/tree/master/value-objects-with-rest-api[GitHub].
