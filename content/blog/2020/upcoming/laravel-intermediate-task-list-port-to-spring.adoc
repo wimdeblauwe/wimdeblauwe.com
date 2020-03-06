@@ -1073,7 +1073,341 @@ Or if you try to add a task with name of more than 255 characters:
 [.image-border]
 image::{imagesdir}/2020/02/laravel-intermediate-task-list-09.png[width=400px]
 
+=== Creating the task
 
+Now that input validation is handled, let's actually create a new task in the database.
+
+With Laravel, this is done via Eloquent relationships like this:
+
+[source]
+----
+$request->user()->tasks()->create([
+        'name' => $request->name,
+    ]);
+----
+
+With Spring, we will do this differently. No worries, Spring Data JPA will make this real easy as well.
+
+First, we create a `TaskRepository` interface. This interface will allow to add, update and delete `Task` objects, handling the conversion to and from the database in the process:
+
+[source,java]
+----
+package com.wimdeblauwe.examples.laravelintermediatetasklist.task;
+
+import org.springframework.data.repository.CrudRepository;
+
+public interface TaskRepository extends CrudRepository<Task, Integer> {
+}
+----
+
+The interface just extends from `CrudRepository`.
+This is fact the only thing we need to do to be able to store `Task` objects.
+The actual implementation of the interface is handled automatically by Spring Data JPA.
+
+If we inject the `TaskRepository` somewhere, we can add a task like this:
+
+[source,java]
+----
+taskRepository.save(new Task(null, "My task", user));
+----
+
+Before we can do this, we need to take care of some other things.
+
+==== Database-based authentication
+
+Up until now, we used an in-memory authentication user.
+Since we now want to link tasks in the database to a user that created those tasks, we need to put the user in the database and use that database user for authentication.
+
+We start by creating a repository for the users:
+
+[source,java]
+----
+import org.springframework.data.repository.CrudRepository;
+
+import java.util.Optional;
+
+public interface UserRepository extends CrudRepository<User, Integer> {
+    Optional<User> findByEmail(String email);
+}
+----
+
+The method `findByEmail` is a https://docs.spring.io/spring-data/jpa/docs/current/reference/html/#jpa.query-methods[query method].
+The implementation is derived automatically from the name of the method.
+This means that `findByEmail` will automatically used the method argument to query the database for the `email` field.
+
+Next, we create a `UserService` that will allow to add new users to the database:
+
+[source,java]
+----
+public interface UserService {
+    User createUser(String name, String email, String password);
+}
+----
+
+The implementation of the interface is `UserServiceImpl`:
+
+[source,java]
+----
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@Transactional
+public class UserServiceImpl implements UserService {
+    private final UserRepository repository;
+    private final PasswordEncoder passwordEncoder;
+
+    public UserServiceImpl(UserRepository repository,
+                           PasswordEncoder passwordEncoder) {
+        this.repository = repository;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    @Override
+    public User createUser(String name, String email, String password) {
+        return repository.save(new User(null, name, email, passwordEncoder.encode(password))); //<.>
+    }
+}
+----
+<.> Use the `passwordEncoder` to ensure the database is encrypted in the database.
+
+We declared the `PasswordEncoder` bean in `WebSecurityConfiguration` before, but we will now create a dedicated configuration class for the whole application.
+We move the `@Bean` declaration in this new class:
+
+[source,java]
+----
+@Configuration
+public class LaravelIntermediateTaskListApplicationConfiguration {
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+    }
+
+}
+----
+
+We now want to create the user in the database.
+We could do this manually with SQL scripts, but it is easier to use our `UserService` for this.
+We create a `CommandLineRunner` instance.
+Such a class gets executed after the application is started.
+We can inject our `UserService` and ask for the creation of our user:
+
+[source,java]
+----
+package com.wimdeblauwe.examples.laravelintermediatetasklist;
+
+import com.wimdeblauwe.examples.laravelintermediatetasklist.user.UserService;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Component;
+
+@Profile("seed-db") // <.>
+@Component // <.>
+public class SeedDatabaseCommandRunner implements CommandLineRunner {
+    private final UserService userService;
+
+    public SeedDatabaseCommandRunner(UserService userService) {
+        this.userService = userService;
+    }
+
+    @Override
+    public void run(String... args) throws Exception {
+        userService.createUser("User", "user", "password"); //<.>
+    }
+}
+----
+<.> Add a profile so that this code is only active when running with the `seed-db` profile.
+This is important since we only want to run this once.
+Upon next runs, the user is in the database, so no need to add the user again.
+<.> Register this class as a Spring component
+<.> Create the user
+
+With this code in place, we can create a user in the database by running our application with the `seed-db` profile.
+The easiest way to do this in IntelliJ is setting the "Active profiles" setting in the run configuration.
+
+image::{imagesdir}/2020/02/laravel-intermediate-task-list-10.png[]
+
+After doing that, the database table `task_user` should contain something like:
+[cols="m,m,m,m"]
+|===
+|id	|name	|email|	password
+
+|1	|User|	user|	{bcrypt}$2a$10$COEKwy8kLl.SkexLL.v9t.eRMqB9rQrgUnqwG7jPm5JxJBvlghf/i|
+|===
+
+As a last step, we need to configure the authentication configuration to use the database user.
+
+First, create a `UserDetails` implementation. This class is the bridge between our `User` class and Spring Security:
+
+[source,java]
+----
+public class ApplicationUserDetails implements UserDetails {
+    private final Integer id;
+    private final String username;
+    private final String password;
+    private final Set<GrantedAuthority> authorities;
+
+    public ApplicationUserDetails(User user) {
+        this.id = user.getId();
+        this.username = user.getEmail();
+        this.password = user.getPassword();
+        this.authorities = Set.of(new SimpleGrantedAuthority("ROLE_USER"));
+    }
+
+    ...
+}
+----
+
+Next, create a `UserDetailsService` implementation.
+This will allow Spring Security to look up the user in the database:
+
+[source,java]
+----
+package com.wimdeblauwe.examples.laravelintermediatetasklist.infrastructure.security;
+
+import com.wimdeblauwe.examples.laravelintermediatetasklist.user.User;
+import com.wimdeblauwe.examples.laravelintermediatetasklist.user.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import static java.lang.String.format;
+
+@Service // <.>
+@Transactional
+public class DatabaseUserDetailsService implements UserDetailsService { // <.>
+
+    private final UserRepository userRepository;
+
+    @Autowired
+    public DatabaseUserDetailsService(UserRepository userRepository) { // <.>
+        this.userRepository = userRepository;
+    }
+
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        User user = userRepository.findByEmail(username) // <.>
+                                  .orElseThrow(() -> new UsernameNotFoundException(
+                                          format("User with username %s could not be found", username)));
+
+        return new ApplicationUserDetails(user); // <.>
+    }
+}
+----
+<.> Register the implementation as a Spring bean
+<.> Implement the `UserDetailsService` interface from Spring Security
+<.> Inject the `UserRepository`
+<.> Use the custom finder method `findByEmail` to find the user using the email address that is passed down from the login form.
+<.> Return the `ApplicationUserDetails` instance with the details of the user.
+
+[NOTE]
+====
+The role of the user is now hardcoded to be `ROLE_USER` in `ApplicationUserDetails`.
+In a more complex application, the role(s) would also be in the database and taken from the `User`, so that multiple roles are possible.
+====
+
+Finally, adjust the `WebSecurityConfiguration` to use our `UserDetailsService` implementation.
+
+[source,java]
+----
+@Component
+public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
+
+    @Autowired
+    private UserDetailsService userDetailsService;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth.userDetailsService(userDetailsService)
+            .passwordEncoder(passwordEncoder);
+    }
+
+    ...
+}
+----
+
+After doing all this, you should be able to log on again, this time using database-backed authentication.
+
+==== Storing the task
+
+Now that we have our user in the database, we can finish storing the task.
+First, create a `TaskService`:
+
+[source,java]
+----
+public interface TaskService {
+    Task createTask(int userId, String name);
+}
+----
+
+with implementation:
+
+[source,java]
+----
+@Service
+@Transactional
+public class TaskServiceImpl implements TaskService {
+    private final TaskRepository repository;
+    private final UserService userService;
+
+    public TaskServiceImpl(TaskRepository repository, UserService userService) {
+        this.repository = repository;
+        this.userService = userService;
+    }
+
+    @Override
+    public Task createTask(int userId, String name) {
+        User user = userService.getUser(userId)
+                               .orElseThrow(() -> new UserNotFoundException("Could not find user with id " + userId));
+        return repository.save(new Task(null, name, user));
+    }
+}
+
+----
+
+Inject the `TaskService` into the `TaskController` and use it like this:
+
+[source,java]
+----
+@Controller
+@RequestMapping("/tasks")
+public class TaskController {
+    private final TaskService service;
+
+    public TaskController(TaskService service) {
+        this.service = service;
+    }
+
+    @PostMapping
+    public String store(@AuthenticationPrincipal ApplicationUserDetails userDetails, // <1>
+                        @Valid @ModelAttribute("createTaskParameters") CreateTaskParameters parameters,
+                        BindingResult bindingResult, Model model) {
+        if (bindingResult.hasErrors()) {
+            model.addAttribute("createTaskParameters", parameters);
+            return "task/index";
+        }
+
+        service.createTask(userDetails.getId(), parameters.getName()); // <2>
+
+        return "redirect:/tasks";
+    }
+
+    ...
+}
+----
+<1> Have Spring inject the authenticated user via the `@AuthenticationPrincipal` annotation.
+NOTE: We need to use the `UserDetails` subclass here, not our `User` object.
+<2> Have the service create the task linked to the user.
+
+Great! We can now successfully create tasks.
+Next, let's continue adding to our view by building a list of all existing tasks.
 
 
 == References
