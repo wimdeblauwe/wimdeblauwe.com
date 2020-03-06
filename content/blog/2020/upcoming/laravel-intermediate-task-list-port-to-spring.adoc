@@ -928,6 +928,154 @@ We can use this in our Thymeleaf template to show an error message.
 
 Next, we're ready to add code to our `POST` `/tasks` route's controller method to handle the incoming form input and add a new task to the database.
 
+== Adding tasks
+
+=== Validation
+
+Now that we have a form in our view, we need to add code to our `TaskController.store()` method to validate the incoming form input and create a new task.
+First, let's validate the input.
+
+We want to make the name required and it can be maximum 255 characters.
+
+To capture the form data, we will create an object that represents that data:
+
+[source,java]
+----
+import javax.validation.constraints.NotEmpty;
+import javax.validation.constraints.Size;
+
+public class CreateTaskParameters {
+    @NotEmpty // <1>
+    @Size(max = 255) // <2>
+    private String name;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+}
+----
+<1> The name property cannot be empty (Also disallows `null` values)
+<2> The name property can be 255 characters maximum
+
+Now we update the controller so that this object is available in the model:
+
+[source,java]
+----
+@GetMapping
+public String index(Model model) { // <1>
+    model.addAttribute("createTaskParameters", new CreateTaskParameters()); // <2>
+    return "task/index";
+}
+----
+<1> Add `Model` parameter. Spring will inject an instance automatically.
+<2> Add a new `CreateTaskParameters` instance under the `createTaskParameters` key
+
+With this, we can update our Thymeleaf template to use this object in our form:
+
+[source,html]
+----
+<!-- New Task Form -->
+<form th:action="@{/tasks}" method="POST" class="form-horizontal" th:object="${createTaskParameters}"> <!--1-->
+
+    <div th:replace="fragments/messages :: fieldErrors"></div>
+
+    <!-- Task Name -->
+    <div class="form-group">
+        <label for="task-name" class="col-sm-3 control-label">Task</label>
+
+        <div class="col-sm-6">
+            <input type="text" th:field="*{name}" class="form-control"> <!--2-->
+        </div>
+    </div>
+
+    ...
+</form>
+----
+<1> Using `th:object` we can bind the `createTaskParameters` object to the form
+<2> Bind the `name` property of the `CreateTaskParameters` object to the input
+
+With this update, we can now update our `POST` request in the controller:
+
+[source,java]
+----
+@PostMapping
+public String store(@Valid @ModelAttribute("createTaskParameters") CreateTaskParameters parameters, // <.>
+                    BindingResult bindingResult, // <.>
+                    Model model) {
+    if (bindingResult.hasErrors()) { // <.>
+        model.addAttribute("createTaskParameters", parameters); // <.>
+        return "task/index"; // <.>
+    }
+
+    // TODO store new task
+
+    return "redirect:/tasks"; // <.>
+}
+----
+<.> We add `CreateTaskParameters` object as a parameter with 2 annotations.
+`@Valid` ensures the object is validated according to the annotations we used on it.
+`@ModelAttribute` allows us to configure the model attribute key.
+<.> The `BindingResult` parameter is injected by Spring and allows to check for errors.
+<.> Check if there are validation errors
+<.> Put the `parameters` object back in the form. This ensures that the user input remains in the form so the user can fix his mistake(s).
+<.> Show the index page again with the errors
+<.> Redirect back to the `/tasks` page when there are no errors.
+
+In the HTML template, we need to show the errors to the user.
+This is done via a custom Thymeleaf fragment.
+This is basically a piece of HTML that we can include where needed.
+
+In our `index.html`, it is used like this:
+
+[source,html]
+----
+<!-- New Task Form -->
+<form th:action="@{/tasks}" method="POST" class="form-horizontal" th:object="${createTaskParameters}"> <!--1-->
+
+    <div th:replace="fragments/messages :: fieldErrors"></div>
+
+    ...
+</form>
+----
+
+If we look closely, the `th:replace` exists of 2 parts:
+
+* `fragments/messages`: refers to the path relative to `src/main/resources/templates` where the fragment HTML page is located.
+* `fieldErrors`: name of the fragement (defined via `th:fragment`) inside the fragment HTML file.
+
+So, for this to work, create the `src/main/resources/templates/fragments/messages.html` file and add this content:
+
+[source,html]
+----
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="fieldErrors" class="alert alert-danger" th:if="${#fields.hasErrors('*')}">
+    <p><span>There was a problem creating the task:</span></p>
+    <ul>
+        <li th:each="err : ${#fields.errors('*')}" th:text="${err}"></li>
+    </ul>
+</div>
+</body>
+</html>
+----
+
+We can now try to add a task with an empty name and it will show a proper error message:
+
+[.image-border]
+image::{imagesdir}/2020/02/laravel-intermediate-task-list-08.png[width=400px]
+
+Or if you try to add a task with name of more than 255 characters:
+
+[.image-border]
+image::{imagesdir}/2020/02/laravel-intermediate-task-list-09.png[width=400px]
+
+
+
+
 == References
 
 * Source code for this blog entry: TODO
