@@ -1372,6 +1372,14 @@ public class TaskServiceImpl implements TaskService {
 
 ----
 
+[TIP]
+====
+I am using a `userId` typed to `int` here to stay close to the original tutorial.
+In a production application, I would use a _Value Object_ like `UserId`.
+Check out https://www.infoq.com/minibooks/spring-boot-building-api-backend/[my book] or the https://www.wimdeblauwe.com/blog/2020/02/26/value-objects-with-spring-boot-rest-api/[Value Objects with Spring Boot REST API] blog post for more details.
+====
+
+
 Inject the `TaskService` into the `TaskController` and use it like this:
 
 [source,java]
