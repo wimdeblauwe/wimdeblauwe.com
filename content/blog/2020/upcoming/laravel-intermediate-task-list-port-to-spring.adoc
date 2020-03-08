@@ -1409,6 +1409,116 @@ NOTE: We need to use the `UserDetails` subclass here, not our `User` object.
 Great! We can now successfully create tasks.
 Next, let's continue adding to our view by building a list of all existing tasks.
 
+== Displaying existing tasks
+
+Now that we can create tasks, we should display the tasks we have created.
+The Laravel tutorial shows _Dependency Injection_ here, but since we have already used it above, I will not repeat this here.
+
+First, we need a way to retrieve all tasks for a user from the database.
+For this, we update the `TaskRepository` with an extra finder method:
+
+[source,java]
+----
+public interface TaskRepository extends CrudRepository<Task, Integer> {
+
+    List<Task> findByUser(User user);
+}
+----
+
+Again, we don't need to write any implementation.
+By using this specific name of the method, Spring Data will figure out what SQL to use.
+
+Next we update the `TaskService` and `TaskServiceImpl` to use this new method:
+
+[source,java]
+----
+@Service
+@Transactional
+public class TaskServiceImpl implements TaskService {
+    ...
+
+    @Override
+    public List<Task> getTasksByUser(int userId) {
+        User user = userService.getUser(userId)
+                               .orElseThrow(() -> new UserNotFoundException("Could not find user with id " + userId));
+
+        return repository.findByUser(user);
+    }
+}
+----
+
+Finally, we update the `TaskController` to use the new service method:
+
+[source,java]
+----
+@Controller
+@RequestMapping("/tasks")
+public class TaskController {
+    ...
+
+    @GetMapping
+    public String index(@AuthenticationPrincipal ApplicationUserDetails userDetails, // <1>
+                        Model model) {
+
+        model.addAttribute("createTaskParameters", new CreateTaskParameters());
+        model.addAttribute("tasks", service.getTasksByUser(userDetails.getId())); // <2>
+        return "task/index";
+    }
+}
+----
+<1> Add the `ApplicationUserDetails` parameter so Spring Security will inject the details of the logged on user
+<2> Put the list of tasks in a model attribute called `tasks`
+
+The final piece of the puzzle for displaying the current tasks is using our model attribute in the Thymeleaf template:
+
+[source,html]
+----
+<!-- Current tasks -->
+<th:block th:if="${#lists.size(tasks) > 0}"> <!--1-->
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            Current Tasks
+        </div>
+
+        <div class="panel-body">
+            <table class="table table-striped task-table">
+
+                <!-- Table Headings -->
+                <thead>
+                <th>Task</th>
+                <th>&nbsp;</th>
+                </thead>
+
+                <!-- Table Body -->
+                <tbody>
+                <tr th:each="task : ${tasks}"> <!--2-->
+                    <!-- Task Name -->
+                    <td class="table-text">
+                        <div th:text="${task.name}"></div> <!--3-->
+                    </td>
+
+                    <td>
+                        <!-- TODO: Delete Button -->
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</th:block>
+----
+<1> Count the number of tasks to decide to display the section or not
+<2> Iterate over each task. There will be a `<tr/>` in the resulting HTML for each task.
+<3> Display the `name` property of the task.
+
+Restart the application and add some tasks.
+The result should be something like this:
+
+[.image-border]
+image::{imagesdir}/2020/02/laravel-intermediate-task-list-11.png[width=400px]
+
+Our task application is almost complete. But, we have no way to delete our existing tasks when they're done.
+Let's add that next!
 
 == References
 
