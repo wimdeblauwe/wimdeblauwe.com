@@ -750,7 +750,8 @@ Since we declared there that all routes should be authenticated, there is no ext
 The primary part of this application only has a single view which contains a form for adding new tasks as well as a listing of all current tasks.
 To help you visualize the view, here is a screenshot of the finished application with basic Bootstrap CSS styling applied:
 
-TODO Add screenshot here
+[.image-border]
+image::{imagesdir}/2020/02//laravel-intermediate-task-finished-app.png[width=400px]
 
 === Defining The Layout
 
@@ -1630,7 +1631,7 @@ public class TaskServiceImpl implements TaskService {
 ----
 <.> `findById` is a method from `CrudRepository` so it is automatically available to us
 
-Finally, we annotate our controller method to check if the `id` of the user linked to the `Task` is the same id as the authenticated user id:
+Next, we annotate our controller method to check if the `id` of the user linked to the `Task` is the same id as the authenticated user id:
 
 [source,java]
 ----
@@ -1644,6 +1645,18 @@ Finally, we annotate our controller method to check if the `id` of the user link
     }
 ----
 <.> The `@PreAuthorize` annotation ensures users can only delete their own tasks
+
+To ensure Spring Security will take the `PreAuthorize` into account, we need to configure it in `WebSecurityConfiguration`.
+Add `@EnableGlobalMethodSecurity(prePostEnabled = true)` at the class level:
+
+[source,java]
+----
+@Component
+@EnableGlobalMethodSecurity(prePostEnabled = true)
+public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
+    ....
+}
+----
 
 === Deleting the task
 
@@ -1679,6 +1692,8 @@ Full code of the controller method:
     }
 ----
 
+Restart the application and we have a fully functional task application that allows to add, view and delete tasks for multiple users.
+
 == Conclusion
 
 This has been the longest blog post I have written so far.
@@ -1687,7 +1702,7 @@ But I learned a ton doing this!
 Laravel is a very capable framework for PHP development, but hopefully I showed that you can use Spring Boot and Thymeleaf as well.
 See https://www.wimdeblauwe.com/tags/thymeleaf/[tags/thymeleaf] and https://www.wimdeblauwe.com/tags/spring-boot/[tags/spring-boot] for other blog posts if you want to learn more.
 
-Let me know if you found this interesting via https://twitter.com/wimdeblauwe[Twitter] or mailto:wim.deblauwe@gmail.com[email].
+Let me know if you found this interesting or have questions via https://twitter.com/wimdeblauwe[Twitter] or mailto:wim.deblauwe@gmail.com[email].
 
 == References
 
