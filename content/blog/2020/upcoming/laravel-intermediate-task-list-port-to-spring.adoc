@@ -1152,14 +1152,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Service
+@Service // <.>
 @Transactional
 public class UserServiceImpl implements UserService {
     private final UserRepository repository;
     private final PasswordEncoder passwordEncoder;
 
     public UserServiceImpl(UserRepository repository,
-                           PasswordEncoder passwordEncoder) {
+                           PasswordEncoder passwordEncoder) { // <.>
         this.repository = repository;
         this.passwordEncoder = passwordEncoder;
     }
@@ -1170,7 +1170,19 @@ public class UserServiceImpl implements UserService {
     }
 }
 ----
+<.> `@Service` indicates the Spring needs to create a singleton instance of this class
+<.> Spring will use _Dependency Injection_ to pass the singleton instances of the `UserRepository` and `PasswordEncoder` into our constructor.
 <.> Use the `passwordEncoder` to ensure the database is encrypted in the database.
+
+[TIP]
+====
+https://www.baeldung.com/inversion-control-and-dependency-injection-in-spring[Dependency Injection] is an important
+concept when working with Spring.
+It allows loose coupling of different parts of the application.
+
+But it is not exclusive to Spring.
+See https://laravel.com/docs/7.x/container[Service Container] for more details on a similar pattern in Laravel.
+====
 
 We declared the `PasswordEncoder` bean in `WebSecurityConfiguration` before, but we will now create a dedicated configuration class for the whole application.
 We move the `@Bean` declaration in this new class:
