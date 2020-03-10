@@ -125,6 +125,19 @@ h3.summary a:hover {
     text-decoration: none;
 }
 
+#toctitle {
+    font-style: italic;
+}
+
+.toc ul li {
+    margin-bottom: 0;
+    list-style: none;
+}
+
+.image-border > div > img {
+    box-shadow: 0 0 10px 1px #ccc;
+}
+
 @media only screen and (max-width: 670px) {
     div.desktop {
         display: none;
@@ -216,8 +229,13 @@ table {
     border-spacing: 0;
 }
 
-table td {
+.colist table td, .admonitionblock table td {
     border: 0;
+}
+
+p.tableblock {
+    margin-block-start: 0;
+    margin-block-end: 0;
 }
 
 .fa {
@@ -380,6 +398,10 @@ table.linenotable td.linenos {
 
 .literalblock pre, .listingblock > .content > pre {
     padding: 0.75em;
+}
+
+.listingblock > .title {
+    margin-bottom: -0.8em;
 }
 
 .highlight pre {
