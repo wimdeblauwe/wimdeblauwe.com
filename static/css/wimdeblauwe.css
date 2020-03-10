@@ -318,6 +318,10 @@ table.linenotable td.linenos {
     padding: 0.75em;
 }
 
+.listingblock > .title {
+    margin-bottom: -0.8em;
+}
+
 .highlight pre {
     padding: 0;
 }
