@@ -1,0 +1,263 @@
+---
+title: "Spring Boot test slices with custom annotations"
+date: 2020-04-17
+draft: false
+tags: ["spring-boot", "testcontainers"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+
+Spring Boot has first-class support for testing, both unit and integration testing.
+To keep your tests running fast, there is the concept of https://docs.spring.io/spring-boot/docs/2.2.6.RELEASE/reference/html/spring-boot-features.html#boot-features-testing-spring-boot-applications-testing-autoconfigured-tests[Test Slicing].
+By only loading the relevant part of the complete application in a test, the tests
+are focused and run faster since Spring does not need to load everything.
+
+This blog post will show how to use a custom annotation to ensure your unit/integration tests are all consistent with little effort.
+
+<!--more-->
+
+== Test slicing
+
+Let's get started with a simple Spring Boot application using Spring Data JPA and H2 dependencies.
+The goal of the application is to keep track of music albums.
+
+Our entity:
+
+[source,java]
+----
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+
+@Entity
+public class Album {
+    @Id
+    @GeneratedValue
+    private long id;
+
+    private String name;
+    private String artist;
+
+    public Album() {
+    }
+
+    public Album(String name, String artist) {
+        this.name = name;
+        this.artist = artist;
+    }
+
+    public long getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getArtist() {
+        return artist;
+    }
+}
+----
+
+The corresponding repository:
+
+[source,java]
+----
+import org.springframework.data.repository.CrudRepository;
+
+public interface AlbumRepository extends CrudRepository<Album, Long> {
+}
+----
+
+And the unit test:
+
+[source,java]
+----
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@DataJpaTest
+class AlbumRepositoryTest {
+
+    private final AlbumRepository repository;
+
+    @Autowired
+    public AlbumRepositoryTest(AlbumRepository repository) {
+        this.repository = repository;
+    }
+
+    @Test
+    void testSaveAlbum() {
+        Album album = repository.save(new Album("Master of Puppets", "Metallica"));
+        assertThat(album).isNotNull()
+                         .extracting(Album::getId)
+                         .isInstanceOfSatisfying(Long.class,
+                                                 id -> assertThat(id).isPositive());
+    }
+}
+----
+
+Note the `@DataJpaTest` annotation.
+When the test executes, Spring will create an application context and will instantiate all `@Repository` classes in our application and all supporting infrastructure (Hibernate, H2, ...).
+
+Now, to make things a bit more realistic, we will use PostgreSQL instead of H2 as database and
+use Flyway for database migrations. To make it easy to test this setup, we will use Testcontainers.
+
+If we do that, our test suddenly becomes something like this:
+
+[source,java]
+----
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.test.context.ActiveProfiles;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@DataJpaTest //<1>
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE) //<2>
+@Tag("db-test") //<3>
+@ActiveProfiles("data-jpa-test") //<4>
+class AlbumRepositoryTest {
+
+    private final AlbumRepository repository;
+
+    @Autowired
+    public AlbumRepositoryTest(AlbumRepository repository) {
+        this.repository = repository;
+    }
+
+    @Test
+    void testSaveAlbum() {
+        Album album = repository.save(new Album("Master of Puppets", "Metallica"));
+        assertThat(album).isNotNull()
+                         .extracting(Album::getId)
+                         .isInstanceOfSatisfying(Long.class,
+                                                 id -> assertThat(id).isPositive());
+    }
+
+    @TestConfiguration //<5>
+    static class TestConfig {
+        @Bean
+        public ExecutorService executorService() {
+            return Executors.newSingleThreadExecutor();
+        }
+    }
+}
+----
+<1> `@DataJpaTest` indicates that Spring test should create repositories are related objects for this test.
+<2> Since we will use a real PostgreSQL database, Spring should not autoconfigure a test database for us.
+<3> The JUnit 5 `@Tag` annotation allows us to group tests in a logical group so we can execute all of them at once.
+<4> To configure the database, we add an `application-data-jpa-test.properties` file with the JDBC url, username, password, ...
+By activating the `data-jpa-test` profile, Spring will load the properties file automatically.
+<5> An inner class annotated with `@TestConfiguration` allows to manually define extra beans our test might need (NOTE: In this case, it is not needed, but I wanted to add this to show how it can be done)
+
+For completeness, this is the properties file:
+
+[source]
+----
+spring.datasource.url=jdbc:tc:postgresql:12:///albumdb?TC_TMPFS=/testtmpfs:rw
+spring.datasource.driver-class-name=org.testcontainers.jdbc.ContainerDatabaseDriver
+spring.datasource.username=user
+spring.datasource.password=password
+spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.hibernate.ddl-auto=validate
+----
+
+We will need to repeat all these annotations for each of our repository tests that we will write in the project.
+Clearly, this is not ideal.
+
+== Custom annotation
+
+To centralize this setup, we can define a custom annotation
+and add the annotations we used on our test as meta-annotations:
+
+[source,java]
+----
+import org.junit.jupiter.api.Tag;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+
+@Retention(RetentionPolicy.RUNTIME)
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Tag("db-test")
+@ActiveProfiles("data-jpa-test")
+@ContextConfiguration(classes = MyAppDataJpaTestConfiguration.class) //<1>
+public @interface MyAppDataJpaTest {
+
+}
+----
+<1> `@ContextConfiguration` allows to import other configurations.
+
+The test context we created as an inner class before, now becomes a top-level class
+(and is automatically loaded when we use our custom annotation due to the `@ContextConfiguration` annotation):
+
+[source,java]
+----
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+@TestConfiguration
+public class MyAppDataJpaTestConfiguration {
+    @Bean
+    public ExecutorService executorService() {
+        return Executors.newSingleThreadExecutor();
+    }
+}
+----
+
+Our actual test becomes very simple:
+
+[source,java]
+----
+@MyAppDataJpaTest //<1>
+class AlbumRepositoryTest {
+
+    private final AlbumRepository repository;
+
+    @Autowired
+    public AlbumRepositoryTest(AlbumRepository repository) {
+        this.repository = repository;
+    }
+
+    @Test
+    void testSaveAlbum() {
+        Album album = repository.save(new Album("Master of Puppets", "Metallica"));
+        assertThat(album).isNotNull()
+                         .extracting(Album::getId)
+                         .isInstanceOfSatisfying(Long.class,
+                                                 id -> assertThat(id).isPositive());
+    }
+}
+----
+<1> `MyAppDataJpaTest` is our custom annotation
+
+As you can see, it is quite easy to create your own custom annotation.
+This same technique can be used for `@SpringBootTest`, `@WebMvcTest` or any of the other
+test slicing annotations that Spring Boot has.
+
