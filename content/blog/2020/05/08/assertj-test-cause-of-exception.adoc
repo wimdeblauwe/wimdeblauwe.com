@@ -1,0 +1,100 @@
+---
+title: "AssertJ test cause of exception"
+date: 2020-05-08
+draft: false
+tags: ["spring-boot", "testcontainers", "assertj"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+
+AssertJ 3.16.0 has just been https://assertj.github.io/doc/#assertj-core-3-16-0-release-notes[released].
+It has a feature https://github.com/joel-costigliola/assertj-core/issues/1776[I contributed to] allow testing the (root) cause of an exception.
+
+This blog post will show how to use this to our advantage.
+
+<!--more-->
+
+Let's get started with a simple Spring Boot application using Spring Data JPA.
+
+We will have 3 entities: `Book`, `Song` and `User`
+
+A `User` can have exactly 1 favorite book and 1 favorite song.
+The book and the song have to be in the database already before the user can make it a favorite of his.
+
+Check the sources on https://github.com/wimdeblauwe/blog-example-code/tree/master/assertj-test-foreign-key-violation[Github] for the full code.
+
+This is how the `User` looks like:
+
+[source,java]
+----
+@Entity
+public class User {
+    @Id
+    @GeneratedValue
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Song favoriteSong;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Book favoriteBook;
+
+    ...
+}
+----
+
+The code also has `BookRepository`, `SongRepository` and `UserRepository`.
+
+The test we will focus on is the `UserRepositoryTest`:
+
+[source,java]
+----
+@Test
+void testUnableToSaveUserIfBookNotInDatabase() {
+    Book book = new Book();
+    book.setTitle("AssertJ in action");
+
+    User user = new User();
+    user.setFavoriteBook(book);
+
+    assertThatExceptionOfType(IllegalStateException.class)
+            .isThrownBy(() -> {
+                repository.save(user);
+                entityManager.flush();
+            })
+            .havingCause()
+            .withMessageMatching(".*object references an unsaved transient instance.*User.favoriteBook.*");
+}
+----
+
+What we test here is that if a `User` has a favorite `Book` that is not yet saved in the database, we get an `IllegalStateException`.
+Not only that, but we also check that there is a cause (via `havingCause()`) _and_ that this cause should have a particular message where the `User.favoriteBook` field is present.
+
+A similar test can be done if a `Song` is not yet saved in the database:
+
+[source,java]
+----
+ @Test
+void testUnableToSaveUserIfSongNotInDatabase() {
+    Song song = new Song();
+    song.setTitle("Bee Gees - Stayin' Inside");
+    User user = new User();
+    user.setFavoriteSong(song);
+    assertThatExceptionOfType(IllegalStateException.class)
+            .isThrownBy(() -> {
+                repository.save(user);
+                entityManager.flush();
+            })
+            .havingCause()
+            .withMessageMatching(".*object references an unsaved transient instance.*User.favoriteSong.*");
+}
+----
+
+
+See https://assertj.github.io/doc/#assertj-core-throwable-cause-and-root-cause-assertions[Checking cause and root cause] in the AssertJ documentation for more information about this handy function.
+
