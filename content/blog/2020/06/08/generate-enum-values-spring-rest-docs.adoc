@@ -170,3 +170,5 @@ To avoid the duplication between the enum class and the values in the documentat
 <3> Join all enum names with a `, ` string to have a nicely formatted list of comma separated names.
 
 The generated HTML will look exactly the same, but now it will be automatically up-to-date if the enum values should ever change.
+
+See https://github.com/wimdeblauwe/blog-example-code/tree/master/generate-enum-values-spring-rest-docs[Github] for the full example sources.
