@@ -1,0 +1,172 @@
+---
+title: "Generate all enum values for Spring REST Docs documentation"
+date: 2020-06-08
+draft: false
+tags: ["spring-boot", "spring-rest-docs"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+
+If you document your REST API with https://spring.io/projects/spring-restdocs[Spring REST Docs], you have probably came across fields that refer to enum values.
+
+This little tip will show you how to automatically include all enum values in the description of the field.
+
+<!--more-->
+
+Suppose you have a REST API that returns the current date and the name of the current season.
+This could look something like this as a Spring Boot application:
+
+[source,java]
+----
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.time.LocalDate;
+
+@RestController
+@RequestMapping("/api")
+public class DayInfoRestController {
+
+    @GetMapping("/dayinfo")
+    public DayInfo getDayInfo() {
+        return new DayInfo(LocalDate.parse("2020-07-15"), Season.SUMMER);
+    }
+}
+----
+
+[TIP]
+====
+It is hopefully obvious that a real API should not return hardcoded data, but this is now not important for the topic of this blog post. 😊
+====
+
+With `Season` being a simple enum:
+
+[source,java]
+----
+public enum Season {
+    SPRING,
+    SUMMER,
+    AUTUMN,
+    WINTER
+}
+----
+
+A documentation test for this endpoint, could look like this:
+
+[source,java]
+----
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.MediaType;
+import org.springframework.restdocs.RestDocumentationContextProvider;
+import org.springframework.restdocs.RestDocumentationExtension;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
+
+import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
+import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
+import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
+import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest
+@ExtendWith(RestDocumentationExtension.class)
+class DayInfoRestControllerDocumentation {
+
+    private MockMvc mockMvc;
+
+    @BeforeEach
+    public void setUp(WebApplicationContext webApplicationContext,
+                      RestDocumentationContextProvider restDocumentation) {
+        this.mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext)
+                                      .apply(documentationConfiguration(restDocumentation))
+                                      .build();
+    }
+
+    @Test
+    void getSeasonsExample() throws Exception {
+        this.mockMvc.perform(get("/api/dayinfo").accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andDo(document("get-dayinfo-example",
+                                    responseFields(
+                                            fieldWithPath("date").description("The current date"),
+                                            fieldWithPath("season").description("The current season, one of `SPRING`, `SUMMER`, `AUTUMN`, `WINTER`.")
+                                    )));
+    }
+}
+----
+
+The snippets that get generated from this unit test are than used in an asciidoc document:
+
+[source,asciidoc]
+----
+= Dayinfo API Documentation
+
+To get information on the current season, use a `GET` on `/api/dayinfo`.
+
+ include::{snippets}/get-dayinfo-example/http-request.adoc[]
+
+Example response:
+
+ include::{snippets}/get-dayinfo-example/http-response.adoc[]
+
+Details of the response fields:
+
+[cols="20,20,60"]
+ include::{snippets}/get-dayinfo-example/response-fields.adoc[]
+----
+
+The resulting rendered HTML looks like this:
+
+image::{imagesdir}/2020/06/dayinfo-api-documentation.png[]
+
+However, the documentation now hardcoded the enum values:
+
+[source,java]
+----
+fieldWithPath("season").description("The current season, one of `SPRING`, `SUMMER`, `AUTUMN`, `WINTER`.")
+----
+
+While in this case it is unlikely that the names will change, we can surely imagine that this might be the case in real-world examples.
+To avoid the duplication between the enum class and the values in the documentation, we can rewrite the description as:
+
+[source,java]
+----
+    @Test
+    void getSeasonsExample() throws Exception {
+        this.mockMvc.perform(get("/api/dayinfo").accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andDo(document("get-dayinfo-example",
+                                    responseFields(
+                                            dateField(),
+                                            seasonField()
+                                    )));
+    }
+
+    private FieldDescriptor dateField() {
+        return fieldWithPath("date").description("The current date");
+    }
+
+    private FieldDescriptor seasonField() {
+        String formattedEnumValues = Arrays.stream(Season.values()) // <1>
+                                           .map(type -> String.format("`%s`", type)) // <2>
+                                           .collect(Collectors.joining(", ")); //<3>
+        return fieldWithPath("season").description("The current season, one of " + formattedEnumValues + ".");
+    }
+
+----
+<1> Create a `Stream` out of the values of the enum `Season`.
+<2> Add backticks around the name of each enum value so that it is shown as a literal in the documentation.
+<3> Join all enum names with a `, ` string to have a nicely formatted list of comma separated names.
+
+The generated HTML will look exactly the same, but now it will be automatically up-to-date if the enum values should ever change.
