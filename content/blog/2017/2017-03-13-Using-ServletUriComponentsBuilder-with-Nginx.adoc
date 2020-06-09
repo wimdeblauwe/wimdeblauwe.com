@@ -20,3 +20,12 @@ proxy_set_header        X-Forwarded-Server $host;
 proxy_set_header        X-Forwarded-Port   443;
 proxy_set_header        X-Forwarded-Proto  https;
 ....
+
+_UPDATE 2020-06-08_
+
+You need to enable support for this in Spring Boot by setting the following property (Since Spring Boot 2.2):
+
+[source]
+----
+server.forward-headers-strategy=native
+----
