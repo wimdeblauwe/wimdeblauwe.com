@@ -1,0 +1,536 @@
+---
+title: "Error handling library for Spring Boot"
+date: 2020-07-20
+draft: false
+tags: ["spring-boot"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+
+An important part of any decent REST API is good error handling.
+Good error handling has 2 major goals:
+
+* It will help the developers of your API to understand exactly what is wrong when they learn to work with your API.
+* It will allow to have the mobile app or Single Page Application or whatever that is using your app to give precise error message to the end-user of the application.
+
+We will first take a look at what Spring Boot offers out-of-the-box, and next look at how https://github.com/wimdeblauwe/error-handling-spring-boot-starter[Error Handling Spring Boot Starter] improves this.
+
+<!--more-->
+
+I created some example to show how the default Spring Boot error handling works.
+A user of the REST API can create an information request specifying name, email and phone number. There is also an endpoint to link an information request to a support agent.
+
+== Default Spring Boot error handling
+
+=== Not found exception
+
+Let's start with the controller method for retrieving a single information request:
+
+[source,java]
+----
+@RestController
+@RequestMapping("/api/info-requests")
+public class InfoRequestRestController {
+
+    private final InfoRequestService service;
+    private final SupportAgentService supportAgentService;
+
+    public InfoRequestRestController(InfoRequestService service,
+                                     SupportAgentService supportAgentService) {
+        this.service = service;
+        this.supportAgentService = supportAgentService;
+    }
+
+    @GetMapping("{id}") //<.>
+    public InfoRequest getInfoRequest(@PathVariable("id") Long id) {
+        return service.getInfoRequest(id)
+                      .orElseThrow(() -> new InfoRequestNotFoundException(id));
+    }
+}
+----
+<.> Endpoint for getting a single information request
+
+To see how the error handling works, we'll create a `@WebMvcTest`:
+
+[source,java]
+----
+@WebMvcTest
+class InfoRequestRestControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+    @Autowired
+    private ObjectMapper objectMapper;
+    @MockBean
+    private InfoRequestService requestService;
+    @MockBean
+    private SupportAgentService supportAgentService;
+
+    @Test
+    void testGetInfoRequestWhenNotFoundException() throws Exception {
+        long id = 1;
+        when(requestService.getInfoRequest(id))
+                .thenThrow(new InfoRequestNotFoundException(id)); //<.>
+
+        mockMvc.perform(get("/api/info-requests/{id}", id))
+               .andExpect(status().isNotFound()) //<.>
+               .andDo(print()); //<.>
+    }
+}
+----
+<.> Setup Mockito to throw the `InfoRequestNotFoundException`
+<.> Expect to get a `404 NOT FOUND`
+<.> Print the response
+
+In the `@WebMvcTest`, we setup Mockito to throw the `InfoRequestNotFoundException` to simulate an unknown information request.
+The exception is annotated with `@ResponseStatus` so that Spring Boot will return a `404 NOT FOUND`:
+
+[source,java]
+----
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+@ResponseStatus(HttpStatus.NOT_FOUND) //<.>
+public class InfoRequestNotFoundException extends RuntimeException {
+    public InfoRequestNotFoundException(Long id) {
+        super("There is no known info request with id " + id);
+    }
+}
+----
+<.> Indicate what response status Spring Boot should use when this exception is thrown in a controller method.
+
+Running the test succeeds and the response is printed:
+
+[source]
+----
+MockHttpServletResponse:
+           Status = 404
+    Error message = null
+          Headers = []
+     Content type = null
+             Body =
+    Forwarded URL = null
+   Redirected URL = null
+          Cookies = []
+----
+
+An empty body?
+
+If you have some experience with Spring Boot, you will know that this is not what you get in an actual Spring Boot application. The problem is that https://github.com/spring-projects/spring-boot/issues/7321[the default error handling is coded based on servlet container's error mappings].
+Because we are using MockMvc, this is not working.
+
+A better way to see what an actual application does in this case is using `@SpringBootTest`.
+This is the same test using that:
+
+[source,java]
+----
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT) //<.>
+class InfoRequestRestControllerIntegrationTest {
+
+    @LocalServerPort //<.>
+    int port;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockBean
+    private InfoRequestService requestService;
+    @MockBean
+    private SupportAgentService supportAgentService;
+
+    @BeforeEach
+    void setUp() {
+        RestAssured.port = port; //<.>
+    }
+
+    @Test
+    void testGetInfoRequestWhenNotFoundException() throws Exception {
+        long id = 1;
+        when(requestService.getInfoRequest(id))
+                .thenThrow(new InfoRequestNotFoundException(id));
+
+        given().get("/api/info-requests/{id}", id)
+               .prettyPeek()
+               .then()
+               .statusCode(HttpStatus.NOT_FOUND.value());
+    }
+}
+----
+<.> Start the full application with the embedded servlet container on a random port
+<.> Capture the random port
+<.> Setup RestAssured with the random port
+
+The response in this case:
+
+[source]
+----
+HTTP/1.1 404
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Sun, 19 Jul 2020 09:49:17 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{
+    "timestamp": "2020-07-19T09:49:17.824+00:00",
+    "status": 404,
+    "error": "Not Found",
+    "message": "",
+    "path": "/api/info-requests/1"
+}
+----
+
+Which is exactly what is returned when running the actual application.
+So, if we want to validate our error responses, we need to use `@SpringBootTest`, which is sub-optimal compared to using `@WebMvcTest`.
+
+=== POST body validation
+
+Another example of the default Spring Boot error handling is validation of a HTTP POST body.
+
+The example controller method:
+
+[source,java]
+----
+    @PostMapping
+    public ResponseEntity<?> addInfoRequest(@Valid @RequestBody CreateInfoRequestRequestBody requestBody) {
+        InfoRequest infoRequest = service.createInfoRequest(requestBody);
+
+        URI location = ServletUriComponentsBuilder
+                .fromCurrentRequest().path("/{id}")
+                .buildAndExpand(infoRequest.getId()).toUri();
+
+        return ResponseEntity.created(location).build();
+    }
+----
+
+With the request body class:
+
+[source,java]
+----
+import javax.validation.constraints.Email;
+import javax.validation.constraints.NotBlank;
+
+public class CreateInfoRequestRequestBody {
+    @NotBlank
+    private String name;
+    @NotBlank
+    private String phoneNumber;
+    @Email
+    @NotBlank
+    private String email;
+
+    // getters and setters
+}
+----
+
+[TIP]
+====
+You need to specify `@NotBlank` and `@Email` if the email is mandatory.
+`@Email` alone is not enough.
+====
+
+A `@WebMvcTest` to validate that we get a `400 BAD REQUEST` when the content body is not valid:
+
+[source,java]
+----
+    @Test
+    void testCreateInfoRequestWithInvalidRequestBody() throws Exception {
+        mockMvc.perform(post("/api/info-requests")
+                                .characterEncoding(StandardCharsets.UTF_8.name())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(new CreateInfoRequestRequestBody())))
+               .andExpect(status().isBadRequest())
+               .andDo(print());
+    }
+----
+
+Running this test will output:
+
+[source]
+----
+MockHttpServletResponse:
+           Status = 400
+    Error message = null
+          Headers = []
+     Content type = null
+             Body =
+    Forwarded URL = null
+   Redirected URL = null
+          Cookies = []
+----
+
+So again, an empty body due to the reason outlined above.
+
+The same as an `@SpringBootTest` integration test:
+
+[source,java]
+----
+    @Test
+    void testCreateInfoRequestWithInvalidRequestBody() throws Exception {
+        given().contentType(ContentType.JSON)
+               .body(objectMapper.writeValueAsString(new CreateInfoRequestRequestBody()))
+               .post("/api/info-requests")
+               .prettyPeek()
+               .then()
+               .statusCode(HttpStatus.BAD_REQUEST.value());
+    }
+----
+
+This results in:
+
+[source]
+----
+HTTP/1.1 400
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Sun, 19 Jul 2020 09:57:34 GMT
+Connection: close
+
+{
+    "timestamp": "2020-07-19T09:57:34.865+00:00",
+    "status": 400,
+    "error": "Bad Request",
+    "message": "",
+    "path": "/api/info-requests"
+}
+----
+
+The error response is non-empty, but it does not indicate the exact validation problem at all.
+
+As a final example, image a `PUT` endpoint that would link an info request to a support agent:
+
+[source,java]
+----
+    @PutMapping("{requestId}/link-to-agent/{agentId}")
+    public void linkSupportAgentToInfoRequest(@PathVariable("requestId") Long requestId,
+                                              @PathVariable("agentId") Long agentId) {
+        InfoRequest infoRequest = service.getInfoRequest(requestId)
+                                         .orElseThrow(() -> new InfoRequestNotFoundException(requestId));
+        SupportAgent supportAgent = supportAgentService.getSupportAgent(agentId)
+                                                       .orElseThrow(() -> new SupportAgentNotFoundException(agentId));
+
+        // ...
+
+    }
+----
+
+We have now 2 cases that a `404 NOT FOUND` can be returned.
+Either the information request is not found, or the support agent is not found (or both).
+With the error response we get by default, there is no way we can know which is the exact problem.
+
+In summary, these are the drawbacks we get with the default Spring Boot error handling:
+
+* It does not work in an `@WebMvcTest`. While we can make it work in a `@SpringBootTest`, it would be a lot better to have it consistent when using `@WebMvcTest` so we can make our unit tests run faster.
+* There is no error message in the response that indicates the exact problem. In many cases, the response status alone is not enough to know exactly what is the problem.
+* It does not show the exact validation problems.
+
+== Error Handling Spring Boot Starter
+
+To address the above drawbacks, I create the https://github.com/wimdeblauwe/error-handling-spring-boot-starter[Error Handling Spring Boot Starter] library.
+
+To get started, add the following dependency to your Spring Boot project:
+
+[source,xml]
+----
+<dependency>
+    <groupId>io.github.wimdeblauwe</groupId>
+    <artifactId>error-handling-spring-boot-starter</artifactId>
+    <version>0.3.0</version> <!--1-->
+</dependency>
+----
+<.> `0.3.0` was the most recent version at the time of writing. See https://search.maven.org/search?q=a:error-handling-spring-boot-starter[Maven Central] for the most current version.
+
+If we run the first `@WebMvcTest`, we now get the following JSON response:
+
+[source,json]
+----
+{
+  "code": "com.wimdeblauwe.examples.errorhandling.inforequest.InfoRequestNotFoundException",
+  "message": "There is no known info request with id 1"
+}
+----
+
+For the validation error, we get this response:
+
+[source,json]
+----
+{
+  "code": "VALIDATION_FAILED",
+  "message": "Validation failed for object='createInfoRequestRequestBody'. Error count: 3",
+  "fieldErrors": [
+    {
+      "code": "REQUIRED_NOT_BLANK",
+      "property": "phoneNumber",
+      "message": "must not be blank",
+      "rejectedValue": null
+    },
+    {
+      "code": "REQUIRED_NOT_BLANK",
+      "property": "email",
+      "message": "must not be blank",
+      "rejectedValue": null
+    },
+    {
+      "code": "REQUIRED_NOT_BLANK",
+      "property": "name",
+      "message": "must not be blank",
+      "rejectedValue": null
+    }
+  ]
+}
+----
+
+Note how the extra `fieldErrors` property is added that lists all the validation problems.
+Each of those shows an error `code`, the name of the `property` for which the validation failed, a human readable error `message` and finally the value that was used in the call (`rejectedValue`).
+
+As a 3rd example, the linking of support agent with an info request, we get:
+
+[source,json]
+----
+{
+  "code": "com.wimdeblauwe.examples.errorhandling.inforequest.InfoRequestNotFoundException",
+  "message": "There is no known info request with id 1"
+}
+----
+
+We can see that the problem during the linking was the information request. With just the `404 NOT FOUND` response code, we do not have this info.
+
+Running the equivalent `@SpringBootTest` tests shows the _exact_ same response.
+
+So, by just including the _Error Handling Spring Boot Starter_ in our project, we get the following improvements over the default Spring Boot error handling:
+
+* Consistent error responses for `@WebMvcTest` and `@SpringBootTest` tests.
+* Detailed validation errors per property
+* `code` that can be used by machines to react to the error
+* `message` that shows a human readable message with detailed info
+
+=== Customization of the error code
+
+By default, the `code` is the full qualified name of the exception that is thrown.
+The library uses this as a default since there is little else to go by, but in most cases you will probably want to customize this.
+There are 2 ways to do that.
+
+The first way is annotating the exception itself, very similar to how `@ResponseStatus` works:
+
+[source,java]
+----
+@ResponseStatus(HttpStatus.NOT_FOUND)
+@ResponseErrorCode("INFO_REQUEST_NOT_FOUND") //<.>
+public class InfoRequestNotFoundException extends RuntimeException {
+    public InfoRequestNotFoundException(Long id) {
+        super("There is no known info request with id " + id);
+    }
+}
+----
+<.> Use `@ResponseErrorCode` to set the value of `code` that should be used.
+
+After this change, the error response will be:
+
+[source,json]
+----
+{
+  "code": "INFO_REQUEST_NOT_FOUND",
+  "message": "There is no known info request with id 1"
+}
+----
+
+The other way is to specify this via a property (e.g. in `application.properties`).
+Start with `error.handling.code`, followed by the full qualified name of the exception:
+
+[source,properties]
+----
+error.handling.codes.com.wimdeblauwe.examples.errorhandling.inforequest.InfoRequestNotFoundException=UNKNOWN_INFO_REQUEST
+----
+
+[source,json]
+----
+{
+  "code": "UNKNOWN_INFO_REQUEST",
+  "message": "There is no known info request with id 1"
+}
+----
+
+=== Adding additional fields
+
+In some cases, you might want to add additional fields to the error response from the values that are passed to the exception.
+Suppose we want to add a property `infoRequestId` with the id that could not be found.
+
+To do that, we need to modify the exception class to use `@ErrorResponseProperty`:
+
+[source,java]
+----
+import io.github.wimdeblauwe.errorhandlingspringbootstarter.ResponseErrorProperty;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+@ResponseStatus(HttpStatus.NOT_FOUND)
+public class InfoRequestNotFoundException extends RuntimeException {
+    private final Long infoRequestId;
+
+    public InfoRequestNotFoundException(Long id) {
+        super("There is no known info request with id " + id);
+        this.infoRequestId = id;
+    }
+
+    @ResponseErrorProperty //<.>
+    public Long getInfoRequestId() {
+        return infoRequestId;
+    }
+}
+----
+<.> The `@ResponseErrorProperty` annotation indicates that the result of the method call should be serialized into the error response
+
+With this in place, the error response becomes:
+
+[source,json]
+----
+{
+  "code": "UNKNOWN_INFO_REQUEST",
+  "message": "There is no known info request with id 1",
+  "infoRequestId": 1
+}
+----
+
+We can also optionally specify the name of the property that should be used for serialization:
+
+[source,java]
+----
+    @ResponseErrorProperty("id")
+    public Long getInfoRequestId() {
+        return infoRequestId;
+    }
+----
+
+Resulting into:
+
+[source,json]
+----
+{
+  "code": "UNKNOWN_INFO_REQUEST",
+  "message": "There is no known info request with id 1",
+  "id": 1
+}
+----
+
+In this example, we have put the `@ResponseErrorProperty` annotation on a method, but it can also be put on a field to the same effect.
+
+== Exception logging
+
+As a final note on what the _Error Handling Spring Boot Starter_ library brings, there is the `error.handling.exception-logging` property.
+This propery controls if a logging statement is printed for each exception that is handled by the library.
+There are the following options:
+
+* `no_logging`: Nothing will be printed
+* `message_only`: The exception message will be printed (This is the default)
+* `with_stacktrace`: The full stack trace will be printed
+
+== Conclusion
+
+This blog post shows how the default error handling on Spring Boot works and how the _Error Handling Spring Boot Starter_ improves on that.
+
+See https://github.com/wimdeblauwe/blog-example-code/tree/master/error-handling-lib-example[Github] for the full example sources.
