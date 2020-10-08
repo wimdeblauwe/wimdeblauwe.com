@@ -54,6 +54,11 @@ img.align-left {
     margin: 10px auto 10px 10px;
 }
 
+img.book-cover {
+    max-height: 400px;
+    display: inline;
+}
+
 #paypal-container {
     display: flex;
     align-items: center;
