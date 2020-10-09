@@ -1,0 +1,121 @@
+---
+title: "Generate Leanpub TOC from Asciidoc files"
+date: 2020-10-09
+draft: false
+tags: ["asciidoctor","groovy"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+
+I just released the first version of my https://leanpub.com/taming-thymeleaf[Taming Thymeleaf book on leanpub].
+Since I am using Asciidoctor to generate the PDF, there is no automatic table of contents generation for the landing page.
+Luckily, leanpub allows to enter some HTML to manually create the TOC.
+
+A perfect opportunity to use my rusty Groovy skills once more to generate this HTML.
+
+I have my Asciidoc files all in a `_chapters` directory grouped per chapter:
+
+[source]
+----
+chapter-01.adoc
+chapter-02.adoc
+chapter-03.adoc
+chapter-04.adoc
+chapter-05.adoc
+...
+----
+
+Asciidoc uses `==` and `===` indicate chapter titles.
+This is an example from `chapter-01.adoc`:
+
+[source,asciidoc]
+----
+== What are Spring Boot and Thymeleaf?
+
+=== Spring Framework
+
+Spring Boot is based upon the https://projects.spring.io/spring-framework/[Spring Framework], which is at its core
+a dependency-injection container. Spring makes it easy to define everything in your application as loosely coupled
+components which Spring will tie together at run time. Spring also has a programming model that allows you to make
+abstractions from specific deployment environments.
+----
+
+This Groovy script loops over all files and searches for the level 1 (`==`) and level 2 (`===`) Asciidoc headings:
+
+[source,groovy]
+----
+println('<ul class="toc no-parts">')
+int chapterNumber = 1;
+def files = new File('_chapters').listFiles(new FilenameFilter() {
+    @Override
+    boolean accept(File dir, String name) {
+        return name.startsWith('chapter-')
+    }
+})
+files.sort().each { File file ->
+    def lines = file.readLines()
+    println('<li>')
+    int sectionNumber = 1;
+    lines.forEach({ it ->
+        if (it.startsWith("== ")) {
+            println("<span class=\"section-number\">${chapterNumber++}. </span>${it - "== "}")
+            println('<ul>')
+        }
+        if (it.startsWith("=== ")) {
+            println("""
+<li>
+                <span class="section-number">${chapterNumber}.${sectionNumber++} </span>${it - "=== "}
+            </li>
+""")
+        }
+    }
+    )
+    println('</ul>')
+    println('</li>')
+}
+println('</ul>')
+----
+
+The resulting HTML is something like:
+
+[source,html]
+----
+<ul class="toc no-parts">
+    <li>
+        <span class="section-number">1. </span>What are Spring Boot and Thymeleaf?
+        <ul>
+            <li>
+                <span class="section-number">2.1 </span>Spring Framework
+            </li>
+            <li>
+                <span class="section-number">2.2 </span>Spring Boot
+            </li>
+            <li>
+                <span class="section-number">2.3 </span>Thymeleaf
+            </li>
+        </ul>
+    </li>
+    <li>
+        <span class="section-number">2. </span>Getting started
+        <ul>
+            <li>
+                <span class="section-number">3.1 </span>Prerequisites
+            </li>
+            <li>
+                <span class="section-number">3.2 </span>Spring Initializer
+            </li>
+            <li>
+                <span class="section-number">3.3 </span>Summary
+            </li>
+        </ul>
+    </li>
+    ...
+</ul>
+----
+
+See https://leanpub.com/taming-thymeleaf for the full generated Table of Contents.
