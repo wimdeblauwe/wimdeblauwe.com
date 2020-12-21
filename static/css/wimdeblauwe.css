@@ -59,6 +59,17 @@ img.book-cover {
     display: inline;
 }
 
+.book-ad {
+    background: #0066a1;
+    color: #f1f1f1;
+    padding: 1em;
+    margin-top: 1em;
+}
+.book-ad > a {
+    color: white;
+    text-decoration: underline;
+}
+
 #paypal-container {
     display: flex;
     align-items: center;
