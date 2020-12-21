@@ -36,7 +36,7 @@ The full table of contents of the book can be seen on the Leanpub page: https://
 
 There is also a sample chapter available for free!
 
-Super-charge your learning now with Taming Thymeleaf!
+Super-charge your learning now with https://leanpub.com/taming-thymeleaf[Taming Thymeleaf]!
 
 == Application screenshots
 
