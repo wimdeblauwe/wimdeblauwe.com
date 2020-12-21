@@ -1,0 +1,77 @@
+---
+title: "Release Taming Thymeleaf book"
+date: 2020-12-21
+draft: false
+tags: ["spring-boot","thymeleaf"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+
+I am thrilled to announce the release of my book https://leanpub.com/taming-thymeleaf[Taming Thymeleaf on leanpub].
+This book aims to be a valuable resource to learn about https://www.thymeleaf.org/[Thymeleaf] with https://spring.io/projects/spring-boot[Spring Boot].
+
+image::{imagesdir}/2020/12/cover-3D.png[]
+
+<!--more-->
+
+== About the book
+
+Taming Thymeleaf will learn you about writing web applications with https://spring.io/projects/spring-boot[Spring Boot] and https://www.thymeleaf.org/[Thymeleaf] in no-time.
+The book teaches you step-by-step how to get started with those technologies and build a fully fledged web application including security, validation, internationalization, testing, ...
+
+Thymeleaf is an amazing technology for building server-side HTML using the Java eco-system.
+Combined with Spring Boot, it is really a killer combo for a productive development environment.
+Learn how to structure your code so your application can evolve for years to come.
+As HTML will always be there, you can do this without having to re-write your frontend every six months for the latest JavaScript framework.
+
+https://github.com/wimdeblauwe/taming-thymeleaf-sources[The application] that is built in the book not only functions great.
+It also looks amazing as it is based on https://tailwindui.com/[Tailwind UI]. These are beautiful components based on https://tailwindcss.com/[Tailwind CSS].
+
+The full table of contents of the book can be seen on the Leanpub page: https://leanpub.com/taming-thymeleaf
+
+There is also a sample chapter available for free!
+
+Super-charge your learning now with Taming Thymeleaf!
+
+== Application screenshots
+
+=== Learn to create forms
+
+image::{imagesdir}/2020/12/form.png[]
+_Example form to create a user account_
+
+image::{imagesdir}/2020/12/form-validation.png[]
+_Validation of form content_
+
+image::{imagesdir}/2020/12/avatar-edit.png[]
+_File upload to set an avatar image on a user_
+
+image::{imagesdir}/2020/12/delete-confirmation-modal.png[]
+_Show a modal dialog to confirm deletion of a user_
+
+=== Pagination
+
+image::{imagesdir}/2020/12/pagination.png[]
+_Use pagination to allow the user to navigate through a big result set_
+
+=== Login/Security
+
+image::{imagesdir}/2020/12/custom-login-page.png[]
+_Custom login page_
+
+=== Testing
+
+image::{imagesdir}/2020/12/cypress-login-user.png[]
+_Running https://www.cypress.io/[Cypress] tests for end-to-end testing of the Thymeleaf application_
+
+=== Dynamic interaction
+
+image::{imagesdir}/2020/12/teamplayer-2.png[]
+_Client-side interaction using the https://github.com/alpinejs/alpine[AlpineJS] JavaScript framework to avoid page reloads when the interaction needs to more dynamic_
+
+
