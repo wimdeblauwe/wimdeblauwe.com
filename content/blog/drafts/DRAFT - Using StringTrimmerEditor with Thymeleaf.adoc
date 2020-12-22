@@ -1,0 +1,45 @@
+---
+title: "Using StringTrimmerEditor with Thymeleaf"
+date: 9999-12-31
+draft: true
+tags: ["spring","thymeleaf"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+
+Trimming whitespace is one of the little things that a developer should take care of when coding text inputs in an HTML form.
+Remembering to do this for each input will get tedious soon, and there is a big chance that you might forget about it sooner or later.
+Luckily, Spring has the https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/beans/propertyeditors/StringTrimmerEditor.html[StringTrimmerEditor] class that allows to globally configure the trimming once.
+
+<!--more-->
+
+To use this in a Spring Boot with Thymeleaf application, we can define an https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/bind/annotation/ControllerAdvice.html[@ControllerAdvice] annotated class like this:
+
+[source,java]
+----
+import org.springframework.beans.propertyeditors.StringTrimmerEditor;
+import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.InitBinder;
+
+@ControllerAdvice
+public class GlobalControllerAdvice {
+
+    @InitBinder //<.>
+    public void initBinder(WebDataBinder binder) {
+        StringTrimmerEditor stringtrimmer = new StringTrimmerEditor(false); //<.>
+        binder.registerCustomEditor(String.class, stringtrimmer); //<.>
+    }
+}
+----
+<.> Methods annotated with `@InitBinder` will be called by the Spring framework to initialize the `WebDataBinder`.
+<.> Create a `StringTrimmerEditor` instance.
+The boolean flag indicates if you want to have an empty string returned as `null` (use `true`), or if an empty string should remain an empty string (use `false`).
+<.> Register the `StringTimmerEditor` to the binder for all fields of type `String`.
+
+Now all excess whitespace will be trimmed when the values are taken from the `<input>` fields and put in the form data object.
