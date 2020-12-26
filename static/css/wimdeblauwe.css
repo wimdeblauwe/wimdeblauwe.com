@@ -70,6 +70,12 @@ img.book-cover {
     text-decoration: underline;
 }
 
+.adr {
+    background: #dff1f6;
+    margin: 1em;
+    padding: 1em;
+}
+
 #paypal-container {
     display: flex;
     align-items: center;

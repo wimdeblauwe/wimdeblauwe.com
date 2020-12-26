@@ -1,0 +1,217 @@
+---
+title: "Architecture Decision Records"
+date: 2020-12-26
+draft: false
+tags: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+
+I have been using Architecture Decision Records (ADR) documents on my latest projects. This blog post will show you what they are and how you can use them.
+
+I will also show a few examples that can serve as inspiration for your project.
+
+<!--more-->
+
+== What is an ADR?
+
+An Architecture Decision Record could be defined as follows:
+
+[quote]
+____
+An Architecture Decision Record is a document that captures a decision, including the context of how the decision was made and the consequences of adopting the decision.
+____
+
+If we break this down, we can understand the following:
+
+* *It is a document*. It does not really matter how you document it, but it should be written down somewhere. You can keep it in your company's wiki, or store it along your sources in Markdown or Asciidoc format.
+* *It captures a decision*. There needs to be decisions made every day throughout your project. We are however talking about _architectural_ decisions here. What framework will we use? What library will we use to talk to the database? Which one for testing?
+* *It shows the context of the decision making process*. It contains a few paragraphs explaining the current context of the project (and maybe the team). This will help future readers of the ADR to better understand why a certain decision was made. It helps to answer the "What where they thinking?!" question that future developers on the project might have.
+* *It shows the consequences of adopting the decision*. Decisions are all about trade-offs. The ADR should mention what consequences the decision that was taken has on the development of the project.
+
+== What are the benefits?
+
+You might wonder why would you want to write an ADR for your project? After all, everybody knows that we are using Spring Boot as framework and JPA with Hibernate for the database, right?
+
+Wrong.
+
+The main benefits I have seen in practice are:
+
+* Reference in case of doubt: Since the decisions are documented, we can always refer back to them if there is doubt about how something is supposed to be done on the project.
+* Onboarding: new team members can read the ADR's to know how the project works. It will avoid that they bring their own personal preferences to the project without considering what has been decided before.
+
+[TIP]
+====
+That said, ADR's are not set in stone.
+If there is a good reason to change an earlier decision that has been documented as an ADR, that is certainly possible.
+
+Just don't change the "old" ADR, but create a new one. Refer to the old one and explain why the context has changed and this new decision was made now.
+====
+
+* Align multiple teams: If your company has multiple teams, then ADR's can help team get aligned through adapting each other's ADR's, or by using them as a starting point for a discussion on the different architectures that live in the company's projects.
+
+== How to write an ADR?
+
+There are various templates you can find online, but most ADR's have at least the following sections:
+
+* Number of the ADR
+* Date
+* Context
+* Decision
+* Status
+* Consequences
+
+Let's look at an example of a team that is starting out writing a cloud application using Java:
+
+***
+
+[.adr]
+--
+
+*_ADR-001: Java version_*
+
+icon:calendar[] 2020-09-25
+
+*Context*
+
+The My Project backend is an application that is intended to be run on a cloud server.
+We will be able to freely choose the Java version that is installed.
+
+The possible options are:
+
+* Java 8: This version is still widely used, but not recommended anymore for starting new projects today.
+* Java 11: This is the current Long Term Support (LTS) version of Java.
+* Java 15: This is the latest and greatest at the time of writing. However, this is not an LTS version and using this version would have the consequence that we need to ensure we keep updating our Java version every six months.
+
+*Decision*
+
+We will use Java 11 as it is the current LTS version.
+
+*Status*
+
+icon:check-circle[] ACCEPTED
+
+*Consequences*
+
+* Developers can use all language features of Java 11.
+* Any library we select in the project must support Java 11.
+
+--
+
+***
+
+A more elaborate example that explains what database fetching strategies are used. Note how the ADR refers to a previous ADR via its number.
+
+***
+
+[.adr]
+--
+
+*_ADR-008: Database fetch strategy_*
+
+icon:calendar[] 2020-05-14
+
+*Context*
+
+We are using JPA on this project (See ADR-004).
+JPA allows to use different fetching strategies: _Lazy_ fetching or _Eager_ fetching
+
+* Lazy: Only initialize "linked" entities or collections of entities when requested
+* Eager: Fetch everything always.
+
+For lazy fetching to work, you need to be in an open transaction, which you are normally not in the web layer.
+Spring has a workaround for this in the form of the `spring.jpa.open-in-view` property, but this is https://vladmihalcea.com/the-open-session-in-view-anti-pattern/[an anti-pattern
+that should be avoided].
+For this reason, the https://www.baeldung.com/spring-open-session-in-view[Open Session In View] has been disabled on this project.
+
+[NOTE]
+====
+Due to disabling the Open Session In View, you might get a https://vladmihalcea.com/the-best-way-to-handle-the-lazyinitializationexception/[LazyInitializationException].
+Don't enable it again, but follow the recommendations below to deal with it.
+====
+
+Always using eager fetching on everything is not desirable from a performance view.
+You would retrieve too much data always.
+
+A good middle ground is https://vladmihalcea.com/hibernate-facts-the-importance-of-fetch-strategy/[using JPQL "join fetch" statements]:
+Declare the associations as lazy on the entity.
+When a query needs information from the associations, explicitly requests this via `JOIN FETCH`.
+
+Example of setting the fetch type to Lazy:
+
+[source,java]
+----
+@Entity
+public class Customer extends User {
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true) <1>
+    private final Set<Address> addresses;
+----
+<1> `@OneToMany` is LAZY by default
+
+Example of using `JOIN FETCH` in a JPQL query:
+
+[source,java]
+----
+@Query("SELECT c FROM Customer c LEFT JOIN FETCH c.addresses WHERE c.id = :id")
+Optional<Customer> findCustomerByIdEagerly(@Param("id") UserId userId);
+----
+
+This will get the matching customer with his addresses set fully initialized, thus avoiding the https://vladmihalcea.com/n-plus-1-query-problem/[N+1 query problem].
+
+_Duplicates due to JOIN FETCH_
+
+It can happen that you get duplicates of your entity (which will usually be an aggregate root) when using JOIN FETCH.
+
+In that case, it is import to use `DISTINCT` in the JPQL query (so Hibernate will filter duplicates), but avoid that the `DISTINCT` keyword is passed on the generated SQL query (As this has a performance impact without any benefit).
+See https://vladmihalcea.com/jpql-distinct-jpa-hibernate/[The best way to use the JPQL DISTINCT keyword with JPA and Hibernate] for more details.
+
+To archieve this, you need to pass a query hint to Hibernate like this:
+
+[source,java]
+----
+@QueryHints(@QueryHint(name = "hibernate.query.passDistinctThrough", value = "false"))
+@Query("SELECT DISTINCT c FROM Concert c LEFT JOIN FETCH c.studentMatches sm LEFT JOIN FETCH c.student s WHERE c.endDateTime >= :now ORDER BY c.startDateTime")
+LinkedHashSet<Concert> findUpcomingConcerts(@Param("now") OffsetDateTime now);
+----
+
+To avoid having to type that property each time, there is the `@NoDistinctInSqlQueryHints` meta-annotation that can be used:
+
+[source,java]
+----
+@NoDistinctInSqlQueryHints
+@Query("SELECT DISTINCT c FROM Concert c LEFT JOIN FETCH c.studentMatches sm LEFT JOIN FETCH c.student s WHERE c.endDateTime >= :now ORDER BY c.startDateTime")
+LinkedHashSet<Concert> findUpcomingConcerts(@Param("now") OffsetDateTime now);
+----
+
+The used return type should be `Set` (if order is not important) or `LinkedHashSet` (if order is important).
+
+*Decision*
+
+* Open sesion in view is disabled via `spring.jpa.open-in-view` in `application.properties`
+* Associations in entities should be Lazy
+** `@OneToMany` is Lazy by default
+** `@ManyToOne` is Eager by default, so use `@ManyToOne(fetch = FetchType.LAZY)`
+* Use JOIN FETCH when information from the associations is needed (If you get a `LazyInitializationException`, it is needed).
+
+*Status*
+
+icon:check-circle[] ACCEPTED
+
+*Consequences*
+
+
+
+--
+
+***
+
+== Conclusion
+
+ADR's are really valuable to capture the architectural decisions on a project.
+You can read more about them at https://adr.github.io/ which has also some links to tooling around handling Architecture Decision Records.
