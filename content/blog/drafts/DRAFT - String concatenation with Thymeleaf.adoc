@@ -1,0 +1,225 @@
+---
+title: "String concatenation with Thymeleaf"
+date: 9999-12-31
+draft: true
+tags: ["thymeleaf"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+
+This post shows the various ways that you can concatenate string values with Thymeleaf.
+
+<!--more-->
+
+== String concatenation
+
+Assume for the examples a controller with these model attributes:
+
+[source,java]
+----
+@Controller
+public class MyController {
+
+    @GetMapping
+    public String index(Model model) {
+        model.addAttribute("givenName", "Layla");
+        model.addAttribute("familyName", "Clapton");
+    }
+}
+----
+
+=== Option 1
+
+Use the `+` sign. Hardcoded text should be put between single quotes (`'`):
+
+[source,html]
+----
+<h1 th:text="'Hi, ' + ${givenName} + ' ' + ${familyName}"></h1>
+----
+
+This renders as:
+
+[source,html]
+----
+<h1>Hi, Layla Clapton</h1>
+----
+
+=== Option 2
+
+Use the `|` character to perform literal substitutions:
+
+[source,html]
+----
+<h1 th:text="|Hi, ${givenName} ${familyName}|"></h1>
+----
+
+This renders exactly the same as option 1.
+
+=== Option 3
+
+Not really recommended, but you could use different `<span>` tags and concatenate like that:
+
+[source,html]
+----
+<h1>Hi, <span th:text="${givenName}"></span>&nbsp;<span th:text="${familyName}"></span></h1>
+----
+
+Note how you also need to add a non-breaking space (`+&nbsp;+`) between the spans.
+
+=== Option 4
+
+Another option is to use https://www.thymeleaf.org/doc/tutorials/3.0/usingthymeleaf#expression-inlining[expression inlining].
+
+The syntax is `[[...]]`.
+You can put any valid `th:text` expression between the brackets, so both examples are valid:
+
+[source,html]
+----
+<h1>Hi, [[${givenName} + ' ' + ${familyName}]]!</h1>
+----
+
+[source,html]
+----
+<h1>Hi, [[|${givenName} ${familyName}|]]!</h1>
+----
+
+=== Option 5
+
+You can of course also just build the string in the controller itself.
+
+[source,java]
+----
+@Controller
+public class MyController {
+
+    @GetMapping
+    public String index(Model model) {
+        model.addAttribute("givenName", "Layla");
+        model.addAttribute("familyName", "Clapton");
+        model.addAttribute("greeting", String.format("Hi, %s %s", "Layla", "Clapton"));
+    }
+}
+----
+
+With the HTML as:
+
+[source,html]
+----
+<h1 th:text="${greeting}"></h1>
+----
+
+== Join collection items
+
+If you need to join a collection of items with a delimiter, you can use the utility methods on the `#strings` variable.
+
+Suppose your controller has defined this model attribute:
+
+[source,java]
+----
+model.addAttribute("names", List.of("Wim", "Layla", "John"));
+----
+
+Use this template:
+
+[source,html]
+----
+<div th:text="${#strings.listJoin(names, ', ')}"></div>
+----
+
+Which will render like:
+
+[source,html]
+----
+<div>Wim, Layla, John</div>
+----
+
+See https://www.thymeleaf.org/doc/tutorials/3.0/usingthymeleaf#strings[#strings] in the Thymeleaf documentation for more information.
+
+== Internationalization
+
+=== Value substitution
+
+We can also use the internationalization support to concatenate strings.
+
+Suppose you have this in your `messages.properties` file:
+
+[source]
+----
+greeting=Hi, {0} {1}
+----
+
+Then you can use this in the Thymeleaf template:
+
+[source,html]
+----
+<h1 th:text="#{greeting(${givenName}, ${familyName})}></h1>
+----
+
+This also renders as:
+
+[source,html]
+----
+<h1>Hi, Layla Clapton</h1>
+----
+
+The advantage here is that you can translate the messages now easily by adding extra `messages.properties` files for each language the application needs to support.
+
+=== Key substitution
+
+In some cases, you might want to output a translation depending on the value of a certain enum.
+
+Let's assume we have this enum:
+
+[source,java]
+----
+public enum Gender {
+    MALE, FEMALE, OTHER, UNKNOWN
+}
+----
+
+And we have this translation file:
+
+[source]
+----
+Gender.MALE=Male
+Gender.FEMALE=Female
+Gender.OTHER=Other
+Gender.UNKNOWN=Unknown
+----
+
+If we want to show the translated value, we can do this:
+
+[source,html]
+----
+<span th:text="#{'Gender.' + ${user.gender}}"></span>
+----
+
+This assumes that the class of `user` has a property `gender` of our enum type.
+
+== URL Path concatenation
+
+If you want to use string concatenation to build a URL, there is a bit of a different option.
+
+Suppose the URL to edit a team is `/teams/<id>` where `id` is the `long` or `UUID` of the team.
+To build a link to that URL, we can do this:
+
+[source,html]
+----
+<a th:href="@{/teams/{id}(id=${row.id})}" th:text="#{edit.team}"></a>
+----
+
+This will render as:
+
+[source,html]
+----
+<a href="/teams/1234">Edit Team</a>
+----
+
+== Conclusion
+
+Thymeleaf has a rich set of options if you need to concatenate string values for your web application.
