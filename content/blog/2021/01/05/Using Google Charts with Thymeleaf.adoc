@@ -1,7 +1,7 @@
 ---
 title: "Using Google Charts with Thymeleaf"
-date: 9999-12-31
-draft: true
+date: 2021-01-05
+draft: false
 tags: ["spring","thymeleaf"]
 ---
 :source-highlighter: rouge
@@ -104,7 +104,7 @@ We are using the example from the Google Charts documentation here.
 Start the Spring Boot application and access http://localhost:8080 in the browser.
 You should see something like this:
 
-image::google-charts-initial.png[]
+image::{imagesdir}/2021/01/google-charts-initial.png[]
 
 == Get data from server
 
@@ -259,3 +259,5 @@ Just prepare the data in your controller and output it like the charting library
 
 What are you using to draw charts with Spring Boot and Thymeleaf?
 Do let me know on https://twitter.com/wimdeblauwe[Twitter]!
+
+_The full sources of this example can be found on https://github.com/wimdeblauwe/blog-example-code/tree/master/google-charts-thymeleaf[GitHub]._
