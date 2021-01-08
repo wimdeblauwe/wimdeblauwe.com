@@ -59,6 +59,23 @@ img.book-cover {
     display: inline;
 }
 
+#rest-api-book-image-parent {
+    display: flex;
+    justify-content: flex-start;
+}
+
+@media (max-width: 767px) {
+    #rest-api-book-image-parent {
+        flex-direction: column;
+    }
+}
+
+
+#rest-api-book-image-parent > img {
+    margin: 10px 1em 10px 1em;
+    width: 306px;
+}
+
 .book-ad {
     background: #0066a1;
     color: #f1f1f1;
