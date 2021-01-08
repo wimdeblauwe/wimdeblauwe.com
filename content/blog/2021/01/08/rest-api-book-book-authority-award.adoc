@@ -1,0 +1,19 @@
+---
+title: "Practical Guide to Building an API Back End with Spring Boot made it to the Best New REST API Books"
+date: 2021-01-08
+draft: false
+tags: ["spring-boot"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+
+I'm happy to announce that my book, "Practical Guide to Building an API Back End with Spring Boot", made it to BookAuthority's Best New REST API Books:
+https://bookauthority.org/books/new-rest-api-books?t=16x1w7&s=award&book=0359044522
+
+BookAuthority collects and ranks the best books in the world, and it is a great honor to get this kind of recognition. Thank you for all your support!
+The book is available for purchase https://www.amazon.com/dp/0359044522?tag=uuid10-20[on Amazon].
