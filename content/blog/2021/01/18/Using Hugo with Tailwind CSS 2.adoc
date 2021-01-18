@@ -1,7 +1,7 @@
 ---
 title: "Using Hugo with Tailwind CSS 2"
-date: 9999-12-31
-draft: true
+date: 2021-01-18
+draft: false
 tags: ["hugo","tailwindcss"]
 ---
 :source-highlighter: rouge
@@ -161,7 +161,7 @@ hugo server
 
 With all this in place, the browser should show something like this:
 
-image::hugo-with-tailwind2-1.png[]
+image::{imagesdir}/2021/01/hugo-with-tailwind2-1.png[]
 
 You see the website with some basic styling from the Tailwind CSS classes that have been used.
 
@@ -180,7 +180,7 @@ h1 {
 
 The browser should automatically refresh and show the updated title style:
 
-image::hugo-with-tailwind2-2.png[]
+image::{imagesdir}/2021/01/hugo-with-tailwind2-2.png[]
 
 To build for production, be sure to set the `NODE_ENV` variable:
 
