@@ -1,9 +1,14 @@
 <!-- Add section about Taming Thymeleaf for blog posts with the 'thymeleaf' tag -->
 {{ if and (ne .Type "page") (gt .Params.tags 0) (in .Params.tags "thymeleaf")}}
     {{ if not (strings.HasSuffix .Permalink "blog/2020/12/21/release-taming-thymeleaf/") }}
-        <div class="book-ad">Interested in learning more about Thymeleaf? Check out my book
+        <div class="book-ad">
+            <div class="book-cover">
+                <img src="/images/taming-thymeleaf-cover-3D-transparent.png" alt="Taming Thymeleaf cover">
+            </div>
+            <div>Interested in learning more about Thymeleaf? Check out my book
             <a href="https://www.wimdeblauwe.com/blog/2020/12/21/release-taming-thymeleaf/">Taming Thymeleaf</a>.
         The book combines all of my Thymeleaf knowledge into an easy to follow step-by-step guide.
+                </div>
         </div>
     {{ end }}
 {{ end }}

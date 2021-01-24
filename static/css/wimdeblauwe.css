@@ -2,6 +2,16 @@ body {
     font-family: 'Open Sans', sans-serif;
 }
 
+@media only screen and (min-width: 768px) {
+    .wrapper {
+        max-width: 700px;
+    }
+}
+@media only screen and (min-width: 1024px) {
+    .wrapper {
+        max-width: 850px;
+    }
+}
 @media only screen and (min-width: 1150px) {
     .wrapper {
         max-width: 1024px;
@@ -79,10 +89,36 @@ img.book-cover {
 .book-ad {
     background: #0066a1;
     color: #f1f1f1;
+    border-radius: 4px;
     padding: 1em;
     margin-top: 1em;
+    display: flex;
+    align-items: center;
 }
-.book-ad > a {
+
+.book-cover {
+    width: 20em;
+    margin-right: 2em;
+    display: none;
+}
+
+@media only screen and (min-width: 375px) {
+    .book-cover {
+        display: flex;
+    }
+}
+
+@media only screen and (min-width: 1024px) {
+    .book-ad {
+        padding: 0.5em;
+    }
+    .book-cover {
+        width: 7em;
+    }
+}
+
+
+.book-ad > div > a {
     color: white;
     text-decoration: underline;
 }
