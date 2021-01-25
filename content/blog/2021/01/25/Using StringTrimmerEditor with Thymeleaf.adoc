@@ -1,7 +1,7 @@
 ---
 title: "Using StringTrimmerEditor with Thymeleaf"
-date: 9999-12-31
-draft: true
+date: 2021-01-25
+draft: false
 tags: ["spring","thymeleaf"]
 ---
 :source-highlighter: rouge
@@ -42,4 +42,4 @@ public class GlobalControllerAdvice {
 The boolean flag indicates if you want to have an empty string returned as `null` (use `true`), or if an empty string should remain an empty string (use `false`).
 <.> Register the `StringTimmerEditor` to the binder for all fields of type `String`.
 
-Now all excess whitespace will be trimmed when the values are taken from the `<input>` fields and put in the form data object.
+Now all excess whitespace will be trimmed automatically when the values are taken from the `<input>` fields and put in the form data object.
