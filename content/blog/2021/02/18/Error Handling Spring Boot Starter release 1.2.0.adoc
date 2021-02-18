@@ -1,0 +1,49 @@
+---
+title: "Error Handling Spring Boot Starter release 1.2.0"
+date: 2021-02-18
+draft: false
+tags: ["spring-boot"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+
+I just did release 1.2.0 of the https://github.com/wimdeblauwe/error-handling-spring-boot-starter[error-handling-spring-boot-starter] library. It allows now to customize how the error response is serialized to JSON.
+
+<!--more-->
+
+By default, the library uses this:
+
+[source,json]
+----
+{
+  "code": "TEST_CODE",
+  "message": "Test message"
+}
+----
+
+If you like to use other field names, you can do this now via `application.properties`.
+For example, adding this:
+
+[source,properties]
+.application.properties
+----
+error.handling.json-field-names.code=errorCode
+error.handling.json-field-names.message=description
+----
+
+will result in this JSON instead:
+
+[source,json]
+----
+{
+  "errorCode": "TEST_CODE",
+  "description": "Test message"
+}
+----
+
+The library is available on Maven central so you can easily include it in your build. Read more details at https://www.wimdeblauwe.com/blog/2020/07/20/error-handling-library-spring-boot/ or check out the documentation at https://github.com/wimdeblauwe/error-handling-spring-boot-starter[the GitHub page].
