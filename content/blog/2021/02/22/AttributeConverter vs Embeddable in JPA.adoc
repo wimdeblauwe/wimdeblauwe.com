@@ -1,0 +1,352 @@
+---
+title: "AttributeConverter vs Embeddable in JPA"
+date: 2021-03-01
+draft: false
+tags: ["JPA", "hibernate", "spring-boot"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+
+There are 2 choices when using Value Objects in JPA entities with Spring Boot: `AttributeConverter` or `Embeddable`.
+This blog post shows the differences between those and some guidelines when to use what.
+
+<!--more-->
+
+== Using `Embeddable`
+
+We will model a user with a primary key, a name, a personal email address and a work email address; using https://martinfowler.com/bliki/ValueObject.html[Value Object]s for everything.
+
+The entity looks like this:
+
+[source,java]
+----
+import javax.persistence.EmbeddedId;
+import javax.persistence.Entity;
+
+@Entity
+public class EmbeddableUser {
+    @EmbeddedId
+    private UserId id;
+
+    private NaturalPersonName name;
+
+    @Embedded
+    @AttributeOverrides(@AttributeOverride(name = "value", column = @Column(name = "personal_email")))
+    private Email personalEmail;
+
+    @Embedded
+    @AttributeOverrides(@AttributeOverride(name = "value", column = @Column(name = "work_email")))
+    private Email workEmail;
+
+    protected EmbeddableUser() {
+    }
+
+    public EmbeddableUser(UserId id,
+                          NaturalPersonName name,
+                          Email personalEmail,
+                          Email workEmail) {
+        this.id = id;
+        this.name = name;
+        this.personalEmail = personalEmail;
+        this.workEmail = workEmail;
+    }
+
+    // getters here
+}
+----
+
+Notice how we use `UserId`, `NaturalPersonName` and `Email` as value objects. Our class also has an empty `protected` constructor since Hibernate needs that.
+
+To make it all work with the value objects, we have the following code in those objects:
+
+. The `UserId` class:
++
+[source,java]
+----
+import javax.persistence.Column;
+import java.io.Serializable;
+
+
+public class UserId implements Serializable { //<.>
+    @Column(name = "id") // <.>
+    private Long value;
+
+    protected UserId() { //<.>
+    }
+
+    public UserId(Long value) {
+        this.value = value;
+    }
+
+    public Long getValue() {
+        return value;
+    }
+}
+----
+<.> Need to implement Serializable to serve as primary key
+<.> We want to have a default column name of `id` for each entity that uses this class as a primary key
+<.> Hibernate needs a `protected` constructor
+
+. The `NaturalPersonaName` class:
++
+[source,java]
+----
+import javax.persistence.Embeddable;
+
+@Embeddable
+public class NaturalPersonName {
+    private String givenName;
+    private String familyName;
+
+    protected NaturalPersonName() {
+    }
+
+    public NaturalPersonName(String givenName,
+                             String familyName) {
+        this.givenName = givenName;
+        this.familyName = familyName;
+    }
+
+    public String getGivenName() {
+        return givenName;
+    }
+
+    public String getFamilyName() {
+        return familyName;
+    }
+}
+----
++
+Nothing special needed here, just the `@Embeddable` annotation on the class level.
+When the entity is written to the database, the field names used here will be used as column names.
+
+. The `Email` class:
++
+[source,java]
+----
+@Embeddable
+public class Email {
+    private String value;
+
+    protected Email() {
+    }
+
+    public Email(String value) {
+        Assert.hasText(value, "value should have text"); //<.>
+        this.value = value;
+    }
+
+    public String getValue() {
+        return value;
+    }
+}
+----
+<.> This should use regex or a library to validate that the passed in `String` is a valid email address, but this is not important for this blog post.
+
+The database schema that matches with these classes is:
+
+[source,sql]
+----
+CREATE TABLE embeddable_user
+(
+    id             BIGINT NOT NULL,
+    family_name    VARCHAR(255),
+    given_name     VARCHAR(255),
+    personal_email VARCHAR(255),
+    work_email     VARCHAR(255),
+    PRIMARY KEY (id)
+);
+----
+
+I want to draw the attention to the email fields in the `User` entity code:
+
+[source,java]
+----
+    @Embedded
+    @AttributeOverrides(@AttributeOverride(name = "value", column = @Column(name = "personal_email")))
+    private Email personalEmail;
+
+    @Embedded
+    @AttributeOverrides(@AttributeOverride(name = "value", column = @Column(name = "work_email")))
+    private Email workEmail;
+----
+
+Note how we need to add `AttributeOverrides` to specify a different column name for both.
+Without that, we would get this exception:
+
+[source]
+----
+Repeated column in mapping for entity: EmbeddableUser column: value
+----
+
+There is no column `value` in `EmbeddableUser` you might think, but there is, because `Email` has a `value` field.
+So Hibernate complains because both `personalEmail` and `workEmail` would be mapped to the same database column `value`.
+
+
+== Using `AttributeConverter`
+
+The `javax.persistence.AttributeConverter` interface allows to define a mapping between a value object and a _single_ column in the database.
+As such, it is more restricted then the `@Embeddable` annotation which can be used to map a value object onto multiple columns, but there are some other advantages as we will see.
+
+The code for `Email` becomes something like this:
+
+[source,java]
+----
+import org.springframework.util.Assert;
+
+public class Email {
+    private final String value;
+
+    public Email(String value) {
+        Assert.hasText(value, "value should have text");
+        this.value = value;
+    }
+
+    public String getValue() {
+        return value;
+    }
+}
+----
+
+Differences:
+
+. There is no need to have a `protected` constructor
+. The `value` field can be `final`.
+
+To map this to the database, we create an `EmailConverter`:
+
+[source,java]
+----
+import javax.persistence.AttributeConverter;
+import javax.persistence.Converter;
+
+@Converter(autoApply = true) //<.>
+public class EmailConverter implements AttributeConverter<Email, String> { //<.>
+    @Override
+    public String convertToDatabaseColumn(Email attribute) { //<.>
+        return attribute.getValue();
+    }
+
+    @Override
+    public Email convertToEntityAttribute(String dbData) { //<.>
+        return new Email(dbData);
+    }
+}
+----
+<.> Set `autoApply` to `true` so any `Email` field in any entity in our application will use this converter.
+<.> Type arguments to `AttributeConverter` specify the value object and the database field type.
+<.> This method takes a value object instance and converts into the database field value.
+<.> This method takes the database field value and converts it into the value object.
+
+The `User` entity itself becomes:
+
+[source,java]
+----
+import javax.persistence.EmbeddedId;
+import javax.persistence.Entity;
+
+@Entity
+public class User {
+    @EmbeddedId
+    private UserId id;
+    private NaturalPersonName name;
+    private Email personalEmail;
+    private Email workEmail;
+
+    protected User() {
+    }
+
+    public User(UserId id,
+                NaturalPersonName name,
+                Email personalEmail,
+                Email workEmail) {
+        this.id = id;
+        this.name = name;
+        this.personalEmail = personalEmail;
+        this.workEmail = workEmail;
+    }
+
+    // getters here
+}
+----
+
+Note how we don't have to add any annotations onto our 2 Email fields. Because we are using an `AttributeConverter`, JPA will use the name of the field for the column name.
+
+The DDL for our `User` entity is the same as in the `@Embeddable` case:
+
+[source,sql]
+----
+CREATE TABLE user
+(
+    id             BIGINT NOT NULL,
+    family_name    VARCHAR(255),
+    given_name     VARCHAR(255),
+    personal_email VARCHAR(255),
+    work_email     VARCHAR(255),
+    PRIMARY KEY (id)
+);
+----
+
+== Find entities via Value Object properties
+
+Using `@Emdabble` or `AttributeConverter` makes no difference for query methods in the repository.
+
+In both case, this works:
+
+[source,java]
+----
+public interface UserRepository extends CrudRepository<User, UserId> {
+
+    Optional<User> findByPersonalEmail(Email email);
+
+}
+----
+
+We can validate this via an `@DataJpaTest`:
+
+[source,java]
+----
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@DataJpaTest
+class UserRepositoryTest {
+
+    @Autowired
+    private UserRepository repository;
+
+    @Test
+    void testFindByPersonalEmail() {
+        repository.save(new User(new UserId(1L),
+                                 new NaturalPersonName("Wim", "Deblauwe"),
+                                 new Email("wim.deblauwe@gmail.com"),
+                                 new Email("wim.deblauwe@widit.be")));
+
+        Optional<User> byEmail = repository.findByPersonalEmail(new Email("wim.deblauwe@gmail.com"));
+        assertThat(byEmail).isPresent();
+    }
+}
+----
+
+== Conclusion
+
+When we examine the examples in detail, we can come to the following conclusions:
+
+* When a value object has multiple fields that need to be stored in multiple columns in the database, we must use `@Embeddable`.
+* An entity can override the column name of an `@Embeddable`
+** This is especially needed in case it contains multiple fields of the same type.
+* For single column value objects, an `AttributeConverter` has the following advantages:
+** The name of the field in the entity is automatically used. With `@Embeddable`, the column name is defined by the value object itself, not the entity that uses it.
+** The value object does not need to have an empty/default constructor
+
+_See https://github.com/wimdeblauwe/blog-example-code/tree/master/attribute-converter-vs-embeddable[example code on GitHub] for more details_
