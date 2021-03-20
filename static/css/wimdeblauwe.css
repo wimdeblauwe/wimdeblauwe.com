@@ -321,6 +321,15 @@ a.book-read-more-link:active {
 
 .image-with-text-right-image {
     margin-right: 2rem;
+    flex-shrink: 0;
+    min-width: 150px;
+    max-width: 250px;
+}
+
+@media only screen and (max-width: 425px) {
+    .image-with-text-right-image {
+        display: none;
+    }
 }
 
 .testimonial {
@@ -347,7 +356,6 @@ a.book-read-more-link:active {
     position: relative;
 }
 
-
 .testimonial-text > p:first-of-type::before {
     content: "\201C";
     font-size: 270px;
@@ -369,6 +377,26 @@ a.book-read-more-link:active {
 .testimonial-person-title {
     font-size: 0.8rem;
     color: #929292;
+}
+
+@media only screen and (max-width: 768px) {
+    .testimonial {
+        flex-direction: column;
+    }
+
+    .testimonial-image {
+        flex-direction: row;
+    }
+
+    .testimonial-image > img {
+        margin-right: 2rem;
+    }
+}
+
+@media only screen and (max-width: 425px) {
+    .testimonial-image > img {
+        width: 100px;
+    }
 }
 
 /* Mailchimp CSS */
