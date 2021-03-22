@@ -2,7 +2,7 @@ baseURL = "https://www.wimdeblauwe.com/"
 languageCode = "en-us"
 title = "Wim Deblauwe"
 theme = "ezhil"
-copyright = "© 2020 Wim Deblauwe"
+copyright = "© 2021 Wim Deblauwe"
 # disqusShortname = ""
 googleAnalytics = "UA-158263412-1"
 
