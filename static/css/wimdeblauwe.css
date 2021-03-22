@@ -399,6 +399,41 @@ a.book-read-more-link:active {
     }
 }
 
+.about-me {
+    background-color: rgba(0, 102, 161, 0.58);
+    border-radius: 0.5rem;
+    padding: 1rem 4rem;
+    /*margin-top: 1.5rem;*/
+    margin-bottom: 2rem;
+    color: #eef1ff;
+}
+
+.about-me > h2 {
+    margin-top: 0;
+    margin-bottom: 0;
+    color: #00183e;
+}
+
+.about-me p {
+    margin-block-start: 0;
+    margin-block-end: 0.3rem;
+}
+
+.about-me a {
+    color: #00183e;
+}
+
+#signup-block-title {
+    color: #eef1ff;
+    font-size: 1.3rem;
+}
+
+#signup-block-subtitle {
+    color: #00183e;
+    font-size: 0.9rem;
+}
+
+
 /* Mailchimp CSS */
 #mc_embed_signup {
     clear: left;
