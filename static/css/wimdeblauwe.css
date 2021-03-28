@@ -337,6 +337,10 @@ a.book-read-more-link:active {
     align-items: center;
 }
 
+.testimonial:not(first-child) {
+    margin-top: 2rem;
+}
+
 .testimonial-image {
     margin-left: 1rem;
     margin-right: 1rem;
@@ -348,6 +352,7 @@ a.book-read-more-link:active {
 
 .testimonial-image > img {
     width: 150px;
+    height: 150px;
     object-fit: cover;
     border-radius: 50%;
 }
@@ -396,6 +401,7 @@ a.book-read-more-link:active {
 @media only screen and (max-width: 425px) {
     .testimonial-image > img {
         width: 100px;
+        height: 100px;
     }
 }
 
