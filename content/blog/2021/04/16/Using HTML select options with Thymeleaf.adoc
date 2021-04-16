@@ -1,0 +1,173 @@
+---
+title: "Using HTML select options with Thymeleaf"
+date: 2021-04-16
+draft: false
+tags: ["thymeleaf", "spring-boot"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+
+This blog post will show the best way to implement a HTML `<select/>` to allow the user to select between one of several options.
+
+<!--more-->
+
+To recap, the https://www.w3schools.com/tags/tag_select.asp[HTML select tag] looks like this when using plain HTML:
+
+[source,html]
+----
+<label for="cars">Choose a car:</label>
+
+<select name="cars" id="cars">
+  <option value="volvo">Volvo</option>
+  <option value="saab">Saab</option>
+  <option value="mercedes">Mercedes</option>
+  <option value="audi">Audi</option>
+</select>
+----
+
+The browser renders this similar to this:
+
+image::{imagesdir}/2021/04/html-select-example.png[]
+
+It is important that each `<option>` has a `value` with should be some kind of unique id for that option. It also has the text this is visible to the user.
+
+As a consequence, we should ensure that the collection of possible objects in our Spring MVC model has at least those 2 fields available.
+
+Let's take the example of a sports team that has a coach. It must be possible to select from the list of coaches via a select.
+
+Assume this class:
+
+[source,java]
+----
+public class UserDto {
+    private final long id;
+    private final String name;
+}
+----
+
+In our controller, we will put instances of this class in the Model:
+
+[source,java]
+----
+@Controller
+@RequestMapping("/team")
+public class MyController {
+
+    @GetMapping("/{teamId}")
+    public String (@PathVariable("teamId") long teamId, Model model) {
+        Team team = teamService.getTeam(teamId).orElseThrow( () -> ...);
+        model.addAttribute("team", EditTeamFormData.fromTeam(team));
+        model.addAttribute("users", userService.getAllUsersNameAndId()); //<.>
+
+        return "teams/edit";
+    }
+}
+----
+<.> Put the collection of `UserDto` objects under the `users` key.
+
+The relevant part of the Thymeleaf template should look like this:
+
+[source,html]
+----
+<div>
+    <label for="coachId" th:text="#{team.coach}"></label>
+    <div>
+        <select th:field="*{coachId}">
+            <option th:each="user : ${users}"
+                    th:text="${user.name}"
+                    th:value="${user.id}">
+        </select>
+    </div>
+</div>
+----
+
+Important points:
+
+* The `<select>` has a `th:field` attribute that references to the `coachId` property of the `team` form data object.
+* We create as many `<option>` subtags as there are `users` via the `th:each` iteration.
+* Use `th:text` for the visible text that the user will see.
+* Use `th:value` for the value associated with the option (The primary key of the user in our case)
+
+We do not use the `Team` entity directly in our Model, but an `EditTeamFormData` class which is very similar to the `Team` entity.
+This is really important, if you try to make it work directly with the entity, you are going to have a hard time.
+The difference between those classes is how the link is made with the coach.
+In the `Team` entity this is done like this (assuming a single user can only be coach of 1 team):
+
+[source,java]
+----
+@Entity
+public class Team {
+    ...
+
+    @OneToOne
+    private User coach;
+}
+----
+
+In the `EditTeamFormData`, we just use the `id` of the user:
+
+[source,java]
+----
+public class EditTeamFormData {
+    ...
+    private long coachId;
+
+    public EditTeamFormData fromTeam(Team team) {
+        EditTeamFormData result = new EditTeamFormData();
+        ...
+        result.setCoachId(team.getCoach().getId());
+        ...
+        return result;
+    }
+}
+----
+
+Thymeleaf will set the `<option>` to `selected` automatically for the tag where the `value` matches with the current `coachId`.
+
+If we look at the page source in the browser, it will look something like this:
+
+[source,html]
+----
+<select class=""
+        id="coachId"
+        name="coachId">
+    ...
+    <option value="381e104f-4fe9-45d1-aa00-1e7679fb1bc4">Donita Koepp
+    </option>
+    <option value="13a38612-1b2b-441b-9dc3-42b039cd9fa3">Drew Herzog
+    </option>
+    <option value="b584818a-2c57-457c-a502-49ce87ac34a5" selected="selected">Earle Wehner
+    </option>
+    <option value="ada75a4d-4d25-4338-a145-aee90c1cb4c8">Ed Corkery
+    </option>
+    <option value="99bbf611-1ee6-40b3-8874-965cbcba93b1">Emmett Bailey
+    </option>
+    ...
+</select>
+----
+
+In the handling of the POST of the form, we can take the selected `coachId` from the `EditTeamFormData` instance and look up the actual user again from that id.
+
+[source,java]
+----
+@Controller
+@RequestMapping("/team")
+public class MyController {
+
+    ...
+
+    @PostMapping("/{teamId}")
+    public String (@PathVariable("teamId") long teamId, @ModelAttribute("team") EditTeamFormData formData) {
+
+        User coach = userService.getUser(formData.getCoachId).orElseThrow(()->...);
+        // put the coach on the Team entity either here or in a Service
+    }
+}
+----
+
+Using a HTML `<select>` with Thymeleaf is not that difficult if you take the above things into consideration, but it might be non-obvious to get started.
