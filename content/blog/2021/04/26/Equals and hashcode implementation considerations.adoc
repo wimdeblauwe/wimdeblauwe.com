@@ -1,0 +1,383 @@
+---
+title: "Equals and hashcode implementation considerations"
+date: 2021-04-26
+draft: false
+tags: ["java"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+
+I always struggled with how to implement equals and hashcode, until I learned about the difference between entities and value objects.
+
+<!--more-->
+
+== Why implement equals and hashcode?
+
+All classes in Java inherit from `java.lang.Object`.
+The https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#equals(java.lang.Object)[equals()] and https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#hashCode()[hashCode()] methods are 2 important methods that you usually should override when defining your own classes.
+
+`equals()` is important for comparing 2 objects to check if they represent _the same thing_.
+We will see in a bit what that means exactly for different types of objects.
+
+`hashCode()` is important if you put your object in a `HashSet` or a `HashMap`. It facilitates the https://www.educative.io/edpresso/what-is-hashing[hashing] that is used by those data structures.
+
+== Entity vs Value Object
+
+Even if you don't know https://en.wikipedia.org/wiki/Domain-driven_design[Domain Driven Design], you might have heared about entities and value objects.
+If you have not, here is a small recap about their differences:
+
+* *Entity*: An object that has a distinct identity within the application domain. For instance, a `User` or an `Invoice`.
+* *Value Object*: Objects that only matter because of the value they represent. For instance, a `Money` or `Temperature` object. Usually, these objects are immutable.
+
+== Equals and hashcode for value objects
+
+Let's imagine a fairly simple value object that represents temperature.
+It has a value and a unit and the code could look something like this:
+
+[source,java]
+----
+public class Temperature {
+    private final double value;
+    private final Unit unit;
+
+    public Temperature(double value,
+                       Unit unit) {
+        this.value = value;
+        this.unit = unit;
+    }
+
+    public double getValue() {
+        return value;
+    }
+
+    public Unit getUnit() {
+        return unit;
+    }
+
+    enum Unit {
+        KELVIN, CELCIUS, FAHRENHEIT;
+    }
+}
+----
+
+For value objects, we want to state that objects are equal when _all_ of their properties are equal.
+The implementation should be this:
+
+[source,java]
+----
+public class Temperature {
+
+    ...
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) { //<.>
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) { //<.>
+            return false;
+        }
+        Temperature that = (Temperature) o; //<.>
+        return Double.compare(that.value, value) == 0 && unit == that.unit; //<.>
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(value, unit); //<.>
+    }
+
+    ...
+}
+----
+<.> Short-circuit if the passed in object is the same reference (in memory) as the current object.
+<.> An object can never be equal to `null` and it cannot be equal to an object of another class.
+<.> We can safely cast the passed in object as we are sure it is of the same class as this object.
+<.> Compare each of the properties of the passed in object with the current object
+<.> Use the JDK `Objects.hash()` method to generate a hash code using all of the properties of the current object.
+
+We can validate now that 2 `Temperature` objects with the same properties are equal:
+
+[source,java,indent=0]
+----
+    @Test
+    void testEqualTemperature() {
+        Temperature temperature1 = new Temperature(37.0, Temperature.Unit.CELCIUS);
+        Temperature temperature2 = new Temperature(37.0, Temperature.Unit.CELCIUS);
+
+        boolean equal = temperature1.equals(temperature2);
+        assertTrue(equal);
+    }
+----
+
+I explictly called the `equals()` method here in the test, but this is not how you would normally do this.
+Either you would use the `assertEquals()` method of JUnit, or the `assertThat(..).isEqualTo(..)` method of AssertJ, both of which will call `equals()` internally in the end.
+
+We can test our `hashCode()` implementation like this:
+
+[source,java,indent=0]
+----
+    @Test
+    void testHashCodeForEqualObjects() {
+        Temperature temperature1 = new Temperature(37.0, Temperature.Unit.CELCIUS);
+        Temperature temperature2 = new Temperature(37.0, Temperature.Unit.CELCIUS);
+
+        int hashCode1 = temperature1.hashCode();
+        int hashCode2 = temperature2.hashCode();
+
+        assertThat(hashCode1).isEqualTo(hashCode2);
+    }
+----
+
+We test that equal objects should give equal hash codes.
+
+Note that the opposite does not need to be true.
+Different objects (as determined by the `equals()` implementation) can return the same hashcode, this is not a problem at all.
+
+== Equals and hashcode for entities
+
+For an entity, all that really matters is the identifier.
+We want to see 2 instances that have the same identifier as _the same thing_, even if other properties are different.
+
+Suppose this simple `User` entity:
+
+[source,java]
+----
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+
+@Entity
+public class User {
+
+    @Id
+    @GeneratedValue
+    private Long id;
+
+    private String name;
+
+    protected User() {
+    }
+
+    public User(String name) {
+        this.name = name;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+}
+----
+
+Since we only care about the `id` field, a naive implementation would look like this:
+
+[source,java]
+----
+// Don't do this for your entities!
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        User user = (User) o;
+        return Objects.equals(id, user.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+----
+
+Unfortunately, this is wrong.
+The problem is that the `id` field is generated by the database and only filled in _after_ the object is persisted.
+So for the same object, the `id` is initially `null` and then gets a certain value after it is stored in the database.
+
+Luckily, Vlad Mihalcea shows us https://vladmihalcea.com/how-to-implement-equals-and-hashcode-using-the-jpa-entity-identifier/[how to implement this correctly]:
+
+[source,java]
+----
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        User user = (User) o;
+        return id != null &&
+                id.equals(user.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
+----
+
+2 important notes:
+
+* We will only _see_ instances of `User` as equal if the `id` is filled in. 2 `User` instances that both have not been stored in the database will never be equal.
+* Hashode uses a hardcoded value, because it is not allowed that a hashCode value changes between the time the object is created and the time it is persisted in the database.
+
+See https://vladmihalcea.com/how-to-implement-equals-and-hashcode-using-the-jpa-entity-identifier[How to implement equals and hashCode using the JPA entity identifier (Primary Key)] for more in-depth details on this.
+
+== Equals and hashcode for entities using early primary key generation
+
+If you don't like the way we need to implement `equals()` and `hashCode()` for JPA entities, then there is a different route you can take.
+When you generate the primary key before you create the object, there are 2 advantages:
+
+1. The `id` can be made required in the constructor so you can't create "invalid" objects.
+2. The equals() and hashCode() methods can be simplified to just take the `id` into account.
+
+In code, we can imagine this entity:
+
+[source,java]
+----
+import org.springframework.util.Assert;
+
+import javax.persistence.Entity;
+import javax.persistence.Id;
+
+@Entity
+public class Book {
+    @Id
+    private Long id;
+
+    private String name;
+
+    protected Book() {
+    }
+
+    public Book(Long id,
+                String name) {
+        Assert.notNull(id, "id should not be null");
+        Assert.notNull(name, "name should ot be null");
+        this.id = id;
+        this.name = name;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+}
+----
+
+The `Book` entity does not have the `@GeneratedValue` annotation, so we will need to pass in a value at construction time.
+
+Now that we know the `id` field is never `null`, we can use this implementation:
+
+[source,java]
+----
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        Book book = (Book) o;
+        return id.equals(book.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+----
+
+We just use `id` for `equals()`, and we can relay on `id` as well for `hashCode()`
+
+NOTE: If you like to use early primary key generation, then check out my open-source library https://github.com/wimdeblauwe/jpearl[JPearl]. It has base classes and a Maven plugin that makes https://github.com/wimdeblauwe/jpearl#usage[the implementation of this a breeze].
+
+A test on equals could look like this:
+
+[source,java]
+----
+    @Test
+    void testEquals() {
+        Book book1 = new Book(1L, "Taming Thymeleaf");
+        Book book2 = new Book(1L, "Taming Thymeleaf");
+
+        assertThat(book1).isEqualTo(book2);
+    }
+----
+
+Since we only test the id, this test will also succeed:
+
+[source,java]
+----
+    @Test
+    void testEquals() {
+        Book book1 = new Book(1L, "Taming Thymeleaf");
+        Book book2 = new Book(1L, "Totally different title");
+
+        assertThat(book1).isEqualTo(book2);
+    }
+----
+
+This might be counter-intuative at first, but this is really what you want.
+Entities are defined by their id, when the id is the same, we are talking about _the same thing_.
+
+== Testing equals and hashCode implementations
+
+The tests that I have shown here only scratch the surface of all the things that you need to test to fully implement the `equals()` and `hashCode` contracts.
+
+To ensure your methods are correctly implemented, use https://jqno.nl/equalsverifier/[EqualsVerifier].
+
+Add it to your `pom.xml`:
+
+[source,xml]
+----
+<dependency>
+    <groupId>nl.jqno.equalsverifier</groupId>
+    <artifactId>equalsverifier</artifactId>
+    <version>3.6</version>
+    <scope>test</scope>
+</dependency>
+----
+
+And write the test:
+
+[source,java]
+----
+    @Test
+    public void equalsContract() {
+        EqualsVerifier.forClass(Temperature.class).verify();
+    }
+----
+
+This will test if `equals()` is reflexive, symmetric, transitive and consistent. It also tests if `hashCode()` adheres to the contract defined in the `java.lang.Object` API.
+
+NOTE: When writing the blog entry, the test pointed out equals of `Temperature` was not `final` (See https://jqno.nl/equalsverifier/errormessages/subclass-equals-is-not-final/). The best fix was to make the whole class final as the class was not intended to be subclassed anyway. So verifying your implementation is certainly worth it.
+
+== Conclusion
+
+To correctly implement the `equals()` and `hashCode()`, it is important to first determine if your object is a value object or an entity.
+If it is one of the those, you can follow the rules set forth in the blog. If it is neither (e.g. a `Controller`, `Service`, `Repository`, ...) then you probably don't want to override the methods.
