@@ -1,0 +1,154 @@
+---
+title: "Error Handling Spring Boot Starter release 1.6.0"
+date: 2021-05-01
+draft: false
+tags: ["spring-boot"]
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+
+There is a new version 1.6.0 of the https://github.com/wimdeblauwe/error-handling-spring-boot-starter[Error Handling Spring Boot Starter]. A lot of new things have been added since I https://www.wimdeblauwe.com/blog/2021/02/18/error-handling-spring-boot-starter-release-1.2.0/[lasted blogged about version 1.2.0 of this library], so it is time for a round-up to show the new goodies.
+
+<!--more-->
+
+== New default error code generation strategy
+
+Previous versions (before 1.5.0) used the full qualified name of the `Exception` class as the error code.
+
+Suppose you had this exception:
+
+[source,java]
+----
+package com.company.application.user;
+
+public class UserNotFoundException extends RuntimeException {
+    public UserNotFoundException() {
+        super("User was not found");
+    }
+}
+----
+
+This would generated this error response:
+
+[source,json]
+----
+{
+  "code": "com.company.application.user.UserNotFoundException",
+  "message": "User was not found"
+}
+----
+
+Since 1.5.0, the default `code` uses the `ALL_CAPS` https://wimdeblauwe.github.io/error-handling-spring-boot-starter/#error-code-style[error code style] by default, resulting in this error response:
+
+[source,json]
+----
+{
+  "code": "USER_NOT_FOUND",
+  "message": "User was not found"
+}
+----
+
+The reason that the FQN was used before was that you are sure there are no name clashes. However, I believe the `ALL_CAPS` is a better default, and Twitter seems to agree:
+
+++++
+<blockquote class="twitter-tweet"><p lang="en" dir="ltr">What should be the default style for error codes in the error-handling library? <a href="https://t.co/4KyVSzEXBp">https://t.co/4KyVSzEXBp</a></p>&mdash; Wim Deblauwe (@wimdeblauwe) <a href="https://twitter.com/wimdeblauwe/status/1376871926224814085?ref_src=twsrc%5Etfw">March 30, 2021</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+++++
+
+If name clashes would happen, then there are enough override mechanisms in the library to deal with it.
+
+== HTTP response status in response body
+
+By default, Spring Boot itself has the HTTP response status as a field in the JSON response body. Version 1.5.0 of the library now also added the possibility to enable this behaviour:
+
+[source,properties]
+----
+error.handling.http-status-in-json-response=true
+----
+
+The resulting error response would be:
+
+[source,java]
+----
+{
+  "status": 404, //<.>
+  "code": "USER_NOT_FOUND",
+  "message": "Could not find user with id 123"
+}
+----
+<.> HTTP status code as field in the JSON response
+
+== More support for validation problems
+
+2 new features have been added to support error response related to validation:
+
+* The `javax.validation.ConstraintViolationException` is now also supported. This exception is used when you validate on a `Service` method for example, as opposed to validating the `RequestBody` in the `Controller`.
+* Validation annotations on a `@RequestParam` parameter now leads to the addition of `parameterErrors` in the error response.
+
+As an example, this contains the 3 possible types of validation errors that can happen:
+
+[source,json]
+----
+{
+  "code": "VALIDATION_FAILED",
+  "message": "Validation failed for object='exampleRequestBody'. Error count: 4",
+  "fieldErrors": [
+    {
+      "code": "INVALID_SIZE",
+      "property": "name",
+      "message": "size must be between 10 and 2147483647",
+      "rejectedValue": ""
+    },
+    {
+      "code": "REQUIRED_NOT_BLANK",
+      "property": "favoriteMovie",
+      "message": "must not be blank",
+      "rejectedValue": null
+    }
+  ],
+  "globalErrors": [
+    {
+      "code": "ValidCustomer",
+      "message": "Invalid customer"
+    },
+    {
+      "code": "ValidCustomer",
+      "message": "UserAlreadyExists"
+    }
+  ],
+  "parameterErrors": [
+    {
+      "code": "REQUIRED_NOT_NULL",
+      "message": "must not be null",
+      "parameter": "extraArg",
+      "rejectedValue": null
+    }
+  ]
+}
+----
+
+
+See https://wimdeblauwe.github.io/error-handling-spring-boot-starter/#validation[Validation] chapter in the documentation for full details.
+
+== New documentation website
+
+There is a new documentation website at https://wimdeblauwe.github.io/error-handling-spring-boot-starter/
+
+I am quite proud of the site, but it was really the https://github.com/spring-io/spring-asciidoctor-backends[spring-asciidoctor-backends] project that made it possible.
+
+It even has a light and a dark mode:
+
+[cols="1,1"]
+|===
+
+a|image::{imagesdir}/2021/05/ehsbs-docs-site.png[width=70%]
+a|image::{imagesdir}/2021/05/ehsbs-docs-site-dark.png[width=70%]
+|===
+
+== Conclusion
+
+This concludes the overview of the recent changes to the https://github.com/wimdeblauwe/error-handling-spring-boot-starter[Error Handling Spring Boot Starter]. Feel free to https://github.com/wimdeblauwe/error-handling-spring-boot-starter/issues[create an issue] or https://twitter.com/wimdeblauwe[ping me on Twitter] if you have a question or a problem with the library.
