@@ -286,6 +286,12 @@ h3.summary a:hover {
     }
 }
 
+.small-note {
+    font-size: 0.7em;
+    margin-top: 5px;
+    font-style: italic;
+}
+
 .buy-book-links {
     display: flex;
     column-gap: 1em;
