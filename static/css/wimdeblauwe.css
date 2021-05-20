@@ -286,6 +286,11 @@ h3.summary a:hover {
     }
 }
 
+.buy-book-links {
+    display: flex;
+    column-gap: 1em;
+}
+
 a.book-read-more-link {
     background:linear-gradient(to bottom, #2077ae 5%, #0066A1 100%);
     background-color:#0066A1;
