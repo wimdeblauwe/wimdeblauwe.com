@@ -64,6 +64,10 @@ img.align-left {
     margin: 10px auto 10px 10px;
 }
 
+.imageblock.text-left > div > img {
+    margin: 10px auto 10px 10px;
+}
+
 img.book-cover {
     max-height: 400px;
     display: inline;
@@ -641,6 +645,8 @@ table.linenotable td.linenos {
 }
 
 .listingblock > .title {
+    font-family: "Open Sans", sans-serif;
+    font-size: 0.9rem;
     margin-bottom: -0.8em;
 }
 
