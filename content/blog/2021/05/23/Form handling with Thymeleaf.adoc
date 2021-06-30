@@ -3,6 +3,7 @@ title: "Form handling with Thymeleaf"
 date: 2021-05-23
 draft: false
 tags: ["thymeleaf", "spring-boot"]
+keywords: ["form handling"]
 ---
 :source-highlighter: rouge
 :rouge-css: style

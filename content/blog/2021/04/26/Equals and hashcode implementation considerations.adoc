@@ -3,6 +3,7 @@ title: "Equals and hashcode implementation considerations"
 date: 2021-04-26
 draft: false
 tags: ["java"]
+keywords: ["equals", "hashcode"]
 ---
 :source-highlighter: rouge
 :rouge-css: style

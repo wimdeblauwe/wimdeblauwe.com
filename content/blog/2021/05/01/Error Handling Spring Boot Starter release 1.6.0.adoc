@@ -3,6 +3,7 @@ title: "Error Handling Spring Boot Starter release 1.6.0"
 date: 2021-05-01
 draft: false
 tags: ["spring-boot"]
+keywords: ["validation", "error handling"]
 ---
 :source-highlighter: rouge
 :rouge-css: style
