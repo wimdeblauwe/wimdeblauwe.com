@@ -28,9 +28,14 @@ url = "/books"
 weight = 3
 
 [[menu.main]]
+name = "Conferences"
+url = "/conferences"
+weight = 4
+
+[[menu.main]]
 name = "About"
 url = "/about"
-weight = 4
+weight = 5
 
 [[params.social]]
 name = "RSS FEED"
