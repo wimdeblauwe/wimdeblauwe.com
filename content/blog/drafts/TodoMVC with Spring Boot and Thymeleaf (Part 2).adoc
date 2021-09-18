@@ -1,0 +1,123 @@
+---
+title: "TodoMVC with Spring Boot and Thymeleaf (Part 2)"
+date: 2021-09-11
+draft: true
+tags: ["thymeleaf", "spring-boot"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+
+// TODO add link to part 1
+In Part 1, we implemented https://todomvc.com/[TodoMVC] using Spring Boot and Thymeleaf.
+The application already allows to add todo items and show them.
+We will continue in this part with completing items and deleting them.
+
+<!--more-->
+
+== Item completion
+
+A user can complete an item by clicking on the circle in front of the description of the todo item.
+To make this work in a "classic" Thymeleaf application, we need to add a form around the item so a `PUT` request can be send to the server.
+
+Update the `todoItem` fragment in `fragments.html` to this:
+
+[source,html]
+----
+<li th:fragment="todoItem(item)">
+    <div class="view">
+        <form th:action="@{/{id}/toggle(id=${item.id})}" th:method="put"> <!--.-->
+            <input class="toggle" type="checkbox"
+                   onchange="this.form.submit()"> <!--.-->
+            <label th:text="${item.title}">Taste JavaScript</label> <!--.-->
+        </form>
+        <button class="destroy"></button>
+    </div>
+    <input class="edit" value="Create a TodoMVC template">
+</li>
+----
+<.> `form` element to send a `PUT` request to toggle the completed state of the item
+<.> Since we don't have a separate submit button to submit the form, we need this little bit of JavaScript to trigger the submit as soon as the input checkbox changes.
+<.> The `<label>` needs to be in the `<form>` as well because of the way the CSS of TodoMVC is structured, it is not really needed functionally.
+
+The corresponding controller code to make this work is this:
+
+[source,java]
+----
+    @PutMapping("/{id}/toggle") //<.>
+    public String toggleSelection(@PathVariable("id") Long id) { //<.>
+        TodoItem todoItem = repository.findById(id) //<.>
+                                      .orElseThrow(() -> new TodoItemNotFoundException(id));
+
+        todoItem.setCompleted(!todoItem.isCompleted()); //<.>
+        repository.save(todoItem); //<.>
+        return "redirect:/"; //<.>
+    }
+----
+<.> Annotate the method with `@PutMapping` since we want to react to a HTTP `PUT` request.
+<.> Extract the id of the item from the path.
+<.> Use the repository to find the item in the database.
+<.> Toggle the `boolean` completed state of the item.
+<.> Save the item back to the database.
+<.> Redirect the browser to the root page so it can display the updated todo item.
+
+Because we are using `PUT` and browsers only really support `POST` and `GET`, we need to enable the https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/filter/HiddenHttpMethodFilter.html[HiddenHttpMethodFilter] like this:
+
+[source,properties]
+.src/main/resources/application.properties
+----
+spring.mvc.hiddenmethod.filter.enabled=true
+----
+
+[NOTE]
+====
+The HiddenHttpMethodFilter works together with Thymeleaf to allowing using `PUT`, `DELETE`, etc....
+If you specify `th:method="put"` for example, then Thymeleaf use `post` as the actual method on the form and insert an extra hidden input `_method` with the preferred HTTP method like this:
+
+[source,html]
+----
+<form action="/1/toggle" method="post">
+  <input type="hidden" name="_method" value="put"/>
+  ...
+</form>
+----
+
+On the server, this will turn into a `PUT` request that we can handle with a `@PutMapping` annotation.
+====
+
+We could test this, but we would need to check in the database to see if the `completed` state was really changed.
+Probably a better idea to update our application to also show the state.
+
+If we look closely to the example HTML from TodoMVC, we can see that 2 things need to change in the generated HTML when an item is completed:
+
+. Add the `completed` CSS class on the `<li>` element
+. Add the `checked` attribute to the `<input>` element
+
+We do this by using `th:classappend` to add a CSS class and `th:attrappend` to add an extra attribute:
+
+[source,html]
+----
+<li th:fragment="todoItem(item)" th:classappend="${item.completed?'completed':''}"> <!--.-->
+    <div class="view">
+        <form th:action="@{/{id}/toggle(id=${item.id})}" th:method="put">
+            <input class="toggle" type="checkbox"
+                   onchange="this.form.submit()"
+                   th:attrappend="checked=${item.completed?'true':null}"> <!--.-->
+            <label th:text="${item.title}">Taste JavaScript</label>
+        </form>
+        <button class="destroy"></button>
+    </div>
+    <input class="edit" value="Create a TodoMVC template">
+</li>
+----
+<.> Conditionally add the `completed` CSS class depending on the `completed` attribute of the item.
+<.> Conditionally set the `checked` attribute. By using `null` if the item is not completed, the `checked` attribute is not added at all to the resulting HTML.
+
+Start the application again and you should be able to complete the todo items:
+
+image::drafts/todomvc-thymeleaf-5.png[]
