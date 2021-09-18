@@ -121,3 +121,50 @@ We do this by using `th:classappend` to add a CSS class and `th:attrappend` to a
 Start the application again and you should be able to complete the todo items:
 
 image::drafts/todomvc-thymeleaf-5.png[]
+
+== Delete a todo item
+
+Implementing the delete is very similar to what we already have done.
+We need to:
+
+. Put a `<form>` around the delete button.
+. Implement a controller method to react to the form submit
+
+Let's start by updating `fragments.html` to add the form:
+
+[source,html]
+----
+<li th:fragment="todoItem(item)" th:classappend="${item.completed?'completed':''}">
+    <div class="view">
+        <form th:action="@{/{id}/toggle(id=${item.id})}" th:method="put">
+            <input class="toggle" type="checkbox"
+                   onchange="this.form.submit()"
+                   th:attrappend="checked=${item.completed?'true':null}">
+            <label th:text="${item.title}">Taste JavaScript</label>
+        </form>
+        <form th:action="@{/{id}(id=${item.id})}" th:method="delete"> <!--.-->
+            <button class="destroy"></button>
+        </form>
+    </div>
+    <input class="edit" value="Create a TodoMVC template">
+</li>
+----
+<.> The `<form>` element with the URL to use via `th:action` and the `delete` method.
+
+The delete mapping is quite straightforward:
+
+[source,java]
+----
+    @DeleteMapping("/{id}") //<.>
+    public String deleteTodoItem(@PathVariable("id") Long id) { //<.>
+        repository.deleteById(id); //<.>
+
+        return "redirect:/"; //<.>
+    }
+----
+<.> Annotate the method with `@DeleteMapping` since we want to react to a HTTP `DELETE` request.
+<.> Extract the id of the item from the path.
+<.> Use the repository to delete the item in the database.
+<.> Redirect the browser to the root page so it can display the remaining todo items.
+
+
