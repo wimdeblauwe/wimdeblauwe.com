@@ -167,4 +167,73 @@ The delete mapping is quite straightforward:
 <.> Use the repository to delete the item in the database.
 <.> Redirect the browser to the root page so it can display the remaining todo items.
 
+== Show the number of uncompleted items left
 
+As soon as you add the first todo item, there is a bar that appears at the bottom which has "0 items left".
+We are not yet updating this as we add items, complete them or delete them.
+Let's add this functionally now.
+
+We can start by adding a new attribute in the `Model` that indicates the number:
+
+[source,java]
+.TodoItemController
+----
+    @GetMapping
+    public String index(Model model) {
+        model.addAttribute("item", new TodoItemFormData());
+        model.addAttribute("todos", getTodoItems());
+        model.addAttribute("totalNumberOfItems", repository.count());
+        model.addAttribute("numberOfActiveItems", getNumberOfActiveItems()); //<.>
+        return "index";
+    }
+----
+<.> Put `numberOfActiveItems` in the model so our view can react to that.
+
+To get that number, we expand our `TodoItemRepository` with a dedicated query method:
+
+[source,java]
+----
+public interface TodoItemRepository extends JpaRepository<TodoItem, Long> {
+    int countAllByCompleted(boolean completed); //<.>
+}
+----
+<.> Query method to count the completed (or not completed) items
+
+Thanks to the power of Spring Data JPA, we don't even need to implement this method.
+The code for it is generated automatically.
+
+With this, we can complete our `getNumberOfActiveItems()` private method in the controller:
+
+[source,java]
+----
+    private int getNumberOfActiveItems() {
+        return repository.countAllByCompleted(false);
+    }
+----
+
+With the information we need in the model, we can update the view to react to it:
+
+Replace:
+
+[source,html]
+----
+<span class="todo-count"><strong>0</strong> item left</span>
+----
+
+with:
+
+[source,html]
+----
+<th:block th:unless="${numberOfActiveItems == 1}"> <!--.-->
+    <span class="todo-count"><strong th:text="${numberOfActiveItems}">0</strong> items left</span>
+</th:block>
+<th:block th:if="${numberOfActiveItems == 1}"> <!--.-->
+    <span class="todo-count"><strong>1</strong> item left</span>
+</th:block>
+----
+<.> For all cases, except when the number of active items is `1`, we use ... _items_ left.
+<.> If there is 1 item, then we need to use 1 _item_ left.
+
+Restart the application and watch how the amount of items left is updated when adding, completing and deleting items:
+
+image::drafts/todomvc-thymeleaf-6.png[]
