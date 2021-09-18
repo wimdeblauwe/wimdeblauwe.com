@@ -342,7 +342,7 @@ We will leave those in place in the Thymeleaf template, but we will instruct Thy
 [source,html]
 ----
 <ul class="todo-list" th:remove="all-but-first"> <!--.-->
-    <li th:insert="fragments :: todoItem(item)" th:each="item : ${todos}" th:remove="tag"> <!--.-->
+    <li th:insert="fragments :: todoItem(${item})" th:each="item : ${todos}" th:remove="tag"> <!--.-->
     </li>
     </li>
     <li class="completed">
@@ -358,8 +358,8 @@ We will leave those in place in the Thymeleaf template, but we will instruct Thy
 
 [IMPORTANT]
 ====
-It might seem that using `th:replace` could avoid the `th:insert` + `th:remove` combination, but this not true due to the https://www.thymeleaf.org/doc/tutorials/3.0/usingthymeleaf.html#attribute-precedence[Thymeleaf attribute precedence].
-See https://github.com/thymeleaf/thymeleaf/issues/847 for more detailed information.
+It might seem that using `th:replace` could avoid the `th:insert` + `th:remove` combination, but this not true due to the Thymeleaf https://www.thymeleaf.org/doc/tutorials/3.0/usingthymeleaf.html#attribute-precedence[attribute precedence].
+See https://www.wimdeblauwe.com/blog/2021/09/14/thymeleaf-iteration-and-fragments/[Thymeleaf iteration and fragments] for more detailed information.
 ====
 
 The fragment that is referenced here is added to `fragment.html` and looks like this:
@@ -372,7 +372,7 @@ The fragment that is referenced here is added to `fragment.html` and looks like 
 <!--/*@thymesVar id="item" type="com.wimdeblauwe.examples.todomvcthymeleaf.todoitem.web.TodoItemController.TodoItemDto"*/-->
 <li th:fragment="todoItem(item)">
     <div class="view">
-        <input class="toggle" type="checkbox" checked>
+        <input class="toggle" type="checkbox">
         <label th:text="${item.title}">Taste JavaScript</label>
         <button class="destroy"></button>
     </div>
