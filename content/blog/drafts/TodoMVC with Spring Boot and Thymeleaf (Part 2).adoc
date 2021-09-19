@@ -237,3 +237,8 @@ with:
 Restart the application and watch how the amount of items left is updated when adding, completing and deleting items:
 
 image::drafts/todomvc-thymeleaf-6.png[]
+
+== Conclusion
+
+// TODO add link to part 3
+This is all for part 2, continue to part 3 for the final installment of this series.

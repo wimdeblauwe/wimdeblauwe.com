@@ -1,0 +1,165 @@
+---
+title: "TodoMVC with Spring Boot and Thymeleaf (Part 3)"
+date: 2021-09-11
+draft: true
+tags: ["thymeleaf", "spring-boot"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+
+// TODO add link to part 2
+In Part 2, we implemented completion and deletion of todo items.
+In this last part of the 3-part series, we'll finish the implementation of our https://todomvc.com/[TodoMVC] clone.
+
+<!--more-->
+
+== Filter active/completed items
+
+As a reminder, this is how the application looks currently:
+
+image::drafts/todomvc-thymeleaf-6.png[]
+
+At the bottom of the application, we have 3 filter options: _All_, _Active_ and _Completed_
+
+To implement this, we can create an `enum` that represents those 3 options:
+
+[source,java]
+----
+public enum ListFilter {
+    ALL,
+    ACTIVE,
+    COMPLETED
+}
+----
+
+We will use 3 different URLs to represent the 3 options:
+
+* `/` -> `ListFilter.ALL`
+* `/active` -> `ListFilter.ACTIVE`
+* `/completed` -> `ListFilter.COMPLETED`
+
+To request the matching todo items, we need to extend `TodoItemRepository` with an extra method:
+
+[source,java]
+----
+public interface TodoItemRepository extends JpaRepository<TodoItem, Long> {
+    int countAllByCompleted(boolean completed);
+
+    List<TodoItem> findAllByCompleted(boolean completed); //<.>
+}
+----
+<.> Allow to retrieve completed or not completed todo items from the database
+
+In our controller, we use `ListFilter` and the new `findAllByCompleted` method to expose 3 endpoints:
+
+[source,java]
+.TodoItemController
+----
+    @GetMapping
+    public String index(Model model) {
+        addAttributesForIndex(model, ListFilter.ALL);
+        return "index";
+    }
+
+    @GetMapping("/active")
+    public String indexActive(Model model) {
+        addAttributesForIndex(model, ListFilter.ACTIVE);
+        return "index";
+    }
+
+    @GetMapping("/completed")
+    public String indexCompleted(Model model) {
+        addAttributesForIndex(model, ListFilter.COMPLETED);
+        return "index";
+    }
+
+    private void addAttributesForIndex(Model model,
+                                       ListFilter listFilter) {
+        model.addAttribute("item", new TodoItemFormData());
+        model.addAttribute("filter", listFilter); //<.>
+        model.addAttribute("todos", getTodoItems(listFilter)); //<.>
+        model.addAttribute("totalNumberOfItems", repository.count());
+        model.addAttribute("numberOfActiveItems", getNumberOfActiveItems());
+    }
+
+    private List<TodoItemDto> getTodoItems(ListFilter filter) {
+        return switch (filter) { //<.>
+            case ALL -> convertToDto(repository.findAll());
+            case ACTIVE -> convertToDto(repository.findAllByCompleted(false));
+            case COMPLETED -> convertToDto(repository.findAllByCompleted(true));
+        };
+    }
+
+    private List<TodoItemDto> convertToDto(List<TodoItem> todoItems) {
+        return todoItems
+                .stream()
+                .map(todoItem -> new TodoItemDto(todoItem.getId(),
+                                                 todoItem.getTitle(),
+                                                 todoItem.isCompleted()))
+                .collect(Collectors.toList());
+    }
+----
+<.> Add the `filter` attribute in the model so the view can highlight the correct item in the footer.
+<.> Only return the todo items that should be shown according to the filter.
+<.> Use the Java 17 switch expression. The advantage here is that the compiler forces us to implement all cases and no `default` branch is needed.
+
+To use our new code in the Thymeleaf template, we replace this:
+
+[source,html]
+----
+<ul class="filters">
+    <li>
+        <a class="selected" href="#/">All</a>
+    </li>
+    <li>
+        <a href="#/active">Active</a>
+    </li>
+    <li>
+        <a href="#/completed">Completed</a>
+    </li>
+</ul>
+
+----
+
+with this:
+
+[source,html]
+----
+<ul class="filters">
+    <li>
+        <a th:href="@{/}"
+           th:classappend="${filter.name() == 'ALL'?'selected':''}">All</a>
+    </li>
+    <li>
+        <a th:href="@{/active}"
+           th:classappend="${filter.name() == 'ACTIVE'?'selected':''}">Active</a>
+    </li>
+    <li>
+        <a th:href="@{/completed}"
+           th:classappend="${filter.name() == 'COMPLETED'?'selected':''}">Completed</a>
+    </li>
+</ul>
+----
+
+For each `<a>` element, we specify the URL to redirect to via `th:href`, and we append the `selected` CSS class via `th:classappend` to highlight the currently selected filter.
+
+After restarting the application, we have now working filtering.
+
+We can show the active items:
+
+image::drafts/todomvc-thymeleaf-7.png[]
+
+We can also show the completed items:
+
+image::drafts/todomvc-thymeleaf-8.png[]
+
+
+// TODO clear completed
+// TODO toggle completion status of all
+// TODO edit item via double-click?
