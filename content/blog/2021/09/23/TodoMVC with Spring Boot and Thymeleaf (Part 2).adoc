@@ -1,7 +1,7 @@
 ---
 title: "TodoMVC with Spring Boot and Thymeleaf (Part 2)"
-date: 2021-09-11
-draft: true
+date: 2021-09-23
+draft: false
 tags: ["thymeleaf", "spring-boot"]
 keywords: []
 ---
@@ -120,7 +120,7 @@ We do this by using `th:classappend` to add a CSS class and `th:attrappend` to a
 
 Start the application again and you should be able to complete the todo items:
 
-image::drafts/todomvc-thymeleaf-5.png[]
+image::2021/09/todomvc-thymeleaf-5.png[]
 
 == Delete a todo item
 
@@ -236,7 +236,7 @@ with:
 
 Restart the application and watch how the amount of items left is updated when adding, completing and deleting items:
 
-image::drafts/todomvc-thymeleaf-6.png[]
+image::2021/09/todomvc-thymeleaf-6.png[]
 
 == Conclusion
 

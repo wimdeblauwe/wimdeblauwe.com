@@ -1,7 +1,7 @@
 ---
 title: "TodoMVC with Spring Boot and Thymeleaf (Part 3)"
-date: 2021-09-11
-draft: true
+date: 2021-09-28
+draft: false
 tags: ["thymeleaf", "spring-boot"]
 keywords: []
 ---
@@ -23,7 +23,7 @@ In this last part of the 3-part series, we'll finish the implementation of our h
 
 As a reminder, this is how the application looks currently:
 
-image::drafts/todomvc-thymeleaf-6.png[]
+image::2021/09/todomvc-thymeleaf-6.png[]
 
 At the bottom of the application, we have 3 filter options: _All_, _Active_ and _Completed_
 
@@ -153,11 +153,11 @@ After restarting the application, we have now working filtering.
 
 We can show the active items:
 
-image::drafts/todomvc-thymeleaf-7.png[]
+image::2021/09/todomvc-thymeleaf-7.png[]
 
 We can also show the completed items:
 
-image::drafts/todomvc-thymeleaf-8.png[]
+image::2021/09/todomvc-thymeleaf-8.png[]
 
 == Clear completed
 

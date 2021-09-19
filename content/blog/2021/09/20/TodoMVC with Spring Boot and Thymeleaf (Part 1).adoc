@@ -1,7 +1,7 @@
 ---
 title: "TodoMVC with Spring Boot and Thymeleaf (Part 1)"
-date: 2021-09-11
-draft: true
+date: 2021-09-20
+draft: false
 tags: ["thymeleaf", "spring-boot"]
 keywords: []
 ---
@@ -28,7 +28,7 @@ We start the project by creating a new Spring Boot project on https://start.spri
 * Java language
 * Spring Boot: 2.5.4
 * Jar packaging
-* Java 16
+* Java 17
 * Dependencies:
 ** Spring Web
 ** Thymeleaf
@@ -101,7 +101,7 @@ public class TodoItemController {
 Start the application and go to http://localhost:8080 to view it.
 It will look something like this:
 
-image::drafts/todomvc-thymeleaf-1.png[]
+image::2021/09/todomvc-thymeleaf-1.png[]
 
 Quite ugly, but that is to be expected as the path to the CSS in `index.html` is specified like this:
 
@@ -184,7 +184,7 @@ with:
 
 Restart the application and things start to look a lot better now:
 
-image::drafts/todomvc-thymeleaf-2.png[]
+image::2021/09/todomvc-thymeleaf-2.png[]
 
 == Feature implementation
 
@@ -250,7 +250,7 @@ Do the same for the footer:
 
 The application should now look like this (since we don't have any todo items yet):
 
-image::drafts/todomvc-thymeleaf-3.png[]
+image::2021/09/todomvc-thymeleaf-3.png[]
 
 === Add a new todo item
 
@@ -414,7 +414,7 @@ If you looked closely to the template, you'll notice we used the `todos` model a
 
 Restart the application and add a few todo items, the list of items should show what you entered:
 
-image::drafts/todomvc-thymeleaf-4.png[]
+image::2021/09/todomvc-thymeleaf-4.png[]
 
 This concludes the first part of this series of implementing TodoMVC using Spring Boot and Thymeleaf.
 // TODO add link to part 2
