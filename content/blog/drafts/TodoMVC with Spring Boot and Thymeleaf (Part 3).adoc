@@ -159,7 +159,66 @@ We can also show the completed items:
 
 image::drafts/todomvc-thymeleaf-8.png[]
 
+== Clear completed
 
-// TODO clear completed
+On the right side of the filter options, there is the "Clear completed" link.
+This should only be visible if there are completed items, and when clicked delete all the completed items.
+
+The first thing we need to know for our view is: are there completed items?
+
+Let's add another model attribute to send this information from the controller to the view:
+
+[source,java]
+----
+    private void addAttributesForIndex(Model model,
+                                       ListFilter listFilter) {
+        model.addAttribute("item", new TodoItemFormData());
+        model.addAttribute("filter", listFilter);
+        model.addAttribute("todos", getTodoItems(listFilter));
+        model.addAttribute("totalNumberOfItems", repository.count());
+        model.addAttribute("numberOfActiveItems", getNumberOfActiveItems());
+        model.addAttribute("numberOfCompletedItems", getNumberOfCompletedItems()); //<.>
+    }
+
+    private int getNumberOfCompletedItems() {
+        return repository.countAllByCompleted(true); //<.>
+    }
+----
+<.> Add the `numberOfCompletedItems` attribute.
+<.> Use the `countAllByCompleted()` function we already created on the repository before.
+
+Update `index.html` to show or hide the 'Clear completed' button:
+
+[source,html]
+----
+<form th:action="@{/completed}" th:method="delete"
+      th:if="${numberOfCompletedItems > 0}"> <!--.-->
+    <button class="clear-completed">Clear completed</button>
+</form>
+----
+<.> `th:if` will instruct Thymeleaf to include the `<form>` block depending on if there are completed items or not.
+
+Note how we also wrapped the button in a `<form>` to be able to execute an action on the controller.
+
+To make that action work, add the following method on the controller:
+
+[source,java]
+----
+@DeleteMapping("/completed")
+public String deleteCompletedItems() {
+    List<TodoItem> items = repository.findAllByCompleted(true);
+    for (TodoItem item : items) {
+        repository.deleteById(item.getId());
+    }
+    return "redirect:/";
+}
+----
+
+If you test now, you should see the following behaviour:
+
+* If there are no completed items, the 'Clear completed' button is not visible.
+* If there are, it is visible.
+* Clicking on the button removes all the completed items.
+
 // TODO toggle completion status of all
 // TODO edit item via double-click?
