@@ -220,5 +220,47 @@ If you test now, you should see the following behaviour:
 * If there are, it is visible.
 * Clicking on the button removes all the completed items.
 
-// TODO toggle completion status of all
-// TODO edit item via double-click?
+== Mark all as completed
+
+Left of the text input where we add new todo items, there is a button that allows to mark all active todo items as completed.
+Let's implement this next.
+
+The current code in the template looks like this:
+
+[source,html]
+----
+<input id="toggle-all" class="toggle-all" type="checkbox">
+<label for="toggle-all">Mark all as complete</label>
+----
+
+Let's wrap it in a form to make it work:
+
+[source,html]
+----
+<form th:action="@{/toggle-all}" th:method="put">
+    <input id="toggle-all" class="toggle-all" type="checkbox"
+           onclick="this.form.submit()">
+    <label for="toggle-all">Mark all as complete</label>
+</form>
+----
+
+And add a controller method to execute the actual functionality:
+
+[source,java]
+----
+@PutMapping("/toggle-all")
+public String toggleAll() {
+    List<TodoItem> todoItems = repository.findAll();
+    for (TodoItem todoItem : todoItems) {
+        todoItem.setCompleted(!todoItem.isCompleted());
+        repository.save(todoItem);
+    }
+    return "redirect:/";
+}
+----
+
+== Conclusion
+
+This concludes the 3-part series of the implementation of https://todomvc.com/[TodoMVC] using Java 17 with Spring Boot and Thymeleaf.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
