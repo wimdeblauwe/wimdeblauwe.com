@@ -20,7 +20,21 @@ I wanted to stretch the concept a bit and create a Spring Boot backend with Thym
 
 <!--more-->
 
+The tutorial is split in 3 parts:
+
+* Part 1: project setup, add todo items and show list of todo items.
+* Part 2: completing items, and deleting them.
+* Part 3: filter active/completed items, clear completed, mark all as completed
+
+This video shows the final application in action:
+
+video::7SE8kRhf5IU[youtube, width=1151, height=647]
+
 == Project Setup
+
+// TODO add YouTube link https://youtu.be/7SE8kRhf5IU
+
+
 
 We start the project by creating a new Spring Boot project on https://start.spring.io with the following options:
 
