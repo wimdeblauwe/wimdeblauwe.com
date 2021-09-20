@@ -32,10 +32,6 @@ video::7SE8kRhf5IU[youtube, width=1151, height=647]
 
 == Project Setup
 
-// TODO add YouTube link https://youtu.be/7SE8kRhf5IU
-
-
-
 We start the project by creating a new Spring Boot project on https://start.spring.io with the following options:
 
 * Maven project
