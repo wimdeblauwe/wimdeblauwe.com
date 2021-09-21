@@ -10,11 +10,10 @@ aliases: [/2017/01/22/AssertJ-custom-assertion-for-ConstraintValidator-tests/]
 :imagesdir: /images
 :icons: font
 
-As a follow-up to my last post on a ./blog/2017/01/21/custom-validator-to-check-if-a-string-contains-xml/[custom validator to check if a String contains XML], I like to elaborate on how I made the unit test so readable.
+As a follow-up to my last post on a https://www.wimdeblauwe.com/blog/2017/2017-01-21-custom-validator-to-check-if-a-string-contains-xml/[custom validator to check if a String contains XML], I like to elaborate on how I made the unit test so readable.
 
 To repeat, here is part of the unit test again with the assertions highlighted:
 
-//{empty}[code language="java" highlight="8,18"]
 [source,java]
 ----
 @Test
