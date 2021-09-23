@@ -13,8 +13,7 @@ keywords: []
 :toc: macro
 :table-caption!:
 
-// TODO add link to part 1
-In Part 1, we implemented https://todomvc.com/[TodoMVC] using Spring Boot and Thymeleaf.
+In https://www.wimdeblauwe.com/blog/2021/09/20/todomvc-with-spring-boot-and-thymeleaf-part-1/[Part 1], we implemented https://todomvc.com/[TodoMVC] using Spring Boot and Thymeleaf.
 The application already allows to add todo items and show them.
 We will continue in this part with completing items and deleting them.
 

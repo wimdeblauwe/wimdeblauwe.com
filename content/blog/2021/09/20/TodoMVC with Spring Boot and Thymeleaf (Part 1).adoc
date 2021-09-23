@@ -427,5 +427,5 @@ Restart the application and add a few todo items, the list of items should show 
 image::2021/09/todomvc-thymeleaf-4.png[]
 
 This concludes the first part of this series of implementing TodoMVC using Spring Boot and Thymeleaf.
-// TODO add link to part 2
-Continue to part 2 to learn how we can complete and delete todo items in the application.
+
+Continue to https://www.wimdeblauwe.com/blog/2021/09/23/todomvc-with-spring-boot-and-thymeleaf-part-2/[part 2] to learn how we can complete and delete todo items in the application.
