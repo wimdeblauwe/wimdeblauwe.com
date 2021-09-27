@@ -1,0 +1,273 @@
+---
+title: "TodoMVC with Thymeleaf and HTMX"
+date: 2021-09-27
+draft: true
+tags: ["thymeleaf", "spring-boot"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+
+In https://www.wimdeblauwe.com/blog/2021/09/20/todomvc-with-spring-boot-and-thymeleaf-part-1/[TodoMVC with Spring Boot and Thymeleaf], we implemented a https://todomvc.com/[TodoMVC] clone using Spring MVC and Thymeleaf. In such a setup, each action triggers a page refresh.
+While this works just fine, you might want to give a more Single Page Application (SPA) spice to the experience and avoid page refreshes.
+This blog post will show how to use HTMX to accomplish this.
+
+<!--more-->
+
+== What is HTMX?
+
+https://htmx.org/[HTMX] is a JavaScript library that allows to trigger AJAX calls directly in HTML by adding attributes on HTML elements.
+
+A very simple example, straight from their homepage:
+
+[source,html]
+----
+<button hx-post="/clicked" hx-swap="outerHTML">
+    Click Me
+</button>
+----
+
+When the button is clicked, a HTTP POST is done on `/clicked` and the response will replace the `<button>` element in the DOM with the HTML response of that call.
+
+So, with HTMX, you are not building a JSON API, but an API that returns HTML fragments.
+
+We will start from the final code at https://github.com/wimdeblauwe/blog-example-code/tree/master/todomvc-thymeleaf[todomvc-thymeleaf] and gradually add functionality using HTMX.
+
+== Add HTMX to the project
+
+Add htmx to the Spring Boot project, by adding the webjars Maven dependency:
+
+[source,xml]
+----
+<dependency>
+    <groupId>org.webjars.npm</groupId>
+    <artifactId>htmx.org</artifactId>
+    <version>1.5.0</version>
+</dependency>
+----
+
+In the `index.html`, add the reference to the library:
+
+[source,html]
+----
+<script type="text/javascript" th:src="@{/webjars/htmx.org/dist/htmx.min.js}"></script>
+----
+
+
+== Adding a todo item
+
+To add an item, SPA-style, we will add some htmx attributes to our HTML.
+This is what we have currently:
+
+[source,html]
+----
+<form th:action="@{/}" method="post" th:object="${item}">
+    <input class="new-todo" placeholder="What needs to be done?" autofocus
+           th:field="*{title}">
+</form>
+----
+
+This is what it needs to change to:
+
+[source,html]
+----
+<form id="new-todo-form" th:action="@{/}" method="post" th:object="${item}">
+    <input id="new-todo-input" class="new-todo" placeholder="What needs to be done?" autofocus
+           autocomplete="false"
+           name="title"
+           th:field="*{title}"
+           hx-target="#todo-list"
+           hx-swap="beforeend"
+           hx-post="/"
+           hx-trigger="keyup[key=='Enter']"
+    >
+</form>
+----
+
+The 4 `hx-...` elements explained:
+
+* `hx-trigger`: htmx will do the request when the enter key is pressed.
+* `hx-post`: htmx will do a POST request to `/`
+* `hx-target`: The HTML response of the POST request should be added to the HTML element with id `todo-list` that is present on the page.
+* `hx-swap`: The HTML response must be added just before the end of the HTML element that is targetted.
+
+We can't use our default controller method as that one redirects after the POST.
+We need a new one that returns the HTML snippet we need to render a single todo item.
+
+For that purpose, we add this new method in our Spring MVC controller:
+
+[source,java]
+.TodoItemController
+----
+@PostMapping(headers = "HX-Request") //<.>
+public String htmxAddTodoItem(TodoItemFormData formData,
+                              Model model) {
+    TodoItem item = repository.save(new TodoItem(formData.getTitle(), false)); //<.>
+    model.addAttribute("item", toDto(item)); //<.>
+
+    return "fragments :: todoItem"; //<.>
+}
+----
+<.> We want this method to react to a `POST` on `/`, but only when the `HX-Request` header is set (Something that htmx adds to all requests).
+<.> Do the actual work of saving the todo item in the database.
+<.> Add the item converted to the DTO in the model so Thymeleaf can use it to render the template.
+<.> Ask Thymeleaf to render the `todoItem` fragment from `fragments.html`
+
+Point 4 here is especially important.
+We already used a Thymeleaf fragment to have a nice structure in our `index.html` template:
+
+[source,html]
+----
+<ul id="todo-list" class="todo-list" th:remove="all-but-first">
+  <li th:insert="fragments :: todoItem(${item})" th:each="item : ${todos}" th:remove="tag">
+  </li>
+</ul>
+----
+
+The very nice thing is that we now can re-use this fragment to return the HTML that is needed to render a single todo item as HTML by returning `fragments {2c} todoItem` from the controller method.
+
+If you are following along, you also need to make the following edits to make it fully work:
+
+* Add the `id="todo-list"` to the `<ul>` element that holds the todo items since that is the target of our htmx call.
+* Ensure the main section is present, but hidden in the HTML.
+Replace:
++
+[source,html]
+----
+<section class="main" th:if="${totalNumberOfItems > 0}">
+----
++
+with
++
+[source,html]
+----
+<section id="main-section" class="main" th:classappend="${totalNumberOfItems == 0?'hidden':''}">
+----
+* Same thing for the footer:
++
+[source,html]
+----
+<footer class="footer" th:if="${totalNumberOfItems > 0}">
+----
+becomes:
++
+[source,html]
+----
+<footer id="main-footer" class="footer" th:classappend="${totalNumberOfItems == 0?'hidden':''}">
+----
+* Because the input field is now no longer reset, as there is no page refresh, we need to add a bit of JavaScript to clear the input:
++
+[source,html]
+----
+<script>
+    htmx.on('#new-todo-input', 'htmx:afterRequest', function (evt) { //<.>
+        evt.detail.elt.value = ''; //<.>
+    });
+</script>
+----
+<.> Register a callback function that is triggered after each request that happens on the `new-todo-input` item.
+<.> Set the value to the empty string on the element that triggered the callback, effectively clearing out the text input.
+* To avoid that the form submission still happens as we also still have that form in place, we can disable it from JavaScript:
++
+[source,html]
+----
+<script>
+    document.getElementById('new-todo-form').addEventListener('submit', function (evt) {
+        evt.preventDefault();
+    })
+</script>
+----
++
+This is entirely optional. We could have removed the `<form>` element completely and it would also still work. But with this setup, the form is used when JavaScript is disabled. And htmx is used when JavaScript is enabled.
+
+
+When the first todo item is added, the main section and the main footer should become visible.
+We can implement this by adding this bit of custom JavaScript:
+
+[source,html]
+----
+<script>
+    htmx.on('htmx:afterSwap', function (evt) { //<.>
+        let items = document.querySelectorAll('#todo-list li'); //<.>
+        let mainSection = document.getElementById('main-section');
+        let mainFooter = document.getElementById('main-footer');
+
+        if (items.length > 0) { //<.>
+            mainSection.classList.remove('hidden');
+            mainFooter.classList.remove('hidden');
+        } else {
+            mainSection.classList.add('hidden');
+            mainFooter.classList.add('hidden');
+        }
+    });
+</script>
+----
+<.> Define a callback function that is called each time htmx does a swap in the DOM tree.
+<.> Count the number of `<li>` items in the `todo-list` element
+<.> Check if there are todo items or not to add or remove the `hidden` CSS class.
+
+An alternative implemention would be to target a bigger part of the HTML and return not only the HTML for the todo item itself, but also include the full main section and footer.
+I found this approach here to be nicer, as the HTML snippet returned from the controller method only contains the `<li>` that renders the todo item itself. Even if I had to write this small snippet of JavaScript to make it work.
+
+=== Explanation of how it works at runtime
+
+To explain things in more detail, this is how it works at runtime.
+
+When the page loads the first time, Thymeleaf renders the template and the HTML looks like this:
+
+[source,html]
+----
+<form id="new-todo-form" action="/" method="post">
+                    <input id="new-todo-input" class="new-todo" placeholder="What needs to be done?" autofocus="" autocomplete="false" name="title" hx-target="#todo-list" hx-swap="beforeend" hx-post="/" hx-trigger="keyup[key=='Enter']" value="">
+</form>
+
+<ul id="todo-list" class="todo-list">
+</ul>
+----
+
+We can now add a new item by typing some text in the input and pressing ENTER.
+When this is done, htmx sends the POST request and swaps in the returned HTML.
+The result is that the todo item is added without a page refresh.
+The resulting HTML is:
+
+[source,html]
+----
+<ul id="todo-list" class="todo-list">
+    <li> <!--.-->
+        <div class="view">
+            <form action="/1/toggle" method="post"><input type="hidden" name="_method" value="put">
+                <input class="toggle" type="checkbox" onchange="this.form.submit()">
+                <label>Learn htmx</label>
+            </form>
+            <form action="/1" method="post"><input type="hidden" name="_method" value="delete">
+                <button class="destroy"></button>
+            </form>
+        </div>
+        <input class="edit" value="Create a TodoMVC template">
+    </li>
+</ul>
+----
+<.> The HTML snippet that is returned from the POST is added by htmx inside the `todo-list` element.
+
+When the new HTML is swapped into the DOM, the JavaScript callback is trigger to make the `main-section` and `main-footer` elements visible.
+
+The application looks like this after adding the first todo item:
+
+image::drafts/todomvc-htmx-1.png[]
+
+If you try this out, you'll notice that there is no page refresh.
+You can also try disabling JavaScript and it should still work (but with page refresh of course).
+
+
+
+== Conclusion
+
+This concludes the 3-part series of the implementation of https://todomvc.com/[TodoMVC] using Java 17 with Spring Boot and Thymeleaf. See https://github.com/wimdeblauwe/blog-example-code/tree/master/todomvc-thymeleaf[todomvc-thymeleaf] on GitHub for the full sources.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
