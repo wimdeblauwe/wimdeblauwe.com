@@ -264,7 +264,69 @@ image::drafts/todomvc-htmx-1.png[]
 If you try this out, you'll notice that there is no page refresh.
 You can also try disabling JavaScript and it should still work (but with page refresh of course).
 
+== Update number of items
 
+We can now add items in our todo list via htmx, without any page refresh, but the number of active items in the footer does not get updated.
+
+To make this work again, we can use events in htmx.
+
+Start by extracting the HTML that shows the number of active items into a Thymeleaf fragment:
+
+[source,html]
+.fragments.html
+----
+<span th:fragment="active-items-count"
+      id="active-items-count"
+      class="todo-count"
+      hx-get="/active-items-count"
+      hx-trigger="itemAdded from:body">
+        <th:block th:unless="${numberOfActiveItems == 1}">
+            <span class="todo-count"><strong th:text="${numberOfActiveItems}">0</strong> items left</span>
+        </th:block>
+        <th:block th:if="${numberOfActiveItems == 1}">
+            <span class="todo-count"><strong>1</strong> item left</span>
+        </th:block>
+</span>
+----
+
+Note that we added 2 htmx attributes:
+
+* `hx-get`: instruct htmx to do a HTTP GET on `/active-items-count`
+* `hx-trigger`: trigger the HTTP GET when there is an event `itemAdded` coming from any element that is a child element of `<body>`.
+
+So whenever there is an `itemAdded` sent somewhere, these 2 attributes will ensure that there will be an automatic GET request to update the number of items. The response of the GET returns the HTML snippet that will be used to replace itself in the DOM.
+
+We want the event to be sent when a new item is added.
+We do this by adding a special header `HX-Trigger` in the response:
+
+[source,java]
+----
+    @PostMapping(headers = "HX-Request")
+    public String htmxAddTodoItem(TodoItemFormData formData,
+                                  Model model,
+                                  HttpServletResponse response) { //<.>
+        TodoItem item = repository.save(new TodoItem(formData.getTitle(), false));
+        model.addAttribute("item", toDto(item));
+
+        response.setHeader("HX-Trigger", "itemAdded"); //<.>
+        return "fragments :: todoItem";
+    }
+----
+<.> Inject `HttpServletResponse` to be able to add a custom header
+<.> Added `itemAdded` as the value of the `HX-Trigger` response header
+
+By returning the header, htmx will trigger the `itemAdded` event, which is caught by out little fragment and it will update the number of active items.
+
+Finally, use the fragment in the `index.html` page:
+
+[source,html]
+----
+<footer id="main-footer" class="footer" th:classappend="${totalNumberOfItems == 0?'hidden':''}">
+  <span th:replace="fragments :: active-items-count"></span>
+  ...
+----
+
+With this in place, the number of active items is updated properly whenever a new item is added without page refresh.
 
 == Conclusion
 
