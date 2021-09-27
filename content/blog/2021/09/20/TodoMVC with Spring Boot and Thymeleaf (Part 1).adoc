@@ -23,8 +23,8 @@ I wanted to stretch the concept a bit and create a Spring Boot backend with Thym
 The tutorial is split in 3 parts:
 
 * Part 1: project setup, add todo items and show list of todo items.
-* Part 2: completing items, and deleting them.
-* Part 3: filter active/completed items, clear completed, mark all as completed
+* https://www.wimdeblauwe.com/blog/2021/09/23/todomvc-with-spring-boot-and-thymeleaf-part-2/[Part 2]: completing items, and deleting them.
+* https://www.wimdeblauwe.com/blog/2021/09/27/todomvc-with-spring-boot-and-thymeleaf-part-3/[Part 3]: filter active/completed items, clear completed, mark all as completed
 
 This video shows the final application in action:
 
@@ -46,7 +46,9 @@ We start the project by creating a new Spring Boot project on https://start.spri
 ** Validation
 ** H2 Database
 
-If you want to follow along, you can use https://start.spring.io/#!type=maven-project&language=java&platformVersion=2.5.4&packaging=jar&jvmVersion=16&groupId=com.wimdeblauwe.examples&artifactId=todomvc-thymeleaf&name=todomvc-thymeleaf&description=TodoMVC%20implementation%20with%20Thymeleaf&packageName=com.wimdeblauwe.examples.todomvc-thymeleaf&dependencies=web,thymeleaf,data-jpa,validation,h2[this direct link] to have the correct options selected.
+If you want to follow along, you can use https://start.spring.io/#!type=maven-project&language=java&platformVersion=2.5.4&packaging=jar&jvmVersion=17&groupId=com.wimdeblauwe.examples&artifactId=todomvc-thymeleaf&name=todomvc-thymeleaf&description=TodoMVC%20implementation%20with%20Thymeleaf&packageName=com.wimdeblauwe.examples.todomvc-thymeleaf&dependencies=web,thymeleaf,data-jpa,validation,h2[this direct link] to have the correct options selected.
+
+The final project can be viewed at https://github.com/wimdeblauwe/blog-example-code/tree/master/todomvc-thymeleaf[todomvc-thymeleaf] on GitHub.
 
 == Model and repository
 

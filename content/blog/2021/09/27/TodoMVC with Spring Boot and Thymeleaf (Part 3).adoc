@@ -1,6 +1,6 @@
 ---
 title: "TodoMVC with Spring Boot and Thymeleaf (Part 3)"
-date: 2021-09-28
+date: 2021-09-27
 draft: false
 tags: ["thymeleaf", "spring-boot"]
 keywords: []
@@ -13,8 +13,7 @@ keywords: []
 :toc: macro
 :table-caption!:
 
-// TODO add link to part 2
-In Part 2, we implemented completion and deletion of todo items.
+In https://www.wimdeblauwe.com/blog/2021/09/23/todomvc-with-spring-boot-and-thymeleaf-part-2/[Part 2], we implemented completion and deletion of todo items.
 In this last part of the 3-part series, we'll finish the implementation of our https://todomvc.com/[TodoMVC] clone.
 
 <!--more-->
@@ -261,6 +260,6 @@ public String toggleAll() {
 
 == Conclusion
 
-This concludes the 3-part series of the implementation of https://todomvc.com/[TodoMVC] using Java 17 with Spring Boot and Thymeleaf.
+This concludes the 3-part series of the implementation of https://todomvc.com/[TodoMVC] using Java 17 with Spring Boot and Thymeleaf. See https://github.com/wimdeblauwe/blog-example-code/tree/master/todomvc-thymeleaf[todomvc-thymeleaf] on GitHub for the full sources.
 
 If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
