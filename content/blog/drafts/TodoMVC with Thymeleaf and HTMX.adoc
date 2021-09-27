@@ -268,6 +268,8 @@ You can also try disabling JavaScript and it should still work (but with page re
 
 == Conclusion
 
+// TODO update conclusion
+
 This concludes the 3-part series of the implementation of https://todomvc.com/[TodoMVC] using Java 17 with Spring Boot and Thymeleaf. See https://github.com/wimdeblauwe/blog-example-code/tree/master/todomvc-thymeleaf[todomvc-thymeleaf] on GitHub for the full sources.
 
 If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
