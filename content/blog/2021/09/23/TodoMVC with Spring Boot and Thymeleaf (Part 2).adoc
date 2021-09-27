@@ -239,5 +239,4 @@ image::2021/09/todomvc-thymeleaf-6.png[]
 
 == Conclusion
 
-// TODO add link to part 3
-This is all for part 2, continue to part 3 for the final installment of this series.
+This is all for part 2, continue to https://www.wimdeblauwe.com/blog/2021/09/27/todomvc-with-spring-boot-and-thymeleaf-part-3/[part 3] for the final installment of this series.
