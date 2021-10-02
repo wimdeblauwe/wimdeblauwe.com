@@ -233,6 +233,14 @@ When the page loads the first time, Thymeleaf renders the template and the HTML 
 
 We can now add a new item by typing some text in the input and pressing ENTER.
 When this is done, htmx sends the POST request and swaps in the returned HTML.
+
+We can see this in the developer tools:
+
+image::drafts/todomvc-htmx-2.png[]
+
+It shows the `POST` request with the HTML snippet as the response.
+HTMX takes that response and swaps it into the HTML that is already present in the browser to create this SPA-like experience for the end-user.
+
 The result is that the todo item is added without a page refresh.
 The resulting HTML is:
 
@@ -353,7 +361,7 @@ Start by adding a new controller method:
     }
 ----
 <.> The `HX-Request` header ensures this method is only called for requests done by HTMX.
-<.> After toggling, the todo item, add the DTO to the model so the fragment can render properly with the information from the DTO.
+<.> After toggling the todo item, add the DTO to the `Model` so the fragment can render properly with the information from the DTO.
 <.> Send a response header back so that other parts of the page can react to the toggling of the item. In this case, we will have the label that shows the number of active items update.
 <.> Use the Thymeleaf fragment to send the HTML snippet back to the browser.
 
@@ -400,13 +408,14 @@ with:
 
 These are the changes in detail:
 
+. Remove the `<form>` around the `<input>` as we will use HTMX now and no longer a form submit.
 . An `id` is added on the `<li>` item.
 This is needed as HTMX will replace the complete `<li>` item with an updated one that it will receive as a response to the AJAX call.
 HTMX needs the `id` to be able to know which `<li>` it needs to replace.
 . Add the `hx-trigger="click"` attribute so HTMX will start to do its work when the `<input>` item is clicked.
-. Add the `hx-swap="outerHTML"` attribute so HTMX will replace the current `<li>` completely with the received `<li>` snippet in the AJAX response.
+. Add the `hx-swap="outerHTML"` attribute so HTMX will replace the current `<li>` completely with the received `<li>` snippet in the AJAX response. By default, HTMX uses `innerHTML` which would make the response a child element of the target element.
 . Add `hx-put=...` so that a PUT request is done. We need to use `th:attr` so we can use the `item` parameter of the Thymeleaf fragment to dynamically build the correct URL to use.
-. `Add `hx-target=...` to point the id of the `<li>` element. This instruct HTMX to use that element as the target for replacement.
+. Add `hx-target=...` to point to the id of the `<li>` element. This instructs HTMX to use that element as the target for replacement.
 
 This already works to toggle the completed state of individual todo item.
 However, the number of active items does not get updated yet.
