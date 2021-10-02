@@ -328,6 +328,121 @@ Finally, use the fragment in the `index.html` page:
 
 With this in place, the number of active items is updated properly whenever a new item is added without page refresh.
 
+== Mark item as completed
+
+We can continue to make our application more interactive (less page reloads) by implementing toggling the completion state of an item with HTMX.
+
+Start by adding a new controller method:
+
+[source,java]
+----
+    @PutMapping(value = "/{id}/toggle", headers = "HX-Request") //<.>
+    public String htmxToggleTodoItem(@PathVariable("id") Long id,
+                                     Model model,
+                                     HttpServletResponse response) {
+        TodoItem todoItem = repository.findById(id)
+                                      .orElseThrow(() -> new TodoItemNotFoundException(id));
+
+        todoItem.setCompleted(!todoItem.isCompleted());
+        repository.save(todoItem);
+
+        model.addAttribute("item", toDto(todoItem)); //<.>
+
+        response.setHeader("HX-Trigger", "itemCompletionToggled"); //<.>
+        return "fragments :: todoItem"; //<.>
+    }
+----
+<.> The `HX-Request` header ensures this method is only called for requests done by HTMX.
+<.> After toggling, the todo item, add the DTO to the model so the fragment can render properly with the information from the DTO.
+<.> Send a response header back so that other parts of the page can react to the toggling of the item. In this case, we will have the label that shows the number of active items update.
+<.> Use the Thymeleaf fragment to send the HTML snippet back to the browser.
+
+On the HTML side, we will replace this:
+
+[source,html]
+----
+<li th:fragment="todoItem(item)" th:classappend="${item.completed?'completed':''}">
+    <div class="view">
+        <form th:action="@{/{id}/toggle(id=${item.id})}" th:method="put">
+            <input class="toggle" type="checkbox"
+                   onchange="this.form.submit()"
+                   th:attrappend="checked=${item.completed?'true':null}">
+            <label th:text="${item.title}">Taste JavaScript</label>
+        </form>
+        <form th:action="@{/{id}(id=${item.id})}" th:method="delete">
+            <button class="destroy"></button>
+        </form>
+    </div>
+    <input class="edit" value="Create a TodoMVC template">
+</li>
+----
+
+with:
+
+[source,html]
+----
+<li th:fragment="todoItem(item)" th:classappend="${item.completed?'completed':''}" th:id="|list-item-${item.id}|">
+    <div class="view">
+        <input th:id="|toggle-checkbox-${item.id}|" class="toggle" type="checkbox"
+               th:attrappend="checked=${item.completed?'true':null}"
+               th:attr="hx-put=@{/{id}/toggle(id=${item.id})},hx-target=|#list-item-${item.id}|"
+               hx-trigger="click"
+               hx-swap="outerHTML"
+        >
+        <label th:text="${item.title}">Taste JavaScript</label>
+        <form th:action="@{/{id}(id=${item.id})}" th:method="delete">
+            <button class="destroy"></button>
+        </form>
+    </div>
+    <input class="edit" value="Create a TodoMVC template">
+</li>
+----
+
+These are the changes in detail:
+
+. An `id` is added on the `<li>` item.
+This is needed as HTMX will replace the complete `<li>` item with an updated one that it will receive as a response to the AJAX call.
+HTMX needs the `id` to be able to know which `<li>` it needs to replace.
+. Add the `hx-trigger="click"` attribute so HTMX will start to do its work when the `<input>` item is clicked.
+. Add the `hx-swap="outerHTML"` attribute so HTMX will replace the current `<li>` completely with the received `<li>` snippet in the AJAX response.
+. Add `hx-put=...` so that a PUT request is done. We need to use `th:attr` so we can use the `item` parameter of the Thymeleaf fragment to dynamically build the correct URL to use.
+. `Add `hx-target=...` to point the id of the `<li>` element. This instruct HTMX to use that element as the target for replacement.
+
+This already works to toggle the completed state of individual todo item.
+However, the number of active items does not get updated yet.
+This is because we only trigger a new request to get the current number of active items after an item is added:
+
+[source,html]
+----
+<span th:fragment="active-items-count"
+      id="active-items-count"
+      class="todo-count"
+      hx-get="/active-items-count"
+      hx-trigger="itemAdded from:body">
+        <th:block th:unless="${numberOfActiveItems == 1}">
+            <span class="todo-count"><strong th:text="${numberOfActiveItems}">0</strong> items left</span>
+        </th:block>
+        <th:block th:if="${numberOfActiveItems == 1}">
+            <span class="todo-count"><strong>1</strong> item left</span>
+        </th:block>
+</span>
+----
+
+We need to update the `hx-trigger` attribute to also react to our new event `itemCompletionToggled`:
+
+[source,html]
+----
+<span th:fragment="active-items-count"
+      id="active-items-count"
+      class="todo-count"
+      hx-get="/active-items-count"
+      hx-trigger="itemAdded from:body, itemCompletionToggled from:body">
+    ...
+</span>
+----
+
+With this in place, we can toggle the completion status of the todo items and the active count also gets updated. All without page refreshes.
+
 == Conclusion
 
 // TODO update conclusion
