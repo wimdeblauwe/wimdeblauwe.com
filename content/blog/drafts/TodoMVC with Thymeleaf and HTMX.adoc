@@ -452,10 +452,73 @@ We need to update the `hx-trigger` attribute to also react to our new event `ite
 
 With this in place, we can toggle the completion status of the todo items and the active count also gets updated. All without page refreshes.
 
+=== Delete todo items
+
+I'll finish this blog post with one last example: implementation of delete of a todo item.
+
+We again start with adding a new method to our controller:
+
+[source,java]
+----
+    @DeleteMapping(value = "/{id}", headers = "HX-Request") //<.>
+    @ResponseBody //<.>
+    public String htmxDeleteTodoItem(@PathVariable("id") Long id,
+                                     HttpServletResponse response) {
+        repository.deleteById(id);
+
+        response.setHeader("HX-Trigger", "itemDeleted"); //<.>
+        return ""; //<.>
+    }
+----
+<.> Ensure the method is used for HTMX requests via the `HX-Request` header.
+<.> We need to return an empty body as we want to replace the `<li>` item on the HTML page with nothing. HTMX interprets an empty response as doing nothing, but a response with nothing is as having to basically delete the target item from the HTML, which is what we want here.
+<.> Have HTMX send out an `itemDeleted` event in the browser so we can update the number of active items.
+<.> Return an empty string (see point 2).
+
+On the HTML side, we replace:
+
+[source,html]
+----
+<form th:action="@{/{id}(id=${item.id})}" th:method="delete">
+    <button class="destroy"></button>
+</form>
+----
+
+with:
+
+[source,html]
+----
+<button class="destroy"
+        th:attr="hx-delete=@{/{id}(id=${item.id})},hx-target=|#list-item-${item.id}|"
+        hx-trigger="click"
+        hx-swap="outerHTML"
+></button>
+----
+
+This is very similar to what we did for toggling the item completation state. The only difference is that we now use `hx-delete` and a slightly different URL.
+
+To ensure the active items also update properly, we add another event to the `hx-trigger` there:
+
+[source,html]
+----
+<span th:fragment="active-items-count"
+      id="active-items-count"
+      class="todo-count"
+      hx-get="/active-items-count"
+      hx-trigger="itemAdded from:body, itemCompletionToggled from:body, itemDeleted from:body">
+    ...
+</span>
+----
+
+Start the application again and enjoy the absence of page refreshes as you add items, toggle their completion status and remove them.
+
 == Conclusion
 
-// TODO update conclusion
+It is entire possible to have an interactive application that avoids page refreshes for certain actions using Spring Boot, Thymeleaf and HTMX.
+It does get some getting used to at the start, but once you get it, it is not that hard.
+The most important point to remember is that you return HTML snippets from your controller, not JSON.
+And make sure the elements on your HTML have `id` attributes so HTMX can target them.
 
-This concludes the 3-part series of the implementation of https://todomvc.com/[TodoMVC] using Java 17 with Spring Boot and Thymeleaf. See https://github.com/wimdeblauwe/blog-example-code/tree/master/todomvc-thymeleaf[todomvc-thymeleaf] on GitHub for the full sources.
+See https://github.com/wimdeblauwe/blog-example-code/tree/master/todomvc-htmx[todomvc-htmx] on GitHub for the full sources.
 
 If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
