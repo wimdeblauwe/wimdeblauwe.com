@@ -14,7 +14,8 @@ keywords: []
 :table-caption!:
 :2c: ::
 
-In https://www.wimdeblauwe.com/blog/2021/09/20/todomvc-with-spring-boot-and-thymeleaf-part-1/[TodoMVC with Spring Boot and Thymeleaf], we implemented a https://todomvc.com/[TodoMVC] clone using Spring MVC and Thymeleaf. In such a setup, each action triggers a page refresh.
+In https://www.wimdeblauwe.com/blog/2021/09/20/todomvc-with-spring-boot-and-thymeleaf-part-1/[TodoMVC with Spring Boot and Thymeleaf], we implemented a https://todomvc.com/[TodoMVC] clone using Spring MVC and Thymeleaf.
+In such a setup, each action triggers a page refresh.
 While this works just fine, you might want to give a more Single Page Application (SPA) spice to the experience and avoid page refreshes.
 This blog post will show how to use HTMX to accomplish this.
 
@@ -48,7 +49,7 @@ Add htmx to the Spring Boot project, by adding the webjars Maven dependency:
 <dependency>
     <groupId>org.webjars.npm</groupId>
     <artifactId>htmx.org</artifactId>
-    <version>1.5.0</version>
+    <version>1.6.0</version>
 </dependency>
 ----
 
@@ -59,8 +60,58 @@ In the `index.html`, add the reference to the library:
 <script type="text/javascript" th:src="@{/webjars/htmx.org/dist/htmx.min.js}"></script>
 ----
 
+== HTMX boosting
 
-== Adding a todo item
+One of the easiest ways to get started is "boosting" regular HTML anchors and forms using `hx-boost`.
+We can add `hx-boost` to the top-level element of our page, and HTMX will intercept the form submits, turn them into AJAX requests and use the response HTML to dynamically change the current page without a page refresh.
+There is no need to change anything on the server side, the redirects can just stay in place.
+HTMX will handle them properly.
+
+The only thing we need to do is replace this:
+
+[source,html]
+----
+<section class="todoapp">
+----
+
+with:
+
+[source,html]
+----
+<section class="todoapp" hx-boost="true">
+----
+
+There is one additional change that needs to happen for the JavaScript that triggers the form submit when the checkbox is checked to toggle the completion state of the todo item.
+We need to replace `onchange="this.form.submit()"` with `onchange="this.form.requestSubmit()"`:
+
+[source,html]
+----
+<input th:id="|toggle-checkbox-${item.id}|"
+        class="toggle" type="checkbox"
+       onchange="this.form.requestSubmit()"
+       th:attrappend="checked=${item.completed?'true':null}">
+
+----
+
+Otherwise, HTMX can't intercept the form submit.
+
+Restart the application and notice how the browser never reloads the page, everything seems to happen as if this was a complete JavaScript built application.
+
+The filters at the bottom that filter on all items, active items and completed items also work fine. HTMX will also update the URL in the browser to reflect that path that the browser would normally redirect to.
+
+== Finegrained HTMX implementation
+
+While using hx-boost works fine, you might want to have more control over what is sent over the wire.
+For example, when a new todo item is created, you can just return the HTML of that new todo item, and not the complete page.
+
+Let's see how this works.
+
+[NOTE]
+====
+If you follow along, remove the `hx-boost` again for this section, we'll work without it here.
+====
+
+=== Adding a todo item
 
 To add an item, SPA-style, we will add some htmx attributes to our HTML.
 This is what we have currently:
@@ -114,6 +165,7 @@ public String htmxAddTodoItem(TodoItemFormData formData,
     return "fragments :: todoItem"; //<.>
 }
 ----
+
 <.> We want this method to react to a `POST` on `/`, but only when the `HX-Request` header is set (Something that htmx adds to all requests).
 <.> Do the actual work of saving the todo item in the database.
 <.> Add the item converted to the DTO in the model so Thymeleaf can use it to render the template.
@@ -155,6 +207,7 @@ with
 ----
 <footer class="footer" th:if="${totalNumberOfItems > 0}">
 ----
++
 becomes:
 +
 [source,html]
@@ -171,6 +224,7 @@ becomes:
     });
 </script>
 ----
++
 <.> Register a callback function that is triggered after each request that happens on the `new-todo-input` item.
 <.> Set the value to the empty string on the element that triggered the callback, effectively clearing out the text input.
 * To avoid that the form submission still happens as we also still have that form in place, we can disable it from JavaScript:
@@ -184,7 +238,32 @@ becomes:
 </script>
 ----
 +
-This is entirely optional. We could have removed the `<form>` element completely and it would also still work. But with this setup, the form is used when JavaScript is disabled. And htmx is used when JavaScript is enabled.
+[NOTE]
+====
+This is entirely optional.
+We could have removed the `<form>` element completely and it would also still work.
+But with this setup, the form is used when JavaScript is disabled.
+And htmx is used when JavaScript is enabled.
+
+It is also possible to add the `hx-...` attributes on the `<form>` itself like this:
+
+[source,html]
+----
+<form id="new-todo-form" th:action="@{/}" method="post" th:object="${item}"
+      hx-target="#todo-list"
+      hx-swap="beforeend"
+      hx-post="/">
+    <input id="new-todo-input" class="new-todo" placeholder="What needs to be done?" autofocus
+           autocomplete="false"
+           name="title"
+           th:field="*{title}"
+    >
+</form>
+----
+
+In that case, HTMX will disable the form submission and we don't have to do it in JavaScript manually.
+====
+
 
 
 When the first todo item is added, the main section and the main footer should become visible.
@@ -208,14 +287,16 @@ We can implement this by adding this bit of custom JavaScript:
     });
 </script>
 ----
+
 <.> Define a callback function that is called each time htmx does a swap in the DOM tree.
 <.> Count the number of `<li>` items in the `todo-list` element
 <.> Check if there are todo items or not to add or remove the `hidden` CSS class.
 
 An alternative implemention would be to target a bigger part of the HTML and return not only the HTML for the todo item itself, but also include the full main section and footer.
-I found this approach here to be nicer, as the HTML snippet returned from the controller method only contains the `<li>` that renders the todo item itself. Even if I had to write this small snippet of JavaScript to make it work.
+I found this approach here to be nicer, as the HTML snippet returned from the controller method only contains the `<li>` that renders the todo item itself.
+Even if I had to write this small snippet of JavaScript to make it work.
 
-=== Explanation of how it works at runtime
+==== Explanation of how it works at runtime
 
 To explain things in more detail, this is how it works at runtime.
 
@@ -224,7 +305,13 @@ When the page loads the first time, Thymeleaf renders the template and the HTML 
 [source,html]
 ----
 <form id="new-todo-form" action="/" method="post">
-                    <input id="new-todo-input" class="new-todo" placeholder="What needs to be done?" autofocus="" autocomplete="false" name="title" hx-target="#todo-list" hx-swap="beforeend" hx-post="/" hx-trigger="keyup[key=='Enter']" value="">
+    <input id="new-todo-input" class="new-todo" placeholder="What needs to be done?" autofocus="" autocomplete="false"
+           name="title"
+           hx-target="#todo-list"
+           hx-swap="beforeend"
+           hx-post="/"
+           hx-trigger="keyup[key=='Enter']"
+           value="">
 </form>
 
 <ul id="todo-list" class="todo-list">
@@ -261,6 +348,7 @@ The resulting HTML is:
     </li>
 </ul>
 ----
+
 <.> The HTML snippet that is returned from the POST is added by htmx inside the `todo-list` element.
 
 When the new HTML is swapped into the DOM, the JavaScript callback is trigger to make the `main-section` and `main-footer` elements visible.
@@ -272,7 +360,7 @@ image::drafts/todomvc-htmx-1.png[]
 If you try this out, you'll notice that there is no page refresh.
 You can also try disabling JavaScript and it should still work (but with page refresh of course).
 
-== Update number of items
+=== Update number of items
 
 We can now add items in our todo list via htmx, without any page refresh, but the number of active items in the footer does not get updated.
 
@@ -302,7 +390,8 @@ Note that we added 2 htmx attributes:
 * `hx-get`: instruct htmx to do a HTTP GET on `/active-items-count`
 * `hx-trigger`: trigger the HTTP GET when there is an event `itemAdded` coming from any element that is a child element of `<body>`.
 
-So whenever there is an `itemAdded` sent somewhere, these 2 attributes will ensure that there will be an automatic GET request to update the number of items. The response of the GET returns the HTML snippet that will be used to replace itself in the DOM.
+So whenever there is an `itemAdded` sent somewhere, these 2 attributes will ensure that there will be an automatic GET request to update the number of items.
+The response of the GET returns the HTML snippet that will be used to replace itself in the DOM.
 
 We want the event to be sent when a new item is added.
 We do this by adding a special header `HX-Trigger` in the response:
@@ -320,6 +409,7 @@ We do this by adding a special header `HX-Trigger` in the response:
         return "fragments :: todoItem";
     }
 ----
+
 <.> Inject `HttpServletResponse` to be able to add a custom header
 <.> Added `itemAdded` as the value of the `HX-Trigger` response header
 
@@ -336,7 +426,7 @@ Finally, use the fragment in the `index.html` page:
 
 With this in place, the number of active items is updated properly whenever a new item is added without page refresh.
 
-== Mark item as completed
+=== Mark item as completed
 
 We can continue to make our application more interactive (less page reloads) by implementing toggling the completion state of an item with HTMX.
 
@@ -360,9 +450,11 @@ Start by adding a new controller method:
         return "fragments :: todoItem"; //<.>
     }
 ----
+
 <.> The `HX-Request` header ensures this method is only called for requests done by HTMX.
 <.> After toggling the todo item, add the DTO to the `Model` so the fragment can render properly with the information from the DTO.
-<.> Send a response header back so that other parts of the page can react to the toggling of the item. In this case, we will have the label that shows the number of active items update.
+<.> Send a response header back so that other parts of the page can react to the toggling of the item.
+In this case, we will have the label that shows the number of active items update.
 <.> Use the Thymeleaf fragment to send the HTML snippet back to the browser.
 
 On the HTML side, we will replace this:
@@ -413,9 +505,12 @@ These are the changes in detail:
 This is needed as HTMX will replace the complete `<li>` item with an updated one that it will receive as a response to the AJAX call.
 HTMX needs the `id` to be able to know which `<li>` it needs to replace.
 . Add the `hx-trigger="click"` attribute so HTMX will start to do its work when the `<input>` item is clicked.
-. Add the `hx-swap="outerHTML"` attribute so HTMX will replace the current `<li>` completely with the received `<li>` snippet in the AJAX response. By default, HTMX uses `innerHTML` which would make the response a child element of the target element.
-. Add `hx-put=...` so that a PUT request is done. We need to use `th:attr` so we can use the `item` parameter of the Thymeleaf fragment to dynamically build the correct URL to use.
-. Add `hx-target=...` to point to the id of the `<li>` element. This instructs HTMX to use that element as the target for replacement.
+. Add the `hx-swap="outerHTML"` attribute so HTMX will replace the current `<li>` completely with the received `<li>` snippet in the AJAX response.
+By default, HTMX uses `innerHTML` which would make the response a child element of the target element.
+. Add `hx-put=...` so that a PUT request is done.
+We need to use `th:attr` so we can use the `item` parameter of the Thymeleaf fragment to dynamically build the correct URL to use.
+. Add `hx-target=...` to point to the id of the `<li>` element.
+This instructs HTMX to use that element as the target for replacement.
 
 This already works to toggle the completed state of individual todo item.
 However, the number of active items does not get updated yet.
@@ -450,7 +545,8 @@ We need to update the `hx-trigger` attribute to also react to our new event `ite
 </span>
 ----
 
-With this in place, we can toggle the completion status of the todo items and the active count also gets updated. All without page refreshes.
+With this in place, we can toggle the completion status of the todo items and the active count also gets updated.
+All without page refreshes.
 
 === Delete todo items
 
@@ -470,8 +566,10 @@ We again start with adding a new method to our controller:
         return ""; //<.>
     }
 ----
+
 <.> Ensure the method is used for HTMX requests via the `HX-Request` header.
-<.> We need to return an empty body as we want to replace the `<li>` item on the HTML page with nothing. HTMX interprets an empty response as doing nothing, but a response with nothing is as having to basically delete the target item from the HTML, which is what we want here.
+<.> We need to return an empty body as we want to replace the `<li>` item on the HTML page with nothing.
+HTMX interprets an empty response as doing nothing, but a response with nothing is as having to basically delete the target item from the HTML, which is what we want here.
 <.> Have HTMX send out an `itemDeleted` event in the browser so we can update the number of active items.
 <.> Return an empty string (see point 2).
 
@@ -495,7 +593,8 @@ with:
 ></button>
 ----
 
-This is very similar to what we did for toggling the item completation state. The only difference is that we now use `hx-delete` and a slightly different URL.
+This is very similar to what we did for toggling the item completation state.
+The only difference is that we now use `hx-delete` and a slightly different URL.
 
 To ensure the active items also update properly, we add another event to the `hx-trigger` there:
 
@@ -515,10 +614,12 @@ Start the application again and enjoy the absence of page refreshes as you add i
 == Conclusion
 
 It is entire possible to have an interactive application that avoids page refreshes for certain actions using Spring Boot, Thymeleaf and HTMX.
-It does get some getting used to at the start, but once you get it, it is not that hard.
+Using `hx-boost` makes it dead easy, or if you want more control over what happens, this is also not that hard.
+
+It does get some getting used to at the start.
 The most important point to remember is that you return HTML snippets from your controller, not JSON.
 And make sure the elements on your HTML have `id` attributes so HTMX can target them.
 
-See https://github.com/wimdeblauwe/blog-example-code/tree/master/todomvc-htmx[todomvc-htmx] on GitHub for the full sources.
+See https://github.com/wimdeblauwe/blog-example-code/tree/master/todomvc-htmx-boost[todomvc-htmx-boost] and https://github.com/wimdeblauwe/blog-example-code/tree/master/todomvc-htmx[todomvc-htmx] on GitHub for the full sources.
 
 If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
