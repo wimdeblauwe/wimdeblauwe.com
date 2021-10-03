@@ -38,6 +38,8 @@ When the button is clicked, a HTTP POST is done on `/clicked` and the response w
 
 So, with HTMX, you are not building a JSON API, but an API that returns HTML fragments.
 
+You can find some nice examples of what HTMX can do on the website: https://htmx.org/examples/
+
 We will start from the final code at https://github.com/wimdeblauwe/blog-example-code/tree/master/todomvc-thymeleaf[todomvc-thymeleaf] and gradually add functionality using HTMX.
 
 == Add HTMX to the project
