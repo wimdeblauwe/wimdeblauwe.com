@@ -1,8 +1,8 @@
 ---
 title: "TodoMVC with Thymeleaf and HTMX"
-date: 2021-09-27
-draft: true
-tags: ["thymeleaf", "spring-boot"]
+date: 2021-10-04
+draft: false
+tags: ["thymeleaf", "spring-boot", "htmx"]
 keywords: []
 ---
 :source-highlighter: rouge
@@ -325,7 +325,7 @@ When this is done, htmx sends the POST request and swaps in the returned HTML.
 
 We can see this in the developer tools:
 
-image::drafts/todomvc-htmx-2.png[]
+image::2021/10/todomvc-htmx-2.png[]
 
 It shows the `POST` request with the HTML snippet as the response.
 HTMX takes that response and swaps it into the HTML that is already present in the browser to create this SPA-like experience for the end-user.
@@ -357,7 +357,7 @@ When the new HTML is swapped into the DOM, the JavaScript callback is trigger to
 
 The application looks like this after adding the first todo item:
 
-image::drafts/todomvc-htmx-1.png[]
+image::2021/10/todomvc-htmx-1.png[]
 
 If you try this out, you'll notice that there is no page refresh.
 You can also try disabling JavaScript and it should still work (but with page refresh of course).
