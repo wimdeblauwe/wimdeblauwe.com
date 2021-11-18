@@ -1,0 +1,103 @@
+---
+title: "Using Spring Boot ObjectMapper with hibernate-types"
+date: 2021-11-18
+draft: false
+tags: ["spring-boot"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+
+The https://github.com/vladmihalcea/hibernate-types[hibernate-types] library has extra types that are not found in Hibernate by default.
+
+One of the most interesting aspects of the library is the support for JSON types.
+Unfortunately, by default, the library will not pick up any Jackson configuration or custom serializers defined in your Spring Boot project.
+
+This blog post will show how to configure things so the JSON related configuration of Spring Boot is used.
+
+<!--more-->
+
+The blog of Vlad Mihalcea has an entry on https://vladmihalcea.com/hibernate-types-customize-jackson-objectmapper/[How to customize the Jackson ObjectMapper used by Hibernate-Types], but it is not very straight forward to apply this on a Spring Boot project.
+
+The central class that Jackson (the default library used by Spring Boot for JSON serialization) is `ObjectMapper`.
+The `hibernate-types` library needs such an instance, and it should be supplied by an `Supplier<ObjectMapper>` class.
+
+We will use a bit of a hack, by saving a reference to the `ObjectMapper` in a static field. It is the only way I have found to make it work. If you know anything else, don't hesitate to contact me on https://twitter.com/wimdeblauwe[Twitter], or via https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
+
+First, create a `HibernateObjectMapper` class:
+
+[source,java]
+----
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+import java.util.function.Supplier;
+
+@Component("hibernateObjectMapper") //<.>
+public class HibernateObjectMapper implements Supplier<ObjectMapper> { //<.>
+
+    private static ObjectMapper objectMapper; //<.>
+
+    @Autowired //<.>
+    public void setObjectMapper(ObjectMapper objectMapper) {
+        HibernateObjectMapper.objectMapper = objectMapper;
+    }
+
+    @Override
+    public ObjectMapper get() { //<.>
+        return objectMapper;
+    }
+}
+----
+<.> Use `@Component` so Spring Boot will automatically create an instance of this class. We give it an explicit name because we will need to reference it by name later.
+<.> Implement the `Supplier` interface as `hibernate-types` needs this.
+<.> `static` field to store the `ObjectMapper` reference.
+<.> `@Autowired` method so Spring Boot will inject the `ObjectMapper` and we can store the reference statically.
+<.> `get()` method from the `Supplier` interface.
+
+Next step is instructing `hibernate-types` to use our custom supplier.
+We can add the following property to `application.properties`:
+
+[source,properties]
+----
+hibernate.types.jackson.object.mapper=com.company.app.infrastructure.jpa.HibernateObjectMapper
+----
+
+NOTE: Adjust the full qualified name for the package structure that you are using.
+
+The final step is adding the proper dependencies so that our `HibernateObjectMapper` is first injected by Spring before `hibernate-types` needs to do any work.
+
+We can do this via a `BeanFactoryPostProcessor`:
+
+[source,java]
+----
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.stereotype.Component;
+
+@Component
+public class HibernateBeanDependencyProcessor implements BeanFactoryPostProcessor {
+    @Override
+    public void postProcessBeanFactory(ConfigurableListableBeanFactory factory) {
+        BeanDefinition beanDefinition = factory.getBeanDefinition("entityManagerFactory");
+        String[] dependsOn = beanDefinition.getDependsOn();
+        dependsOn = dependsOn == null ? new String[]{} : dependsOn;
+        String[] newDependsOn = new String[dependsOn.length + 1];
+        System.arraycopy(dependsOn, 0, newDependsOn, 1, dependsOn.length);
+        newDependsOn[0] = "hibernateObjectMapper";
+        beanDefinition.setDependsOn(newDependsOn);
+    }
+}
+----
+
+With this in place, the Spring Boot provided `ObjectMapper` is used by `hibernate-types`.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
