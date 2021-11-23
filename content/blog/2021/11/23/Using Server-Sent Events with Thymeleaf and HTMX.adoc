@@ -1,0 +1,320 @@
+---
+title: "Using Server-Sent Events with Thymeleaf and HTMX"
+date: 2021-11-23
+draft: false
+tags: ["thymeleaf", "spring-boot", "htmx"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+
+It is possible to push information from a Spring Boot backend to the UI using either Websockets or Server-Sent Events.
+
+This blog post will show how to use Thymeleaf with HTMX to push information from the server to the UI with Server-Sent Events.
+
+<!--more-->
+
+== What are Server-Sent Events?
+
+https://en.wikipedia.org/wiki/Server-sent_events[Wikipedia] defines this as:
+
+> Server-Sent Events (SSE) is a server push technology enabling a client to receive automatic updates from a server via an HTTP connection, and describes how servers can initiate data transmission towards clients once an initial client connection has been established
+
+So basically, it is a 1-way communication from the server towards the client.
+It can be used for example to show notifications when something changed, or to show progress of a long running task.
+This latter is the example we will create in this blog post.
+
+When finished, it will look something like this:
+
+image::2021/11/htmx-sse.gif[]
+
+== Project setup
+
+Head over to https://start.spring.io/[start.spring.io] to create a new Java 17 project with the Spring Web, Spring Security and Thymeleaf starters.
+
+Also add the following dependencies manually to the `pom.xml`:
+
+[source,xml]
+----
+<dependency>
+    <groupId>com.google.guava</groupId>
+    <artifactId>guava</artifactId>
+    <version>31.0.1-jre</version>
+</dependency>
+<dependency>
+    <groupId>org.webjars</groupId>
+    <artifactId>webjars-locator</artifactId>
+    <version>0.42</version>
+</dependency>
+<dependency>
+    <groupId>org.webjars.npm</groupId>
+    <artifactId>htmx.org</artifactId>
+    <version>1.6.0</version>
+</dependency>
+----
+
+== Controller
+
+To use Server-Sent Events, we need to have a GET method in our Spring MVC controller that returns an https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/servlet/mvc/method/annotation/SseEmitter.html[SseEmitter] instance.
+
+It is the responsability of the client to first call this GET method to "open the channel" so that the server can push events over it.
+Events are text, so they can be JSON or HTML.
+Here, we will use HTML so htmx can update the DOM with the updated snippets.
+As the server, you need to keep track of the returned `SseEmitter` instances so you know where to send information to.
+
+This is the GET mapping in the controller:
+
+[source,java]
+----
+@Controller
+public class PdfGenerationController {
+
+    private final Multimap<String, SseEmitter> sseEmitters = MultimapBuilder.hashKeys().arrayListValues().build();
+
+    @GetMapping("/progress-events")
+    public SseEmitter progressEvents(@AuthenticationPrincipal UserDetails userDetails) {
+        SseEmitter sseEmitter = new SseEmitter(Long.MAX_VALUE);
+        sseEmitters.put(userDetails.getUsername(), sseEmitter);
+        System.out.println("Adding SseEmitter for user: " + userDetails.getUsername());
+        sseEmitter.onCompletion(() -> LOGGER.info("SseEmitter is completed"));
+        sseEmitter.onTimeout(() -> LOGGER.info("SseEmitter is timed out"));
+        sseEmitter.onError((ex) -> LOGGER.info("SseEmitter got error:", ex));
+
+        return sseEmitter;
+    }
+}
+----
+
+In this example, we use the username of the logged on user as a key to a https://github.com/google/guava/wiki/NewCollectionTypesExplained#multimap[Multimap] to keep track of all `SseEmitter` instances where the user is logged on (different browsers for example).
+
+In the controller, we will also have a POST method that simulates a long running action like generating a PDF document for example. This is the code:
+
+[source,java]
+----
+    @PostMapping
+    public String generatePdf(@AuthenticationPrincipal UserDetails userDetails) {
+        Collection<SseEmitter> sseEmitter = sseEmitters.get(userDetails.getUsername());
+        pdfGenerator.generatePdf(new SseEmitterProgressListener(sseEmitter));
+
+        return "index";
+    }
+----
+
+The `PdfGenerator` class is just doing some random progress every 100 ms:
+
+[source,java]
+----
+import java.util.random.RandomGenerator;
+import java.util.random.RandomGeneratorFactory;
+
+@Component
+public class PdfGenerator {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PdfGenerator.class);
+
+    private final RandomGenerator randomGenerator = RandomGeneratorFactory.getDefault().create();
+
+    public void generatePdf(ProgressListener listener) {
+        LOGGER.info("Generating PDF...");
+        int progress = 0;
+        listener.onProgress(progress);
+        do {
+            sleep();
+            progress += randomGenerator.nextInt(10);
+            LOGGER.info("Progress: {} ", progress);
+            listener.onProgress(progress);
+        } while (progress < 100);
+        LOGGER.info("Done!");
+        listener.onCompletion();
+    }
+
+    private void sleep() {
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+        }
+    }
+}
+----
+
+Each time the progress changes, a `ProgressListener` callback is called.
+
+We use this in the controller to send the updates via Server-Sent events to the client:
+
+[source,java]
+----
+private static class SseEmitterProgressListener implements ProgressListener {
+        private final Collection<SseEmitter> sseEmitters;
+
+        public SseEmitterProgressListener(Collection<SseEmitter> sseEmitter) {
+            this.sseEmitters = sseEmitter;
+        }
+
+        @Override
+        public void onProgress(int value) { // <.>
+            String html = """
+                    <div id="progress-container" class="progress-container"> \
+                        <div class="progress-bar" style="width:%s%%"></div> \
+                    </div>
+                    """.formatted(value);
+            sendToAllClients(html);
+        }
+
+        @Override
+        public void onCompletion() { // <.>
+            String html = "<div><a href=\"#\">Download PDF</div>";
+            sendToAllClients(html);
+        }
+
+        private void sendToAllClients(String html) {
+            for (SseEmitter sseEmitter : sseEmitters) {
+                try {
+                    sseEmitter.send(html);
+                } catch (IOException e) { //<.>
+                    LOGGER.error(e.getMessage());
+                }
+            }
+        }
+    }
+----
+<.> When there is progress, sent the HTML snippet that will be dynamically placed in the DOM of the browser.
++
+NOTE: It seems that Server-Sent Events cannot contain newlines, so we need to use a backslash (`\`) so the multiline string is considered to be 1 long line.
+<.> When the PDF generation is done, send the HTML that allows the user to download the PDF.
+<.> We need to catch exceptions for each send that happens because a client might no longer be there suddenly and this cannot impact other clients.
+
+== Client implementation
+
+The HTML that we need to show a button to start the simulated PDF generation and show the progress is this:
+
+[source,html]
+----
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="/css/application.css">
+</head>
+<body>
+<h1>Server Sent Events Demo</h1>
+<div>Current user: <span sec:authentication="name"></span></div>
+<div hx-sse="connect:/progress-events"> <!--2-->
+    <button hx-post="/" hx-swap="none">Generate PDF</button> <!--3-->
+    <div style="margin-bottom: 2rem;"></div>
+    <div id="progress-wrapper" hx-sse="swap:message"> <!--4-->
+    </div>
+</div>
+<script type="text/javascript" th:src="@{/webjars/htmx.org/dist/htmx.min.js}"></script> <!--1-->
+</body>
+</html>
+----
+<.> Add the htmx JavaScript library as a webjar.
+<.> Use `hx-sse` attribute to connect on the SSE channel via the `/progress-events` URL.
+<.> Trigger the POST call when the button is pressed.
+<.> Swap the innerHTML of this `<div>` with the HTML that is received over the SSE channel each time a message is received.
+
+We also need this bit of CSS for styling:
+
+[source,css]
+----
+#progress-wrapper {
+    width: 25%;
+}
+
+.progress-container {
+    height: 20px;
+    margin-bottom: 20px;
+    overflow: hidden;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.1);
+}
+
+.progress-bar {
+    float: left;
+    width: 0%;
+    height: 100%;
+    font-size: 12px;
+    line-height: 20px;
+    color: #fff;
+    text-align: center;
+    background-color: #337ab7;
+    -webkit-box-shadow: inset 0 -1px 0 rgba(0,0,0,.15);
+    box-shadow: inset 0 -1px 0 rgba(0,0,0,.15);
+    -webkit-transition: width .6s ease;
+    -o-transition: width .6s ease;
+    transition: width .6s ease;
+}
+----
+
+== Run the application
+
+The final step before we can run the application is configuring the security so we have test users:
+
+[source,java]
+----
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+@Configuration
+public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth.inMemoryAuthentication()
+                .passwordEncoder(passwordEncoder)
+            .withUser("user1").password("p1").roles("USER")
+            .and()
+            .withUser("user2").password("p2").roles("USER");
+    }
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http.authorizeRequests(
+                    registry -> registry.mvcMatchers("/**").authenticated()
+            )
+            .formLogin();
+        http.csrf().disable();
+        http.cors().disable();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return NoOpPasswordEncoder.getInstance();
+    }
+}
+----
+
+This is not a security configuration to be used in production, but good enough for our demo.
+
+After adding all this code, start the Spring Boot application and open a browser at http://localhost:8080.
+You will be asked to log on, which you can do with `user1`/`p1` or `user2`/`p2`.
+
+Also try to open a few browsers with the same user.
+You should see that all the progress bars will update, even if you only press on 1 of the buttons to start the PDF generation.
+
+
+== Conclusion
+
+Using Spring MVC and htmx allows to push updates from the server to the client in a fairly straightforward way.
+
+See https://github.com/wimdeblauwe/blog-example-code/tree/master/htmx-sse[htmx-sse] on GitHub for the full sources of this example.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
