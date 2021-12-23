@@ -1,0 +1,345 @@
+---
+title: "Taming Thymeleaf 2.0 release"
+date: 2021-11-23
+draft: false
+tags: ["thymeleaf", "spring-boot"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+
+My book Taming Thymeleaf has been updated for Java 17, Spring Boot 2.6 and Tailwind CSS 3.0.
+This update is free for all https://leanpub.com/taming-thymeleaf[Leanpub] readers.
+
+<!--more-->
+
+== What exactly was updated?
+
+The main motivation for this update was the release of Tailwind CSS 3.0.
+The Just-In-Time compiler that is now the default changes things a bit in the setup and I wanted to avoid that people would get stuck following along with the book now that Tailwind CSS 3.0 is the default version.
+
+Next to that, the following dependencies have also been updated:
+
+* Java 17: Java 17 is currently the version that new projects should use, so it makes sense for this book to baseline on that. I did not update code snippets to use exclusive Java 17 syntax, so if need be, you can run everything on Java 11 as well.
+* Spring Boot 2.6: This is the current latest version of Spring Boot.
+* AlpineJS 3.7: Everything was compatible with the version the book used before (2.8.0).
+* Node 16 and NPM 8: These are the current versions so it made sense to align with those.
+
+== How to update my own application?
+
+If you have an application based on the previous version of the book, then you can bring it up-to-date like this:
+
+=== Update to Spring Boot 2.6
+
+Replace:
+
+[source,xml]
+----
+<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>2.3.0.RELEASE</version>
+		<relativePath/> <!-- lookup parent from repository -->
+	</parent>
+----
+
+with:
+
+[source,xml]
+----
+<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>2.6.2</version>
+		<relativePath/> <!-- lookup parent from repository -->
+	</parent>
+----
+
+Note how the `.RELEASE` part is no longer there.
+
+If you have a custom version of `thymeleaf-layout-dialect`, then remove the specific version.
+Spring Boot defines a compatible version.
+
+So replace:
+
+[source,xml]
+----
+<dependency>
+    <groupId>nz.net.ultraq.thymeleaf</groupId>
+    <artifactId>thymeleaf-layout-dialect</artifactId>
+    <version>${thymeleaf-layout-dialect.version}</version>
+</dependency>
+----
+
+with:
+
+[source,xml]
+----
+<dependency>
+    <groupId>nz.net.ultraq.thymeleaf</groupId>
+    <artifactId>thymeleaf-layout-dialect</artifactId>
+</dependency>
+----
+
+And remove the property:
+
+[source,xml]
+----
+<thymeleaf-layout-dialect.version>2.4.1</thymeleaf-layout-dialect.version>
+----
+
+=== Update to Java 17
+
+Update `java.version` property in the `pom.xml`:
+
+[source,xml]
+----
+<java.version>17</java.version>
+----
+
+Be sure to also use a Java 17 JDK when doing this change.
+
+When using SDKMAN!, you can do this with this command:
+
+[source]
+----
+sdk install java 17.0.1-tem
+----
+
+=== Update frontend-maven-plugin
+
+Replace:
+
+[source,xml]
+----
+<frontend-maven-plugin.version>1.10.0</frontend-maven-plugin.version>
+<frontend-maven-plugin.nodeVersion>v14.7.0</frontend-maven-plugin.nodeVersion>
+<frontend-maven-plugin.npmVersion>6.14.11</frontend-maven-plugin.npmVersion>
+----
+
+with:
+
+[source,xml]
+----
+<frontend-maven-plugin.version>1.12.0</frontend-maven-plugin.version>
+<frontend-maven-plugin.nodeVersion>v16.13.1</frontend-maven-plugin.nodeVersion>
+<frontend-maven-plugin.npmVersion>8.1.2</frontend-maven-plugin.npmVersion>
+----
+
+Be sure to also update the locally installed `node` and `npm`.
+How exactly depends on how you installed it.
+I find it easiest to use the https://github.com/nvm-sh/nvm[Node Version Manager].
+
+=== Update Testcontainers
+
+Set the Testcontainers version to `1.16.2`:
+
+[source,xml]
+----
+<testcontainers.version>1.16.2</testcontainers.version>
+----
+
+=== Update Guava
+
+Set the Guava version to `31.0.1-jre`:
+
+[source,xml]
+----
+<guava.version>31.0.1-jre</guava.version>
+----
+
+=== Update Tailwind
+
+Run this command to update to Tailwind 3:
+
+[source]
+----
+ npm install -D tailwindcss@latest \
+  @tailwindcss/forms@latest \
+  postcss@latest \
+  autoprefixer@latest
+----
+
+Next, update the configuration file `tailwind.config.js`.
+
+It normally looks something like this:
+
+[source,js]
+----
+const defaultTheme = require('tailwindcss/defaultTheme');
+
+module.exports = {
+    purge: {
+        content: ['./src/main/resources/templates/**/*.html']
+    },
+    darkMode: false, // or 'media' or 'class'
+    theme: {
+        extend: {
+            fontFamily: {
+                sans: ['Inter var', ...defaultTheme.fontFamily.sans],
+            },
+        }
+    },
+    variants: {
+        extend: {},
+    },
+    plugins: [
+        require('@tailwindcss/forms')
+    ]
+};
+----
+
+Change it to be like this:
+
+[source,js]
+----
+const defaultTheme = require('tailwindcss/defaultTheme');
+
+module.exports = {
+    content: ['./src/main/resources/templates/**/*.html',
+        './src/main/resources/templates/**/*.svg'],
+    theme: {
+        extend: {
+            fontFamily: {
+                sans: ['Inter var', ...defaultTheme.fontFamily.sans],
+            },
+        }
+    },
+    plugins: [
+        require('@tailwindcss/forms')
+    ]
+};
+----
+
+If you did other customizations, you will need to copy them over as well.
+See the https://tailwindcss.com/docs/upgrade-guide[Upgrade guide] for more information about how to upgrade from Tailwind CSS 2.0 to 3.0.
+
+=== Upgrade Gulp script
+
+The Gulp script should be changed to this:
+
+[source]
+----
+const gulp = require('gulp');
+const babel = require("gulp-babel");
+const watch = require('gulp-watch');
+const browserSync = require('browser-sync').create();
+const environments = require('gulp-environments');
+const uglifycss = require('gulp-uglifycss');
+const terser = require('gulp-terser');
+const postcss = require('gulp-postcss');
+const purgecss = require('gulp-purgecss');
+
+const production = environments.production;
+
+gulp.task('watch', () => {
+    browserSync.init({
+        proxy: 'localhost:8080',
+    });
+
+    gulp.watch(['src/main/resources/**/*.html'], gulp.series('copy-html+css-and-reload'));
+    gulp.watch(['src/main/resources/**/*.svg'], gulp.series('copy-svg+css-and-reload'));
+    gulp.watch(['src/main/resources/**/*.css'], gulp.series('copy-css-and-reload'));
+    gulp.watch(['src/main/resources/**/*.js'], gulp.series('copy-js-and-reload'));
+});
+
+gulp.task('copy-html', () =>
+    gulp.src(['src/main/resources/**/*.html'])
+        .pipe(gulp.dest('target/classes/'))
+);
+
+gulp.task('copy-css', () =>
+    gulp.src(['src/main/resources/**/*.css'])
+        .pipe(postcss())
+        .pipe(production(uglifycss()))
+        .pipe(gulp.dest('target/classes/'))
+);
+
+gulp.task('copy-js', () =>
+    gulp.src(['src/main/resources/**/*.js'])
+        .pipe(babel())
+        .pipe(production(terser()))
+        .pipe(gulp.dest('target/classes/'))
+);
+
+gulp.task('copy-svg', () => gulp.src(['src/main/resources/**/*.svg'])
+    .pipe(gulp.dest('target/classes/')));
+
+// When the HTML or SVG changes, we need to copy the CSS also because
+// the Tailwind CSS JIT compiler might generate new CSS
+gulp.task('copy-html+css-and-reload', gulp.series('copy-html', 'copy-css', reload));
+gulp.task('copy-css-and-reload', gulp.series('copy-css', reload));
+gulp.task('copy-js-and-reload', gulp.series('copy-js', reload));
+gulp.task('copy-svg+css-and-reload', gulp.series('copy-svg', 'copy-css', reload));
+
+gulp.task('build', gulp.series('copy-html', 'copy-css', 'copy-js', 'copy-svg'));
+gulp.task('default', gulp.series('watch'));
+
+function reload(done) {
+    browserSync.reload();
+    done();
+}
+----
+
+The reason for this change is that Tailwind CSS 3.0 now only generates the classes that are actually used in the HTML.
+As a consequence, we need to re-generate the CSS when the HTML or the CSS changes.
+
+=== Upgrade AlpineJS
+
+Replace:
+
+[source,html]
+----
+<script src="https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.8.0/dist/alpine.js" defer></script>
+----
+
+with:
+
+[source,html]
+----
+<script src="https://unpkg.com/alpinejs@3.7.0/dist/cdn.min.js" defer></script>
+----
+
+If you are using `x-cloak` with Alpine, you can add it to your `application.css` like this:
+
+[source,css]
+----
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  [x-cloak] {
+    display: none;
+  }
+}
+----
+
+=== Enable cache busting
+
+Add these properties to your `application-local.properties`:
+
+[source,properties]
+----
+spring.web.resources.chain.strategy.content.enabled=true
+spring.web.resources.chain.strategy.content.paths=/**
+----
+
+This will enable cache busting for the JavaScript and CSS files.
+It found that it makes the live reload experience a lot more reliable.
+It might also be good to have this for production as well, so you could add it to `application.properties` if you want.
+
+== Conclusion
+
+It is important to stay up do date with your dependencies to avoid getting stuck on older versions where everybody is afraid to update them, even in the light of https://en.wikipedia.org/wiki/Log4Shell[security vulnerabilities].
+The information above should give you all the information you need for the update.
+
+See https://www.wimdeblauwe.com/books/taming-thymeleaf/[Taming Thymeleaf] for more information about the book and the links to Leanpub and Lulu to buy it.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
