@@ -1,0 +1,289 @@
+---
+title: "Spring Boot request parameters validation"
+date: 2022-02-19
+draft: false
+tags: ["spring-boot"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+
+I released a new version 2.1.0 of the https://github.com/wimdeblauwe/error-handling-spring-boot-starter[Error Handling Spring Boot Starter] last week.
+It supports now nice error messages for validation of request parameters.
+This blog post shows some more detail on how you can do validation of request parameters.
+
+<!--more-->
+
+Version 2.1.0 has a single small addition to support validation on request parameters.
+It is probably a less known feature that you can do validation on request parameters, so I will explain how to use it in more detail.
+
+As an example, we'll show a system that handles tasks that need to be executed.
+There is an endpoint at `/tasks` that allows to retrieve all tasks.
+It is possible on that endpoint to filter the tasks on creation date by providing a `from` and `to` query parameter.
+
+An example implementation could be this:
+
+[source,java]
+----
+@RestController
+@RequestMapping("/tasks")
+public class TaskRestController {
+
+    @GetMapping
+    public Page<Task> getTasks(@RequestParam("from") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                               @RequestParam("to") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        ...
+    }
+}
+----
+
+If you are not using Error Handling Spring Boot Starter, then not passing any request parameter in the URL (e.g. doing a GET on `http://localhost:8080/tasks`), would result in this response:
+
+[source,json]
+----
+{
+  "timestamp": "2022-02-19T15:01:04.651+00:00",
+  "status": 400,
+  "error": "Bad Request",
+  "path": "/tasks"
+}
+----
+
+Now add Error Handling Spring Boot Starter in your `pom.xml` like this:
+
+[source,xml]
+----
+<dependency>
+    <groupId>io.github.wimdeblauwe</groupId>
+    <artifactId>error-handling-spring-boot-starter</artifactId>
+    <version>2.1.0</version>
+</dependency>
+----
+
+That same GET to `http://localhost:8080/tasks` now results in:
+
+[source,json]
+----
+{
+  "code": "MISSING_SERVLET_REQUEST_PARAMETER",
+  "message": "Required request parameter 'from' for method parameter type LocalDate is not present"
+}
+----
+
+Already better since we at least have one of the 2 missing parameter names in our error message.
+But we can do better.
+
+We start by defining a `record` to hold our query parameters:
+
+[source,java]
+----
+public record GetTaskRequestParameters(@NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                                       @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+}
+----
+
+Note how we annotate the parameters with `@NotNull` to indicate that they are required.
+
+Update the controller to use this object:
+
+[source,java]
+----
+@RestController
+@RequestMapping("/tasks")
+@Validated //<.>
+public class TaskRestController {
+    @GetMapping
+    public List<Task> getTasks(@Valid GetTaskRequestParameters parameters) { //<.>
+        return new ArrayList<>(); // Would get this from a service normally
+    }
+}
+----
+<.> Use the `org.springframework.validation.annotation.Validated` annotation on the class level. (NOTE: `javax.validation.Valid` would not work here!)
+<.> Use `javax.validation.Valid` on the parameter object
+
+Doing that same GET will now result in:
+
+[source,json]
+----
+{
+  "code": "VALIDATION_FAILED",
+  "message": "Validation failed for object='getTaskRequestParameters'. Error count: 2",
+  "fieldErrors": [
+    {
+      "code": "REQUIRED_NOT_NULL",
+      "message": "must not be null",
+      "property": "from",
+      "rejectedValue": null
+    },
+    {
+      "code": "REQUIRED_NOT_NULL",
+      "message": "must not be null",
+      "property": "to",
+      "rejectedValue": null
+    }
+  ]
+}
+----
+
+We can now take things a step further and ensure that the value of the parameters is in the past like this:
+
+[source,java]
+----
+public record GetTaskRequestParameters(@Past
+                                       @NotNull
+                                       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+                                       LocalDate from,
+                                       @PastOrPresent
+                                       @NotNull
+                                       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+                                       LocalDate to) {
+}
+----
+
+We can now do a GET on `http://localhost:8080/tasks?from=2025-01-01&to=2025-06-06` and the result will be:
+
+[source,json]
+----
+{
+  "code": "VALIDATION_FAILED",
+  "message": "Validation failed for object='getTaskRequestParameters'. Error count: 2",
+  "fieldErrors": [
+    {
+      "code": "DATE_SHOULD_BE_IN_PAST",
+      "message": "must be a past date",
+      "property": "from",
+      "rejectedValue": "2025-01-01"
+    },
+    {
+      "code": "DATE_SHOULD_BE_PRESENT_OR_IN_PAST",
+      "message": "must be a date in the past or in the present",
+      "property": "to",
+      "rejectedValue": "2025-06-06"
+    }
+  ]
+}
+----
+
+To ensure we really have everything covered, we should also validate if the `to` is more recent then that `from`.
+We can do this with a custom validator.
+
+Start by creating your own annotation `FromMoreRecentThenTo`:
+
+[source,java]
+----
+import javax.validation.Constraint;
+import javax.validation.Payload;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Constraint(validatedBy = FromMoreRecentThenToValidator.class)
+public @interface FromMoreRecentThenTo {
+    String message() default "`from` should be more recent then `to`";
+
+    Class<?>[] groups() default {};
+
+    Class<? extends Payload>[] payload() default {};
+}
+----
+
+The annotation references the validator that will do the actual validation work:
+
+[source,java]
+----
+import javax.validation.ConstraintValidator;
+import javax.validation.ConstraintValidatorContext;
+
+public class FromMoreRecentThenToValidator implements ConstraintValidator<FromMoreRecentThenTo, GetTaskRequestParameters> {
+    @Override
+    public boolean isValid(GetTaskRequestParameters value,
+                           ConstraintValidatorContext context) {
+        if (value.from().isAfter(value.to())) {
+            context.disableDefaultConstraintViolation();
+            context.buildConstraintViolationWithTemplate(String.format("From (%s) is after to (%s), which is invalid.", value.from(), value.to()))
+                   .addConstraintViolation();
+            return false;
+        }
+        return true;
+    }
+}
+----
+
+Finally, update the record to use the annotation:
+
+[source,java]
+----
+import org.springframework.format.annotation.DateTimeFormat;
+
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Past;
+import javax.validation.constraints.PastOrPresent;
+import java.time.LocalDate;
+
+@FromMoreRecentThenTo
+public record GetTaskRequestParameters(@Past
+                                       @NotNull
+                                       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+                                       LocalDate from,
+                                       @PastOrPresent
+                                       @NotNull
+                                       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+                                       LocalDate to) {
+}
+----
+
+Now try a GET on `http://localhost:8080/tasks?from=2020-11-01&to=2020-06-06` for example.
+The result will be:
+
+[source,json]
+----
+{
+  "code": "VALIDATION_FAILED",
+  "message": "Validation failed for object='getTaskRequestParameters'. Error count: 1",
+  "globalErrors": [
+    {
+      "code": "FromMoreRecentThenTo",
+      "message": "From (2020-11-01) is after to (2020-06-06), which is invalid."
+    }
+  ]
+}
+----
+
+If you don't like that the code of the error is `FromMoreRecentThenTo` (which is the name of the used annotation by default),
+then you can override this in your `application.properties`:
+
+[source,properties]
+----
+error.handling.codes.FromMoreRecentThenTo=FROM_MORE_RECENT_THEN_TO
+----
+
+The JSON becomes:
+
+[source,json]
+----
+{
+  "code": "VALIDATION_FAILED",
+  "message": "Validation failed for object='getTaskRequestParameters'. Error count: 1",
+  "globalErrors": [
+    {
+      "code": "FROM_MORE_RECENT_THEN_TO",
+      "message": "From (2020-11-01) is after to (2020-06-06), which is invalid."
+    }
+  ]
+}
+----
+
+== Conclusion
+
+
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
