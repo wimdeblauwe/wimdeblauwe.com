@@ -1,8 +1,8 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    asciidoctor (2.0.10)
-    rouge (3.15.0)
+    asciidoctor (2.0.17)
+    rouge (3.28.0)
 
 PLATFORMS
   ruby

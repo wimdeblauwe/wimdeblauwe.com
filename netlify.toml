@@ -3,7 +3,7 @@
     command = "hugo"
 
 [build.environment]
-    HUGO_VERSION = "0.64.0"
+    HUGO_VERSION = "0.92.0"
 
 [context.production.environment]
     HUGO_ENV = "production"
