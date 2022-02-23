@@ -1,6 +1,6 @@
 ---
 title: "Spring Boot request parameters validation"
-date: 2022-02-19
+date: 2022-02-23
 draft: false
 tags: ["spring-boot"]
 keywords: []
@@ -15,16 +15,16 @@ keywords: []
 :2c: ::
 
 I released a new version 2.1.0 of the https://github.com/wimdeblauwe/error-handling-spring-boot-starter[Error Handling Spring Boot Starter] last week.
-It supports now nice error messages for validation of request parameters.
+It supports nice error messages for validation of request parameters now.
 This blog post shows some more detail on how you can do validation of request parameters.
 
 <!--more-->
 
 Version 2.1.0 has a single small addition to support validation on request parameters.
-It is probably a less known feature that you can do validation on request parameters, so I will explain how to use it in more detail.
+It is probably a less known feature that you can validate request parameters, so I will explain how to use it in more detail.
 
 As an example, we'll show a system that handles tasks that need to be executed.
-There is an endpoint at `/tasks` that allows to retrieve all tasks.
+There is an endpoint at `/tasks` that allows retrieving all tasks.
 It is possible on that endpoint to filter the tasks on creation date by providing a `from` and `to` query parameter.
 
 An example implementation could be this:
@@ -76,7 +76,7 @@ That same GET to `http://localhost:8080/tasks` now results in:
 }
 ----
 
-Already better since we at least have one of the 2 missing parameter names in our error message.
+Already better since we at least have one of the two missing parameter names in our error message.
 But we can do better.
 
 We start by defining a `record` to hold our query parameters:
@@ -284,6 +284,8 @@ The JSON becomes:
 
 == Conclusion
 
+We can do rich validation of request parameters using Spring Boot and the https://github.com/wimdeblauwe/error-handling-spring-boot-starter[Error Handling Spring Boot Starter] library.
 
+See https://github.com/wimdeblauwe/blog-example-code/tree/master/request-parameters-validation[request-parameters-validation] on GitHub for the full sources of this example.
 
 If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
