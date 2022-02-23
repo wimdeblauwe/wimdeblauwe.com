@@ -11,7 +11,7 @@
     {{- end -}}
 
     {{ if eq (getenv "HUGO_ENV") "production" }}
-        {{ template "_internal/google_analytics_async.html" . }}
+        {{ template "_internal/google_analytics.html" . }}
     {{ end }}
 
     <meta name="viewport" content="width=device-width, initial-scale=1"> {{ with .OutputFormats.Get "rss" -}} {{ printf `
