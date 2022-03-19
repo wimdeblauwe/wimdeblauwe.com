@@ -1,0 +1,269 @@
+---
+title: "Bootstrap Toggle clone with Tailwind CSS and Alpine"
+date: 2022-02-23
+draft: true
+tags: ["spring-boot", "thymeleaf", "tailwindcss", "alpine"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+I migrated a project from https://getbootstrap.com/[Bootstrap 4] with the https://github.com/tafcoder/sleek-dashboard[Sleek dashboard template] to https://tailwindcss.com/[Tailwind CSS] as Bootstrap 4 stopped having bugfixes on 2021-07-01, and there is no version for Bootstrap 5.
+Anyways, I like Tailwind CSS a lot more to work with :)
+
+One of the components that the project used is https://www.bootstraptoggle.com/[Bootstrap Toggle], which makes a simple checkbox look a lot better.
+As the project kicked out Bootstrap, I needed to build a replacement for it. This blog entry will explain how I did so step-by-step using Tailwind CSS and https://alpinejs.dev/[Alpine.js].
+
+<!--more-->
+
+This is how the orignal Bootstrap Toggle looks:
+
+image::{imagesdir}/2022/03/bootstrap-toggle-original.gif[align="left"]
+
+To show the example in the context of an application, let's build a simple Spring Boot/Thymeleaf application that has a settings page.
+
+== Project setup
+
+By default, it looks like this if we use the browser-native checkboxes:
+
+image::{imagesdir}/2022/03/bootstrap-toggle-native-styling.png[width=500px,align=left]
+
+On the Java side, we use a Java record for the settings itself:
+
+[source,java]
+----
+public record Settings(boolean notifyViaEmail,
+                       boolean notifyViaSms) {
+}
+----
+
+The service to keep track of the current settings:
+
+[source,java]
+----
+import org.springframework.stereotype.Service;
+
+@Service
+public class SettingsService {
+    private Settings settings = new Settings(false, false);
+
+    public Settings getSettings() {
+        return settings;
+    }
+
+    public void setSettings(Settings settings) {
+        this.settings = settings;
+    }
+}
+----
+
+The controller:
+
+[source,java]
+----
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+
+@Controller
+public class SettingsController {
+    private final SettingsService service;
+
+    public SettingsController(SettingsService service) { //<.>
+        this.service = service;
+    }
+
+    @GetMapping //<.>
+    public String settingsPage(Model model) {
+        Settings settings = service.getSettings();
+        SettingsFormData formData = new SettingsFormData();
+        formData.setNotifyViaEmail(settings.notifyViaEmail());
+        formData.setNotifyViaSms(settings.notifyViaSms());
+        model.addAttribute("settings", formData);
+
+        return "settings";
+    }
+
+    @PostMapping //<.>
+    public String updateSettings(@ModelAttribute("settings") SettingsFormData formData) {
+        System.out.println("Got formdata: " + formData);
+        service.setSettings(new Settings(formData.isNotifyViaEmail(), formData.isNotifyViaSms()));
+        return "redirect:/"; //<.>
+    }
+}
+----
+<.> Inject the `SettingsService`.
+<.> `GetMapping` is used for the initial render of the page.
+<.> `PostMapping` is to handle the submit of the form.
+<.> Redirect back to the home page after posting the form.
+
+The controller uses a dedicated form data object:
+
+[source,java]
+----
+import java.util.StringJoiner;
+
+public class SettingsFormData {
+    private boolean notifyViaEmail;
+    private boolean notifyViaSms;
+
+    public boolean isNotifyViaEmail() {
+        return notifyViaEmail;
+    }
+
+    public void setNotifyViaEmail(boolean notifyViaEmail) {
+        this.notifyViaEmail = notifyViaEmail;
+    }
+
+    public boolean isNotifyViaSms() {
+        return notifyViaSms;
+    }
+
+    public void setNotifyViaSms(boolean notifyViaSms) {
+        this.notifyViaSms = notifyViaSms;
+    }
+
+    @Override
+    public String toString() {
+        return new StringJoiner(", ", SettingsFormData.class.getSimpleName() + "[", "]")
+                .add("notifyViaEmail=" + notifyViaEmail)
+                .add("notifyViaSms=" + notifyViaSms)
+                .toString();
+    }
+}
+----
+
+See https://www.wimdeblauwe.com/blog/2021/05/23/form-handling-with-thymeleaf/[Form handling with Thymeleaf] for more information about using forms and form data objects.
+
+Finally, this is the HTML Thymeleaf template:
+
+[source,html]
+----
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+    <title>Bootstrap Toggle Clone</title>
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    <link rel="stylesheet" href="/css/application.css"/>
+</head>
+<body>
+<h1 class="mx-20 mt-5 text-xl text-blue-900">Settings</h1>
+<div class="mx-20 mt-5">
+    <form th:object="${settings}"
+          th:method="post"
+          th:action="@{/}"
+          class="space-y-4"
+    > <!--.-->
+        <div class="flex items-center justify-between">
+            <span class="flex-grow flex flex-col">
+                <span class="text-sm font-medium text-gray-900" id="notifyViaEmail-label">Notify via email</span>
+                <span class="text-sm text-gray-500"
+                      id="notifyViaEmail-description">Get notified via email when something happens.</span>
+            </span>
+            <input type="checkbox" th:field="*{notifyViaEmail}"><!--.-->
+        </div>
+        <div class="flex items-center justify-between">
+            <span class="flex-grow flex flex-col">
+                <span class="text-sm font-medium text-gray-900" id="notifyViaSms-label">Notify via SMS</span>
+                <span class="text-sm text-gray-500"
+                      id="notifyViaSms-description">Get notified via SMS when something happens.</span>
+            </span>
+            <input type="checkbox" th:field="*{notifyViaSms}"><!--.-->
+        </div>
+        <div class="pt-5">
+            <div class="flex justify-end">
+                <button type="button" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Cancel</button>
+                <button type="submit" class="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Save</button>
+            </div>
+        </div>
+    </form>
+</div>
+</body>
+</html>
+----
+<.> `form` tag to be able to submit the form to the server
+<.> Checkbox for the `notifyViaEmail` setting
+<.> Checkbox for the `notifyViaSms` setting
+
+With this code in place, we have a working form where we can toggle the checkboxes and they are saved when we post the form. When we load the form, the checkboxes are checked if they should be.
+
+Let's style them now to look like Bootstrap Toggle switches.
+
+== Refactor to use a Thymeleaf fragment
+
+We want to avoid that we have to do each change twice since we have 2 checkboxes.
+Using a Thymeleaf fragment with parameters is the easiest way to accomplish this.
+
+Create `src/main/resources/templates/fragments.html` like this:
+
+[source,html]
+----
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="form-checkbox(propertyName, title, description)" <!--.-->
+     class="flex items-center justify-between">
+            <span class="flex-grow flex flex-col">
+                <span class="text-sm font-medium text-gray-900"
+                      th:id="|${propertyName}-label|" <!--.-->
+                      th:text="${title}">The title here</span> <!--.-->
+                <span class="text-sm text-gray-500"
+                      th:id="|${propertyName}-description|"
+                      th:text="${description}">The description here</span>
+            </span>
+    <input type="checkbox" th:field="*{__${propertyName}__}"> <!--.-->
+</div>
+</body>
+</html>
+----
+<.> Declare the name of the fragment and its parameters.
+<.> Use the `propertyName` to generate an `id` for the label.
+<.> `th:text` will dynamically replace `The title here` with the value of the `title` parameter.
+<.> This special syntax will first replace `{underscore}{underscore}${propertyName}{underscore}{underscore}` with the value of the parameter `propertyName` and _then_ render the fragment. If `propertyName` is for instance `notifyViaEmail`, then this will be to Thymeleaf as if we wrote:
++
+`<input type="checkbox" th:field="*{notifyViaEmail}">`.
++
+This will bind `notifyViaEmail` to the property of the `SettingsFormData` object.
+
+Using the fragment, the form in `settings.html` becomes a lot simpler:
+
+[source,html]
+----
+<form th:object="${settings}"
+      th:method="post"
+      th:action="@{/}"
+      class="space-y-4"
+>
+    <div th:replace="fragments::form-checkbox('notifyViaEmail', 'Notify via email', 'Get notified via email when something happens.')"></div> <!--.-->
+    <div th:replace="fragments::form-checkbox('notifyViaSms', 'Notify via SMS', 'Get notified via SMS when something happens.')"></div> <!--.-->
+
+    <div th:replace="fragments::form-buttons"></div> <!--.-->
+</form>
+----
+<.> Using the fragment for the `notifyViaEmail` property.
+<.> Using the fragment for the `notifyViaSms` property.
+<.> Extra fragment for the "Cancel" and "Save" buttons.
+
+
+
+== Conclusion
+
+We can do rich validation of request parameters using Spring Boot and the https://github.com/wimdeblauwe/error-handling-spring-boot-starter[Error Handling Spring Boot Starter] library.
+
+See https://github.com/wimdeblauwe/blog-example-code/tree/master/request-parameters-validation[request-parameters-validation] on GitHub for the full sources of this example.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
