@@ -258,12 +258,308 @@ Using the fragment, the form in `settings.html` becomes a lot simpler:
 <.> Using the fragment for the `notifyViaSms` property.
 <.> Extra fragment for the "Cancel" and "Save" buttons.
 
+== Adding Alpine.js
 
+To build this component, we will need some client-side interaction.
+My go-to library for that is Alpine.
+We can add it to our project by adding the `script` tag at the of the Thymeleaf template, just before the closing of the `html` tag:
+
+[source,html]
+----
+  <script src="https://unpkg.com/alpinejs@3.9.1/dist/cdn.min.js" defer></script>
+</html>
+----
+
+We can now use this in our `form-checkbox` fragment like this:
+
+[source,html]
+----
+<div th:fragment="form-checkbox(propertyName, title, description)"
+     class="flex items-center justify-between"
+>
+    <span class="flex-grow flex flex-col">
+        ...
+    </span>
+    <div x-data="{ open: true }"
+         @click="open = !open"
+         class="cursor-pointer">
+        <input type="checkbox" th:field="*{__${propertyName}__}"
+               class="hidden">
+        <div class=""
+             x-text="open?'On':'Off'">On
+        </div>
+    </div>
+</div>
+----
+
+We did the following changes:
+
+. Wrap the `input` in a `div` and declare an `x-data` attribute.
+This creates a https://alpinejs.dev/directives/data[new Alpine scope].
+We declare a variable `open`, initialized at `true`
+. `@click` will be executed when the `div` is clicked upon. We use this to flip the `open` variable from `true` to `false` and vice versa.
+. Use the `cursor-pointer` class from Tailwind CSS to indicate to the user that our `div` is clickable.
+. Set a `hidden` class on the checkbox since we don't want to show the native browser checkbox anymore.
+. Add a new `div` that displays the "On" or "Off" text depending on the value of the `open` variable.
+
+This is how it looks in action:
+
+image::{imagesdir}/2022/03/bootstrap-toggle-clone-1.gif[align="left"]
+
+While this visually toggles between 2 states, it does not reflect the actual value, nor does it send the actual value back when the form is submitted.
+
+To initialize our custom component with the value that the hidden checkbox input has, we need to initialize the `open` variable that we define in the Alpine scope using `x-data` with the value of the `checked` attribute that Thymeleaf adds to the `input`.
+
+In Alpine, we can give elements a reference by using the `x-ref` attribute.
+
+We can now update the component like this:
+
+[source,html]
+----
+<div x-data="{ open: $refs.hc.checked }" <!--2-->
+     @click="open = !open"
+     class="cursor-pointer">
+    <input type="checkbox" th:field="*{__${propertyName}__}"
+           x-ref="hc" <!--1-->
+           class="hidden">
+    <div class=""
+         x-text="open?'On':'Off'">On
+    </div>
+</div>
+----
+<.> Allow to use `hc` as a name to reference the `<input>`
+<.> Get the `checked` property of the `hc` reference to initialize the `open` variable.
+
+This will now already initialize correctly, but it does not send the new value back yet.
+For that, we use the `x-model` attribute of Alpine that allows to bind a variable to the value of the input:
+
+[source,html]
+----
+    <div x-data="{ open: $refs.hc.checked }"
+         @click="open = !open"
+         class="cursor-pointer">
+        <input type="checkbox" th:field="*{__${propertyName}__}"
+               x-model="open"<!--.-->
+               x-ref="hc"
+               class="hidden">
+        <div class=""
+             x-text="open?'On':'Off'">On
+        </div>
+    </div>
+----
+<.> Use `x-model` to bind the `open` variable to the `value` of the `<input>`
+
+Now that we have things working functionally again, let's turn our attention to making it look better.
+
+== Improving the looks
+
+We'll start by adding a background color.
+Blue when active, gray when inactive.
+
+Alpine makes this quite easy by using `:class` which allows to add/remove CSS classes when a variable changes:
+
+[source,html]
+----
+<div x-data="{ open: $refs.hc.checked }"
+     @click="open = !open"
+     class="cursor-pointer">
+    <input type="checkbox" th:field="*{__${propertyName}__}"
+           x-model="open"
+           x-ref="hc"
+           class="hidden">
+    <div class="w-14 h-10 flex justify-center items-center" <!--.-->
+         x-text="open?'On':'Off'"
+         :class="open?'bg-blue-500 text-white':'bg-gray-300 text-black'"<!--.-->
+>On
+    </div>
+</div>
+----
+<.> Add a fixed size (`w-14 h-10`) and ensure the text will be centered (`flex justify-center items-center`)
+<.> If the `open` variable is `true`, add the `bg-blue-500 text-white` classes, if `false`, add `bg-gray-300 text-black`.
+
+image::{imagesdir}/2022/03/bootstrap-toggle-clone-2.gif[align="left"]
+
+Note how the background and text color change when clicking.
+
+The Bootstrap Toggle however does not switch in place, but it slides between the 2 states.
+This is what we will do next.
+
+== Adding the slide animation
+
+To make the slide animation possible, we need to position the "On" and the "Off" next to each other.
+If they are exactly the same size, and we put a kind of peephole on top that only shows the one or the other while it slides under that, we will have a nice transition.
+Using `overflow-hidden` we can hide the one that should not be visible.
+
+This is the code that does this:
+
+[source,html]
+----
+<div x-data="{ open: $refs.hc.checked }"
+     @click="open = !open"
+     class="w-14 h-10 overflow-hidden flex items-center justify-start cursor-pointer"><!--.-->
+    <input type="checkbox" th:field="*{__${propertyName}__}"
+           x-model="open"
+           x-ref="hc"
+           class="hidden">
+    <div class="flex flex-none justify-start select-none"><!--.-->
+        <div class="w-14 h-10 flex justify-center items-center bg-blue-500 text-white hover:bg-blue-700" <!--.-->
+             :class="open?'':'-translate-x-full'" <!--.-->
+>On
+        </div>
+        <div class="w-14 h-10 flex justify-center items-center bg-gray-300 text-black hover:bg-gray-400" <!--.-->
+             :class="open?'':'-translate-x-full'" <!--.-->
+>Off
+        </div>
+    </div>
+</div>
+----
+<.> We ensure a fixed size of `w-14 h-10` here which will be our "peephole". We add `overflow-hidden` to ensure the part that should not be seen remains hidden.
+<.> This `<div>` allows to position the "On" and the "Off" child divs left/right of each other.
+<.> We can add the blue background and white text fixed now. We also added a `hover:bg-blue-700` to have a nice hover effect.
+<.> When the variable `open` is true, we want have this `<div>` visible. If not, we want to move it to the left a full width via `-translate-x-full`.
+<.> Add the gray background and black text now fixed on this `<div>`.
+<.> Also translate the `<div>` fully to the left when open is false so this second diff comes into view.
+
+If you try this out, you will not see much difference visually, because we still have to add an actual animation so the slide becomes visible.
+To better understand what is going on, I removed the `overflow-hidden` temporarily for this demo:
+
+image::{imagesdir}/2022/03/bootstrap-toggle-clone-3.gif[align="left"]
+
+Adding the slide animation is quite easy using the Tailwind CSS utility classes. Just add `transition-all ease-in-out duration-300` to the `<div>` 's that are being translated horizontally and we get this nice effect:
+
+image::{imagesdir}/2022/03/bootstrap-toggle-clone-4.gif[align="left"]
+
+One thing that is not so nice is that all toggles start in the "On" state and those that are "Off" animate to that state on page load.
+It would be nicer if they would show directly in the proper state.
+
+To be able to do that, we will need to have Thymeleaf apply the proper `-translate-x-full` so it is in place directly and have Alpine update that when we click to toggle:
+
+[source,html]
+----
+<div x-data="{ open: $refs.hc.checked }"
+     @click="open = !open"
+     class="w-14 h-10 overflow-hidden flex items-center justify-start cursor-pointer">
+    <input type="checkbox" th:field="*{__${propertyName}__}"
+           x-model="open"
+           x-cloak
+           x-ref="hc"
+           class="hidden">
+    <div class="flex flex-none justify-start select-none">
+        <div class="w-14 h-10 flex justify-center items-center bg-blue-500 text-white hover:bg-blue-700 transition-all ease-in-out duration-300"
+             th:classappend="*{__${propertyName}__}?'':'-translate-x-full'" <!--.-->
+             :class="{'-translate-x-full':!open}" <!--.-->
+>On
+        </div>
+        <div class="w-14 h-10 flex justify-center items-center bg-gray-300 text-black hover:bg-gray-400 transition-all ease-in-out duration-300"
+             th:classappend="*{__${propertyName}__}?'':'-translate-x-full'"
+             :class="{'-translate-x-full':!open}">Off
+        </div>
+    </div>
+</div>
+----
+<.> Add `th:classappend` to have Thymeleaf append the `-translate-x-full` to the `class` attribute when the value of the property is `false`
+<.> Use object-syntax to ensure Alpine will remove the `-translate-x-full` that Thymeleaf has added. See https://alpinejs.dev/directives/bind#class-object-syntax[Class object syntax] for more info.
+
+If you test now again, you'll see that the page show properly now on initial load.
+
+== Extra styling
+
+To get closer to the look of Bootstrap Toggle, we need to add a bit of shadows and a kind of handle.
+
+Let's start with the shadows:
+
+[source,html]
+----
+<div x-data="{ open: $refs.hc.checked }"
+     @click="open = !open"
+     class="w-14 h-10 rounded-md overflow-hidden flex items-center justify-start cursor-pointer"> <!--.-->
+    <input type="checkbox" th:field="*{__${propertyName}__}"
+           x-model="open"
+           x-cloak
+           x-ref="hc"
+           class="hidden">
+    <div class="flex flex-none justify-start select-none">
+        <div class="w-14 h-10 flex justify-center items-center bg-blue-500 text-white hover:bg-blue-600
+                        transition-all ease-in-out duration-300
+                        shadow-inner shadow-blue-700" <!--.-->
+             th:classappend="*{__${propertyName}__}?'':'-translate-x-full'"
+             :class="{'-translate-x-full':!open}">On
+        </div>
+        <div class="w-14 h-10 flex justify-center items-center bg-gray-300 text-black hover:bg-gray-400
+                        transition-all ease-in-out duration-300
+                        shadow-inner shadow-gray-500" <!--.-->
+             th:classappend="*{__${propertyName}__}?'':'-translate-x-full'"
+             :class="{'-translate-x-full':!open}">Off
+        </div>
+    </div>
+</div>
+----
+<.> Add `rounded-md` to have rounded corners
+<.> Add `shadow-inner shadow-blue-700` for our "On" state shadows
+<.> Add `shadow-inner shadow-gray-500` for our "Off" state shadows
+
+In action:
+
+image::{imagesdir}/2022/03/bootstrap-toggle-clone-5.gif[align="left"]
+
+For the handle, we'll add an absolute positioned div stuck to the right (if "On") or the left (if "Off").
+To add to the effect, we will also a gray border.
+However, that border get's clipped, so we need to wrap the whole thing in another div with a `p-1` so there is some room to display the extra border:
+
+[source,html]
+----
+<div class="flex justify-center items-center p-1"> <!--.-->
+    <div x-data="{ open: $refs.hc.checked }"
+         @click="open = !open"
+         class="w-14 h-10 rounded-md overflow-hidden flex items-center justify-start cursor-pointer
+                relative bg-blue-500 ring-1 ring-gray-300"> <!--.-->
+        <input type="checkbox" th:field="*{__${propertyName}__}"
+               x-model="open"
+               x-cloak
+               x-ref="hc"
+               class="hidden">
+        <div class="flex flex-none justify-start select-none">
+            <div class="w-14 h-10 flex justify-center items-center bg-blue-500 text-white hover:bg-blue-600
+                        transition-all ease-in-out duration-300
+                        shadow-inner shadow-blue-700"
+                 th:classappend="*{__${propertyName}__}?'':'-translate-x-full'"
+                 :class="{'-translate-x-full':!open}">
+                <div>On</div> <!--.-->
+                <div class="absolute inset-y-0 right-0 w-4 h-10 bg-white" <!--.-->
+                     :class="open ? '' : 'hidden'" <!--.-->
+>&nbsp;</div>
+            </div>
+            <div class="w-14 h-10 flex justify-center items-center bg-gray-300 text-black hover:bg-gray-400
+                        transition-all ease-in-out duration-300
+                        shadow-inner shadow-gray-500"
+                 th:classappend="*{__${propertyName}__}?'':'-translate-x-full'"
+                 :class="{'-translate-x-full':!open}">
+                <div>Off</div>
+                <div class="absolute inset-y-0 left-0 w-4 h-10 bg-white" <!--.-->
+                     :class="open ? 'hidden' : ''">&nbsp;
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+----
+<.> Extra wrapping div to have some padding (`p-1` class).
+<.> `relative` class so that the absolute position will be relative to this element.
+`ring-1 ring-gray-300` adds a single pixel gray border.
+<.> New nested `<div>` with the text
+<.> New nested `<div>` for the handle that is absolutely positioned on the right (`inset-y-0 right-0`).
+<.> Hide the handle depending on the value of the `open` variable
+<.> New nested `<div>` for the handle that is absolutely positioned on the left (`inset-y-0 left-0`).
+
+The final result:
+
+image::{imagesdir}/2022/03/bootstrap-toggle-clone-6.gif[align="left"]
 
 == Conclusion
 
-We can do rich validation of request parameters using Spring Boot and the https://github.com/wimdeblauwe/error-handling-spring-boot-starter[Error Handling Spring Boot Starter] library.
+Using Tailwind CSS and Alpine, we can build rich custom components like the Bootstrap Toggle.
+And we did not need to write a single line of JavaScript to make it happen.
 
-See https://github.com/wimdeblauwe/blog-example-code/tree/master/request-parameters-validation[request-parameters-validation] on GitHub for the full sources of this example.
+See https://github.com/wimdeblauwe/blog-example-code/tree/master/bootstraptoggleclone[bootstraptoggleclone] on GitHub for the full sources of this example.
 
 If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
