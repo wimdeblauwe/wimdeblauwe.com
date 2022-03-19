@@ -23,7 +23,7 @@ As the project kicked out Bootstrap, I needed to build a replacement for it. Thi
 
 <!--more-->
 
-This is how the orignal Bootstrap Toggle looks:
+This is how the original Bootstrap Toggle looks:
 
 image::{imagesdir}/2022/03/bootstrap-toggle-original.gif[align="left"]
 
@@ -103,7 +103,7 @@ public class SettingsController {
 ----
 <.> Inject the `SettingsService`.
 <.> `GetMapping` is used for the initial render of the page.
-<.> `PostMapping` is to handle the submit of the form.
+<.> `PostMapping` is to handle the submission of the form.
 <.> Redirect back to the home page after posting the form.
 
 The controller uses a dedicated form data object:
@@ -330,8 +330,8 @@ We can now update the component like this:
 <.> Allow to use `hc` as a name to reference the `<input>`
 <.> Get the `checked` property of the `hc` reference to initialize the `open` variable.
 
-This will now already initialize correctly, but it does not send the new value back yet.
-For that, we use the `x-model` attribute of Alpine that allows to bind a variable to the value of the input:
+This will already initialize correctly, but it does not send the new value back yet.
+For that, we use the `x-model` attribute of Alpine that allows binding a variable to the value of the input:
 
 [source,html]
 ----
@@ -356,7 +356,7 @@ Now that we have things working functionally again, let's turn our attention to 
 We'll start by adding a background color.
 Blue when active, gray when inactive.
 
-Alpine makes this quite easy by using `:class` which allows to add/remove CSS classes when a variable changes:
+Alpine makes this quite easy by using `:class` which allows adding and removing CSS classes when a variable changes:
 
 [source,html]
 ----
@@ -416,7 +416,7 @@ This is the code that does this:
 <.> We ensure a fixed size of `w-14 h-10` here which will be our "peephole". We add `overflow-hidden` to ensure the part that should not be seen remains hidden.
 <.> This `<div>` allows to position the "On" and the "Off" child divs left/right of each other.
 <.> We can add the blue background and white text fixed now. We also added a `hover:bg-blue-700` to have a nice hover effect.
-<.> When the variable `open` is true, we want have this `<div>` visible. If not, we want to move it to the left a full width via `-translate-x-full`.
+<.> When the variable `open` is true, we want to have this `<div>` visible. If not, we want to move it to the left a full width via `-translate-x-full`.
 <.> Add the gray background and black text now fixed on this `<div>`.
 <.> Also translate the `<div>` fully to the left when open is false so this second diff comes into view.
 
@@ -460,11 +460,11 @@ To be able to do that, we will need to have Thymeleaf apply the proper `-transla
 <.> Add `th:classappend` to have Thymeleaf append the `-translate-x-full` to the `class` attribute when the value of the property is `false`
 <.> Use object-syntax to ensure Alpine will remove the `-translate-x-full` that Thymeleaf has added. See https://alpinejs.dev/directives/bind#class-object-syntax[Class object syntax] for more info.
 
-If you test now again, you'll see that the page show properly now on initial load.
+If you test now again, you'll see that the page shows properly now on the initial load.
 
 == Extra styling
 
-To get closer to the look of Bootstrap Toggle, we need to add a bit of shadows and a kind of handle.
+To get closer to the look of Bootstrap Toggle, we need to add a bit of shadow and a kind of handle.
 
 Let's start with the shadows:
 
@@ -503,8 +503,8 @@ In action:
 image::{imagesdir}/2022/03/bootstrap-toggle-clone-5.gif[align="left"]
 
 For the handle, we'll add an absolute positioned div stuck to the right (if "On") or the left (if "Off").
-To add to the effect, we will also a gray border.
-However, that border get's clipped, so we need to wrap the whole thing in another div with a `p-1` so there is some room to display the extra border:
+To add to the effect, we will also add a gray border.
+However, that border gets clipped, so we need to wrap the whole thing in another div with a `p-1` so there is some room to display the extra border:
 
 [source,html]
 ----
@@ -545,10 +545,10 @@ However, that border get's clipped, so we need to wrap the whole thing in anothe
 ----
 <.> Extra wrapping div to have some padding (`p-1` class).
 <.> `relative` class so that the absolute position will be relative to this element.
-`ring-1 ring-gray-300` adds a single pixel gray border.
-<.> New nested `<div>` with the text
+`ring-1 ring-gray-300` adds a single-pixel gray border.
+<.> New nested `<div>` with the text.
 <.> New nested `<div>` for the handle that is absolutely positioned on the right (`inset-y-0 right-0`).
-<.> Hide the handle depending on the value of the `open` variable
+<.> Hide the handle depending on the value of the `open` variable.
 <.> New nested `<div>` for the handle that is absolutely positioned on the left (`inset-y-0 left-0`).
 
 The final result:
@@ -557,7 +557,7 @@ image::{imagesdir}/2022/03/bootstrap-toggle-clone-6.gif[align="left"]
 
 == Conclusion
 
-Using Tailwind CSS and Alpine, we can build rich custom components like the Bootstrap Toggle.
+Using Tailwind CSS and Alpine, we can build rich custom components like the Bootstrap Toggle component.
 And we did not need to write a single line of JavaScript to make it happen.
 
 See https://github.com/wimdeblauwe/blog-example-code/tree/master/bootstraptoggleclone[bootstraptoggleclone] on GitHub for the full sources of this example.
