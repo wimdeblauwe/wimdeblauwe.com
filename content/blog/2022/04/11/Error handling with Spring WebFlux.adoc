@@ -1,0 +1,219 @@
+---
+title: "Error handling with Spring WebFlux"
+date: 2022-04-11
+draft: false
+tags: ["spring-boot"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+My https://github.com/wimdeblauwe/error-handling-spring-boot-starter[error-handling-spring-boot-starter] library had its first release almost 2 years ago.
+The https://github.com/wimdeblauwe/error-handling-spring-boot-starter/issues/2[first reported issue] came soon after with a request to support Spring WebFlux.
+As I don't have any Spring WebFlux projects myself, it was pretty low on my priority list.
+Especially as it did not seem trivial to add support.
+
+Luckily, about a month ago https://github.com/fabiomarini[Fabio Marini] opened a PR with all the building blocks I needed to add support for Spring WebFlux to the library.
+
+https://github.com/wimdeblauwe/error-handling-spring-boot-starter/releases/tag/3.0.0[Version 3.0.0] has now been released which can be used with Spring WebFlux.
+
+NOTE: Had to do a small bugfix for the `@WebFluxTest` support so the current version is now https://github.com/wimdeblauwe/error-handling-spring-boot-starter/releases/tag/3.0.1[3.0.1] (I should have done the release blog entry _before_ the release :-) )
+
+<!--more-->
+
+To get started, create a Spring Boot application at https://start.spring.io and select 'Spring Reactive Web' from the dependencies list.
+Optionally, also select 'Validation' if you want to use the validation annotations.
+
+Add the error-handling-spring-boot-starter library in the `pom.xml`:
+
+[source,xml]
+----
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    ...
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.github.wimdeblauwe</groupId>
+            <artifactId>error-handling-spring-boot-starter</artifactId>
+            <version>3.0.1</version>
+        </dependency>
+        ...
+    </dependencies>
+</project>
+----
+
+Now we can build a simple rest controller:
+
+[source,java]
+----
+@RestController
+@RequestMapping("/")
+public class MyRestController {
+
+    private final UserService service;
+
+    public MyRestController(UserService service) {
+        this.service = service;
+    }
+
+    @GetMapping("/users/{id}")
+    Mono<UserDto> findUser(@PathVariable("id") Long id) {
+        return service.findUserById(id)
+                      .map(user -> new UserDto(user.name()));
+    }
+}
+----
+
+With `UserService`:
+
+[source,java]
+----
+import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@Service
+public class UserService {
+
+    private final Map<Long, User> users = new HashMap<>();
+
+    public UserService() {
+        users.put(1L, new User("Wim"));
+        users.put(2L, new User("Simon"));
+        users.put(3L, new User("Siva"));
+        users.put(4L, new User("Josh"));
+    }
+
+    public Mono<User> findUserById(Long userId) {
+        User user = users.get(userId);
+        if (user == null) {
+            throw new UserNotFoundException(userId);
+        }
+        return Mono.just(user);
+    }
+}
+----
+
+`User` and `UserDto` are just 2 simple records:
+
+[source,java]
+----
+public record User(String name) {
+}
+
+public record UserDto(String name) {
+
+}
+----
+
+Now run the application and try the endpoint with your favorite HTTP client (Mine is the one from IntelliJ IDEA):
+
+[source,http request]
+----
+GET localhost:8080/users/1
+----
+
+Response:
+
+[source]
+----
+{
+  "name": "Wim"
+}
+----
+
+If we use an id that does not exist:
+
+[source,http request]
+----
+GET localhost:8080/users/10
+----
+
+Then we get this error response:
+
+[source]
+----
+{
+  "code": "USER_NOT_FOUND",
+  "message": "No user found for id 10",
+  "userId": 10
+}
+----
+
+The `userId` property is added in the JSON resonse because we used the `@ResponseErrorProperty` annotation in the exception class:
+
+[source,java]
+----
+import io.github.wimdeblauwe.errorhandlingspringbootstarter.ResponseErrorProperty;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+@ResponseStatus(HttpStatus.NOT_FOUND)
+public class UserNotFoundException extends RuntimeException {
+    private final Long userId;
+
+    public UserNotFoundException(Long userId) {
+        super("No user found for id " + userId);
+        this.userId = userId;
+    }
+
+    @ResponseErrorProperty
+    public Long getUserId() {
+        return userId;
+    }
+}
+----
+
+We can also validate this with the following `@WebFluxTest` test:
+
+[source,java]
+----
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.web.reactive.server.WebTestClient;
+
+@WebFluxTest(MyRestController.class)
+@Import(UserService.class)
+class MyRestControllerTest {
+
+    @Autowired
+    WebTestClient webTestClient;
+
+    @Test
+    void testUserNotFound() {
+        webTestClient.get()
+                     .uri("/users/10")
+                     .exchange()
+                     .expectStatus().isNotFound()
+                     .expectBody()
+                     .consumeWith(System.out::println)
+                     .jsonPath("$.code").isEqualTo("USER_NOT_FOUND")
+                     .jsonPath("$.message").isEqualTo("No user found for id 10")
+                     .jsonPath("$.userId").isEqualTo(10L);
+
+    }
+}
+----
+
+== Conclusion
+
+The error-handling-spring-boot-starter library is fully ready for Spring WebFlux.
+
+See https://github.com/wimdeblauwe/blog-example-code/tree/master/reactive-error-handling[reactive-error-handling] on GitHub for the full sources of this example.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
