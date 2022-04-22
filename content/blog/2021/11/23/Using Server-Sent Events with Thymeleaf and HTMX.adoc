@@ -14,6 +14,11 @@ keywords: []
 :table-caption!:
 :2c: ::
 
+[NOTE]
+====
+This blog post uses htmx 1.6. In htmx 1.7, server-sent events support has been moved to https://htmx.org/extensions/server-sent-events/[an extension]. The example code on GitHub has been updated to work with htmx 1.7. See https://github.com/wimdeblauwe/blog-example-code/commit/b46b15b2d75bcae8edad6f8e2a3bdb9b374084cc[commit b46b15b] for the (small) changes that are needed.
+====
+
 It is possible to push information from a Spring Boot backend to the UI using either Websockets or Server-Sent Events.
 
 This blog post will show how to use Thymeleaf with HTMX to push information from the server to the UI with Server-Sent Events.
