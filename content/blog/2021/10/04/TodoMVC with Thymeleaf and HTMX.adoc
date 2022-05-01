@@ -377,6 +377,7 @@ Start by extracting the HTML that shows the number of active items into a Thymel
       id="active-items-count"
       class="todo-count"
       hx-get="/active-items-count"
+      hx-swap="outerHTML"
       hx-trigger="itemAdded from:body">
         <th:block th:unless="${numberOfActiveItems == 1}">
             <span class="todo-count"><strong th:text="${numberOfActiveItems}">0</strong> items left</span>
@@ -387,9 +388,10 @@ Start by extracting the HTML that shows the number of active items into a Thymel
 </span>
 ----
 
-Note that we added 2 htmx attributes:
+Note that we added 3 htmx attributes:
 
 * `hx-get`: instruct htmx to do a HTTP GET on `/active-items-count`
+* `hx-swap`: instruct htmx to replace the complete span with what we get back from the GET request.
 * `hx-trigger`: trigger the HTTP GET when there is an event `itemAdded` coming from any element that is a child element of `<body>`.
 
 So whenever there is an `itemAdded` sent somewhere, these 2 attributes will ensure that there will be an automatic GET request to update the number of items.
