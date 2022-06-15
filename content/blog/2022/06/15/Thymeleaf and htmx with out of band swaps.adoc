@@ -1,0 +1,137 @@
+---
+title: "Thymeleaf and htmx with out of band swaps"
+date: 2022-06-15
+draft: false
+tags: ["thymeleaf", "htmx"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+The https://htmx.org[htmx] JavaScript library has a very neat feature called https://htmx.org/docs/#oob_swaps[Out of Band Swaps].
+This blog post shows how to use this with https://www.thymeleaf.org/[Thymeleaf].
+
+<!--more-->
+
+In a dynamic application, multiple parts of th page might need to updated in sync. For example, adding a todo item in a todo application needs to add the item to a list, but also update the count showing in a status field.
+
+In my previous post https://www.wimdeblauwe.com/blog/2021/10/04/todomvc-with-thymeleaf-and-htmx/[TodoMVC with Thymeleaf and HTMX], I showed how adding a new todo item triggered an event on the client side by adding an `HX-Trigger` header in the response from the server.
+Other parts of the page in the browser can react to this event.
+In this example, the status bar showing the number of entries reacted to the event and did a GET to get the updated information and update itself.
+
+This diagram shows the flow:
+
+image::2022/06/hx-trigger-flow.png[]
+
+NOTE: `todo-list` and `active-items-count` are both a `<div>` on the HTML page.
+
+While this works perfectly fine, we see that 2 requests are done to the server.
+
+Using out of band swaps, we can return both HTML snippets using the same call and have htmx update both `<div>` 's at the client.
+
+With out of band swaps, we return both the "main" HTML snippet as well as any other HTML we want updated like this:
+
+[source]
+----
+<div>
+ <!-- main HTML content here-->
+</div>
+<div id="some-id" hx-swap-oob="true">
+    <!-- some other content here -->
+</div>
+----
+
+htmx will use the main content to perform the swap of the HTML element that did the call to the server.
+After that, it will use any additional HTML marked with `hx-swap-oob="true"` and swap that with the HTML already on the page, given the `id` matches.
+
+With this system, we can send the `<div>` that has the todo item, as well as the `<div>` for the active items count in a single response from the server.
+
+Using this with Thymeleaf is not really possible out of the box.
+You need to use the https://github.com/wimdeblauwe/htmx-spring-boot-thymeleaf[htmx-spring-boot-thymeleaf] library:
+
+[source,xml]
+----
+<dependency>
+  <groupId>io.github.wimdeblauwe</groupId>
+  <artifactId>htmx-spring-boot-thymeleaf</artifactId>
+  <version>0.2.0</version>
+</dependency>
+----
+
+Using this library, we can return both snippets of HTML like this from the controller:
+
+[source,java]
+.TodoItemController.java
+----
+    @PostMapping
+    @HxRequest //<.>
+    public HtmxResponse htmxAddTodoItem(TodoItemFormData formData,
+                                        Model model) {
+        TodoItem item = repository.save(new TodoItem(formData.getTitle(), false));
+        return getHtmxResponseForTodoItem(model, item);
+    }
+
+    private HtmxResponse getHtmxResponseForTodoItem(Model model,
+                                                    TodoItem item) {
+        model.addAttribute("item", toDto(item)); //<.>
+        return new HtmxResponse()
+                .addTemplate("fragments :: todoItem") //<.>
+                .and(activeItemsCountFragment(model)); //<.>
+    }
+
+    private HtmxResponse activeItemsCountFragment(Model model) {
+        model.addAttribute("numberOfActiveItems", getNumberOfActiveItems()); //<.>
+        return new HtmxResponse()
+                .addTemplate("fragments :: active-items-count"); //<.>
+    }
+----
+<.> The `HxRequest` annotation indicates that only request done by htmx should be handled by this method.
+<.> Set the `item` attribute on the model so Thymeleaf has this information to render the `todoItem` fragment.
+<.> Indicate what fragment to render (as the main fragment)
+<.> Add a 2nd fragment to the response
+<.> Add the `numberOfActiveItems` as attribute to the model since this is needed to render the `active-items-count` fragment
+<.> Indicate the fragment to render
+
+With this code in place, when the client does a `POST`, this kind of response is returned:
+
+[source,html]
+----
+<li id="list-item-1">
+    <div class="view">
+        <input id="toggle-checkbox-1" class="toggle" type="checkbox"
+               hx-trigger="click"
+               hx-swap="outerHTML" hx-put="/1/toggle" hx-target="#list-item-1">
+        <label>some todo item</label>
+        <button class="destroy"
+                hx-trigger="click"
+                hx-swap="outerHTML" hx-delete="/1" hx-target="#list-item-1"
+        ></button>
+    </div>
+</li>
+<span id="active-items-count"
+      hx-swap-oob="true"
+      class="todo-count">
+      <span class="todo-count"><strong>1</strong> item left</span>
+</span>
+----
+
+htmx will use this to add the `<li id="list-item-1">` to the list of todo items.
+And it will also update the `active-items-count` `<span>` that is already on the page. Because we have the `hx-swap-oob="true"` on that `<span>`.
+
+As a result, we only have 1 call to the server and multiple parts of the page can be updated.
+
+== Conclusion
+
+Out of Band Swaps are a very powerful mechanism to update multiple parts of your page with a single call.
+Using them does require the use of the https://github.com/wimdeblauwe/htmx-spring-boot-thymeleaf[htmx-spring-boot-thymeleaf] library. The library has some other nice features as well which you can read about in the README.
+
+See https://github.com/wimdeblauwe/blog-example-code/tree/master/todomvc-htmx-oob[todomvc-htmx-oob] on GitHub for the full sources of this example.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].

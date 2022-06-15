@@ -1,0 +1,20 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+autonumber
+
+box Client
+participant "todo-list" as T
+participant "active-items-count" as C
+end box
+box Server
+participant "Spring Boot App" as S
+end box
+
+T -> S: POST / (via htmx)
+S --> T: HTML snippet with new todo item
+
+T -> C: Send `itemAdded` event
+C -> S: GET /active-items-count
+S --> C: HTML snippet with \nactive items count
+@enduml
