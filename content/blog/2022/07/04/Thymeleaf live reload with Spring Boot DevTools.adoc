@@ -1,0 +1,63 @@
+---
+title: "Thymeleaf live reload with Spring Boot DevTools"
+date: 2022-07-04
+draft: false
+tags: ["thymeleaf", "spring-boot"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+In my blog post of yesterday, I explained how to use https://www.wimdeblauwe.com/blog/2022/07/03/thymeleaf-live-reload-with-npm-scripts/[Thymeleaf live reload with npm scripts].
+Quickly after announcing the blog post on Twitter, https://twitter.com/odrotbohm[Oliver Drotbohm] asked me why I didn't just use https://docs.spring.io/spring-boot/docs/current/reference/html/using.html#using.devtools[Spring Boot DevTools] instead.
+A valid question and one I will address in this follow-up post.
+
+<!--more-->
+
+To get started, create a new Spring Boot application at https://start.spring.io and be sure to include Spring Web, Thymeleaf, and Spring Boot DevTools as dependencies.
+
+Add some Thymeleaf template and a bit of CSS to have something to play with.
+
+Now run the Spring Boot application from IntelliJ IDEA (or use `mvn spring-boot:run` if you want to use the command line).
+
+Next, open your browser at http://locahost:8080 and enable the http://livereload.com/extensions/[Live Reload] extension in your browser.
+
+Finally, edit a template or some CSS.
+
+The kind of tricky part now is that you need to run a build of your project.
+Just saving is not enough.
+
+You should now see the change reflected in the browser.
+
+
+If you compare this setup to the one I have in https://www.wimdeblauwe.com/blog/2022/07/03/thymeleaf-live-reload-with-npm-scripts/[Thymeleaf live reload with npm scripts], then I have to admit that this is simpler to get started with.
+
+However, I see a few drawbacks with this approach:
+
+. You need to build your project.
+This is slower then saving the file and just run the relevant NPM script for the thing that has changed.
+. You can't run CSS transformers (SASS or LESS for example) or use Tailwind CSS or minification as Spring Boot DevTools just copies the files as is.
+A possible workaround would be to have a Maven plugin that does those natively to stay out of the NPM ecosystem and run a Maven goal after each change you make.
+There is no such Maven plugin, and this would probably be slower compared to the NPM script targetted at the actual change.
+. You can't run JavaScript tools like babel to use modern JavaScript and transpile it back to something older browsers understand.
+Although, this is a less critical point now that we have all those evergreen browsers.
+. Spring Boot DevTools disables all kinds of caches when it is active.
+I once had a hard time trying to set cache headers on my web resources.
+Nothing I tried seemed to work until I realized Spring Boot DevTools overrides everything I tried.
+Be sure to disable it when you want to test your caching headers.
+
+
+== Conclusion
+
+Spring Boot DevTools allows us to quickly set up live reloading for a Spring Boot Thymeleaf project. However, be aware of the consequences and consider https://www.wimdeblauwe.com/blog/2022/07/03/thymeleaf-live-reload-with-npm-scripts/[Thymeleaf live reload with npm scripts] as well.
+
+See https://github.com/wimdeblauwe/blog-example-code/tree/master/live-reload-dev-tools[live-reload-dev-tools] on GitHub for the full sources of this example.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
