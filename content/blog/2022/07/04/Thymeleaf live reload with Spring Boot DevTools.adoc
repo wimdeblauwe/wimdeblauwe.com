@@ -21,17 +21,16 @@ A valid question and one I will address in this follow-up post.
 
 <!--more-->
 
-To get started, create a new Spring Boot application at https://start.spring.io and be sure to include Spring Web, Thymeleaf, and Spring Boot DevTools as dependencies.
+This is how live reload with Spring Boot DevTools can be used:
 
-Add some Thymeleaf template and a bit of CSS to have something to play with.
-
-Now run the Spring Boot application from IntelliJ IDEA (or use `mvn spring-boot:run` if you want to use the command line).
-
-Next, open your browser at http://locahost:8080 and enable the http://livereload.com/extensions/[Live Reload] extension in your browser.
+. To get started, create a new Spring Boot application at https://start.spring.io and be sure to include Spring Web, Thymeleaf, and Spring Boot DevTools as dependencies.
+. Add some Thymeleaf template and a bit of CSS to have something to play with.
+. Now run the Spring Boot application from IntelliJ IDEA (or use `mvn spring-boot:run` if you want to use the command line).
+. Next, open your browser at http://locahost:8080 and enable the http://livereload.com/extensions/[Live Reload] extension in your browser.
 
 Finally, edit a template or some CSS.
 
-The kind of tricky part now is that you need to run a build of your project.
+The kind of tricky part now is that you need to _run a build_ of your project.
 Just saving is not enough.
 
 You should now see the change reflected in the browser.
