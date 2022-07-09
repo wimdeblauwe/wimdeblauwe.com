@@ -127,6 +127,11 @@ img.book-cover {
     text-decoration: underline;
 }
 
+.book-tagline {
+    font-style: italic;
+    margin-top: -2rem;
+}
+
 .adr {
     background: #dff1f6;
     margin: 1em;
