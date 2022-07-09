@@ -670,3 +670,15 @@ table.linenotable td.linenos {
 .talk-description {
     margin-top: 0.5rem;
 }
+
+.next-and-previous-links {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+    display: flex;
+    justify-content: space-between;
+}
+
+.next-and-previous-links a {
+    display: flex;
+    gap: 0.5rem;
+}
