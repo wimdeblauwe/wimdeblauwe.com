@@ -18,6 +18,7 @@
     <link rel="%s" type="%s" href="%s" title="%s" />` .Rel .MediaType.Type .Permalink $.Site.Title | safeHTML }} {{ end -}} {{- template "_internal/opengraph.html" . -}} {{- template "_internal/twitter_cards.html" . -}}
 
     <meta name="keywords" content="{{ with .Params.tags }}{{ delimit . ", "}}{{ end }}, {{ with .Params.keywords }}{{ delimit . ", "}}{{ end }}" />
+    <link rel="canonical" href="{{ .Permalink }}">
     <link href="https://fonts.googleapis.com/css?family=Open+Sans|Rokkitt&display=swap" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/all.min.css">
     <link rel="stylesheet" type="text/css" media="screen" href="{{ .Site.BaseURL }}css/normalize.css" />
