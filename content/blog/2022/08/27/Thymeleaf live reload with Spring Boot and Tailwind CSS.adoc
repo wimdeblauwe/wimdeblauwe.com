@@ -1,0 +1,121 @@
+---
+title: "Thymeleaf live reload with Spring Boot and Tailwind CSS"
+date: 2022-08-27
+draft: false
+tags: ["thymeleaf", "spring-boot", "tailwindcss"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+This is the 3rd and final part of my series on live reloading with Thymeleaf and Spring Boot, this time focusing on https://tailwindcss.com/[Tailwind CSS].
+
+<!--more-->
+
+As an overview, these are the blog posts:
+
+* https://www.wimdeblauwe.com/blog/2022/07/03/thymeleaf-live-reload-with-npm-scripts/[Thymeleaf live reload with npm scripts]
+* https://www.wimdeblauwe.com/blog/2022/07/04/thymeleaf-live-reload-with-spring-boot-devtools/[Thymeleaf live reload with Spring Boot DevTools]
+* Thymeleaf live reload with Spring Boot and Tailwind CSS (This post)
+
+[TIP]
+====
+If you like to use Gradle, you can also have a look at https://www.schuehly-it.de/posts/spring-boot-thymeleaf-livereload-gradle/[Fixing the Spring Boot LiveReload Server with Gradle for Thymeleaf and TailwindCSS] by https://twitter.com/tschuehly[Thomas Schuehly].
+====
+
+This post assumes you have a live reload setup as detailed in https://www.wimdeblauwe.com/blog/2022/07/03/thymeleaf-live-reload-with-npm-scripts/[Thymeleaf live reload with npm scripts].
+If you want to add Tailwind CSS to it, you need to use a few special tricks.
+Not very difficult, but you just have to know it.
+
+Follow these steps to get everything working:
+
+. Install Tailwind CSS into the project using `npm`:
++
+[source]
+----
+npm install -D tailwindcss
+npx tailwindcss init
+----
+. That last command generates a `tailwind.config.js`.
+Have the `content` point to the location of the Thymeleaf templates:
++
+[source,js]
+----
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: ['./src/main/resources/templates/**/*.html'],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+----
+. Because Tailwind CSS only generates CSS for the classes you actually use in the HTML, we have to update our watch script to run the CSS build whenever the HTML changes.
+Update `watch:html` in `package.json` like this:
++
+[source,js]
+----
+"watch:html": "onchange 'src/main/resources/templates/**/*.html' -- npm-run-all --serial build:css build:html",
+----
++
+Notice how we use `npm-run-all` to run both `build:css` and `build:html` in serial.
+. We also need to update `watch:service` with the `--no-inject-changes` parameter:
++
+[source,js]
+----
+"watch:serve": "browser-sync start --no-inject-changes --proxy localhost:8080 --files 'target/classes/templates' 'target/classes/static'"
+----
++
+Without that change, browser sync tries to somehow https://browsersync.io/docs/options#option-injectChanges[manually inject the CSS but] that does not seem to work very well.
+By adding the parameter, a page refresh is done instead.
+. Update `application.css` to use the default Tailwind CSS setup:
++
+[source,css]
+----
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+----
+. Update `postcss.config.js` to use the Tailwind CSS plugin:
++
+[source,js]
+----
+const postcssConfig = {
+    plugins: [
+        require('autoprefixer'),
+        require('tailwindcss')
+    ],
+};
+
+...
+----
+. Update `application-local.properties` to ensure the CSS is not cached:
++
+[source,properties]
+----
+spring.thymeleaf.cache=false
+spring.web.resources.chain.cache=false
+----
+
+To test it out:
+
+. Start the Spring Boot application with the `local` profile.
+. Run `npm run build && npm run watch` from the command line.
+
+This will open your default browser at http://localhost:3000.
+Any edit to a HTML file or the CSS file should show up in your browser as soon as you save it.
+
+== Conclusion
+
+This post showed how to add Tailwind CSS to your Spring Boot with Thymeleaf project.
+
+See https://github.com/wimdeblauwe/blog-example-code/tree/master/live-reload-npm-scripts-tailwindcss] on GitHub for the full sources of this example.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
