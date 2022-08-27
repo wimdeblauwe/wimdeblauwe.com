@@ -18,6 +18,8 @@ keywords: []
 NOTE: UPDATE: I created a follow-up blog https://www.wimdeblauwe.com/blog/2022/07/04/thymeleaf-live-reload-with-spring-boot-devtools/[Thymeleaf live reload with Spring Boot DevTools] that shows a way to have Live Reload with a little less setup work, but some important drawbacks as well in my opionion.
 Be sure to read both blog posts to get an informed opinion about which path to take.
 
+TIP: If you want to add Tailwind CSS to your project, go to https://www.wimdeblauwe.com/blog/2022/08/27/thymeleaf-live-reload-with-spring-boot-and-tailwind-css/[Thymeleaf live reload with Spring Boot and Tailwind CSS] after you applied what is shown here.
+
 In my book https://www.wimdeblauwe.com/books/taming-thymeleaf/[Taming Thymeleaf] I use https://gulpjs.com/[Gulp] to setup the frontend build pipeline and have live reloading during development.
 For the workshop I gave at https://2022.springio.net/[Spring I/O 2022 Barcelona], I used a different approach using NPM scripts.
 This avoids the extra gulp dependency with sometimes things that are not up-to-date anymore.
