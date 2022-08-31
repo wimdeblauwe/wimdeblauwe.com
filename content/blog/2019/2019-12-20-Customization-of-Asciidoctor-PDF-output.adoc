@@ -11,6 +11,30 @@ aliases: [/2019/12/20/customization-of-asciidoctor-pdf-output/]
 :imagesdir: /images
 :icons: font
 
+[CAUTION]
+====
+This blog post was written for asciidoctor-pdf 1.x.
+If you are using asciidoctor-pdf 2.x, then be aware that you need to use `pdf-themesdir` and `pdf-theme` in the Maven configuration.
+
+So replace:
+[source,xml]
+----
+<attributes>
+  <pdf-stylesdir>${project.basedir}/src/main/asciidoc/theme</pdf-stylesdir>
+  <pdf-style>pegus-digital</pdf-style>
+</attributes>
+----
+with:
+[source,xml]
+----
+<attributes>
+  <pdf-themesdir>${project.basedir}/src/main/asciidoc/theme</pdf-themesdir>
+  <pdf-theme>pegus-digital</pdf-theme>
+</attributes>
+----
+
+====
+
 Using http://asciidoc.org/[Asciidoc] (the markup language) with the https://asciidoctor.org/[Asciidoctor] toolchain is one of our favorite ways to write documentation. We mainly use it to create API documentation from our REST API backends using https://spring.io/projects/spring-restdocs[Spring REST Docs].
 
 Asciidoctor supports a variety of output formats, where HTML and PDF are ones we used the most. While the default PDF output already looks very good, it is always nice to be able customize the output a bit to better align with the project the documentation is created for. This post will explain exactly how to do that.
@@ -225,7 +249,7 @@ recto:
 
 We are using inches for the margins because the default stylesheet also uses inches, but there are different https://github.com/asciidoctor/asciidoctor-pdf/blob/v1.5.0.beta.5/docs/theming-guide.adoc#measurement-units[measurement units] that you can use. The resulting PDF:
 
-image::{imagesdir}//019/10/image-4.png[]
+image::{imagesdir}/2019/10/image-4.png[]
 
 Again, we only have this on the recto pages since we defined it like that. If we want the verso pages to be exactly the same, we can refer to what we have on the recto side in the verso configuration:
 
