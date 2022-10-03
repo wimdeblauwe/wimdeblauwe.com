@@ -261,3 +261,4 @@ As you can see, it is quite easy to create your own custom annotation.
 This same technique can be used for `@SpringBootTest`, `@WebMvcTest` or any of the other
 test slicing annotations that Spring Boot has.
 
+If you want to have a deeper understanding of testing with Spring Boot, be sure to check out the https://transactions.sendowl.com/stores/13745/197022[Testing Spring Boot Applications Masterclass] by Philip Riecks.
