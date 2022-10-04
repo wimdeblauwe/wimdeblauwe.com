@@ -1,0 +1,165 @@
+---
+title: "Htmx authentication error handling"
+date: 2022-10-04
+draft: false
+tags: ["thymeleaf", "spring-boot", "htmx"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+Using https://htmx.org/[htmx] is a great way to make your Spring Boot with Thymeleaf web application dynamic without page refreshes.
+Since there are no page refreshes, but transparent AJAX calls going on, it is important to put in error handling code to ensure a good user experience in case something goes wrong.
+This blog post shows how to do this.
+
+<!--more-->
+
+As an example, we will create a simple webpage with a button that will load a random Chuck Norris joke from https://api.chucknorris.io/.
+The webpage is secured with a very basic Spring Security configuration.
+
+The `<body>` part of the Thymeleaf template looks like this:
+
+[source,html]
+----
+<body>
+<h1>Auth Error Handling</h1>
+<button hx:get="@{/jokes/random}"
+        hx-target="#joke">Get new joke
+</button>
+<div id="joke" class="joke-parent"></div>
+<script type="text/javascript" th:src="@{/webjars/htmx.org/dist/htmx.min.js}"></script>
+</body>
+----
+
+[NOTE]
+====
+The `hx:get` works with a Thymeleaf expression because the https://github.com/wimdeblauwe/htmx-spring-boot-thymeleaf[htmx-spring-boot-thymeleaf] library is on the classpath of the sample project.
+====
+
+Without any special configuration, this is how it works:
+
+. Spring Security shows a default login page when trying to access the application:
++
+image::{imagesdir}/2022/10/htmx-auth-error-1.png[align="left"]
+
+. After login, the home page is shown with the button to get a new random joke:
++
+image::{imagesdir}/2022/10/htmx-auth-error-2.png[align="left"]
+
+. Pressing the button loads a new joke through htmx:
++
+image::{imagesdir}/2022/10/htmx-auth-error-3.png[align="left"]
+
+. If we log out in a different tab and try the button again, we get this result:
++
+image::{imagesdir}/2022/10/htmx-auth-error-4.png[align="left"]
++
+Note how the login page is suddenly embedded into our application.
+
+The reason this happens is easily understood if we follow the flow that happens:
+
+. The user presses the button
+. A request is done by htmx to the `/jokes/random` endpoint
+. Spring Security notices that the user is not logged on, so it sends a 302 redirect to `/login` back to the browser.
+. Htmx follows the redirect (technically it's browser that does this and it's transparent to htmx) and receives the HTML of the login page.
+. Htmx swaps whatever HTML it receives into the current page, leading to the login page embedded in our application.
+
+Let's fix this :-)
+
+We need a way to tell htmx to do a full page reload.
+This can be done by adding `HX-Refresh: true` to the to https://htmx.org/reference/#response_headers[response headers].
+
+However, we can't add this header to the redirect because htmx will never see that header. We need to send a `403 Forbidden` with the header so that htmx can react to it.
+
+Spring Security has the `AuthenticationEntryPoint` which controls the behaviour of what happens when an authentication flow is started.
+There are 2 implementations that are important here:
+
+* `LoginUrlAuthenticationEntryPoint`: This is the redirect-to-login-page behaviour which is active by default
+* `Http403ForbiddenEntryPoint`: This is an implementation that returns `403 Forbidden` response always.
+
+Let's create our own `AuthenticationEntryPoint` that re-uses `Http403ForbiddenEntryPoint` and adds the header to force htmx into a full page refresh:
+
+[source,java]
+----
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.authentication.Http403ForbiddenEntryPoint;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+public class HxRefreshHeaderAuthenticationEntryPoint implements AuthenticationEntryPoint { // <.>
+
+    private final AuthenticationEntryPoint forbiddenEntryPoint;
+
+    public HxRefreshHeaderAuthenticationEntryPoint() {
+        this.forbiddenEntryPoint = new Http403ForbiddenEntryPoint(); //<.>
+    }
+
+    @Override
+    public void commence(HttpServletRequest request,
+                         HttpServletResponse response,
+                         AuthenticationException authException) throws IOException, ServletException {
+        response.addHeader("HX-Refresh", "true"); //<.>
+        forbiddenEntryPoint.commence(request, response, authException); //<.>
+    }
+}
+----
+<.> We need to implement the `AuthenticationEntryPoint`.
+<.> Create an instance of `Http403ForbiddenEntryPoint` to delegate to
+<.> Set the `HX-Refresh: true` response header to force htmx to do a full page refresh.
+<.> Delegate the work of returning the `403 Forbidden` response to the `Http403ForbiddenEntryPoint`
+
+Finally, we configure Spring Security to use our custom `AuthenticationEntryPoint`:
+
+[source,java]
+----
+@Configuration
+public class WebSecurityConfiguration {
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http.authorizeRequests(registry -> registry.mvcMatchers("/**").authenticated())
+            .formLogin().permitAll();
+
+        var entryPoint = new HxRefreshHeaderAuthenticationEntryPoint();
+        var requestMatcher = new RequestHeaderRequestMatcher("HX-Request");
+        http.exceptionHandling(exception ->
+                                       exception.defaultAuthenticationEntryPointFor(entryPoint,
+                                                                                    requestMatcher)); //<.>
+        return http.build();
+    }
+
+    ...
+}
+----
+<.> Configure the authentication entry point to be active when the request has the `HX-Request` header.
+
+If we now test again, we have this flow:
+
+. Start the application and log on.
+. Press the button to get a new joke, this should work fine.
+. Open a new tab at http://localhost:8080/logout. The default logout page of Spring Security is shown. Confirm the logout.
+. Go back to the first tab and press the button again.
+. The htmx call will receive a 403 and will do a full page refresh, showing the login page again.
+
+If we open Chrome Dev Tools, we can see this as well:
+
+image::{imagesdir}/2022/10/htmx-auth-error-5.png[align="left"]
+
+== Conclusion
+
+This post showed how to properly handle authentication errors with Thymeleaf and htmx.
+
+See https://github.com/wimdeblauwe/blog-example-code/tree/master/thymeleaf-htmx-auth-error-handling[thymeleaf-htmx-auth-error-handling] on GitHub for the full sources of this example.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
