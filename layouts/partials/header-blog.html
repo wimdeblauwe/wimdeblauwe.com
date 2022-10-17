@@ -17,8 +17,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1"> {{ with .OutputFormats.Get "rss" -}} {{ printf `
     <link rel="%s" type="%s" href="%s" title="%s" />` .Rel .MediaType.Type .Permalink $.Site.Title | safeHTML }} {{ end -}}
 
-    {{- template "_internal/opengraph.html" . -}}
-    {{- template "_internal/twitter_cards.html" . -}}
+    {{ partial "opengraph/opengraph.html" . }}
+    {{ partial "opengraph/twitter_cards.html" . }}
 
     <meta name="keywords" content="{{ with .Params.tags }}{{ delimit . ", "}}{{ end }}, {{ with .Params.keywords }}{{ delimit . ", "}}{{ end }}" />
     <link rel="canonical" href="{{ .Permalink }}">

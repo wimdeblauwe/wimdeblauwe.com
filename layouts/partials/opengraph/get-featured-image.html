@@ -1,0 +1,35 @@
+{{ $title := $.LinkTitle }}
+{{ $font := resources.GetRemote "https://github.com/google/fonts/raw/main/ofl/rokkitt/Rokkitt%5Bwght%5D.ttf" }}
+{{ $img := resources.Get "images/twittercard/template.png"}}
+{{ $img = $img.Filter (images.Text $title (dict
+    "color" "#000000"
+    "size" 120
+    "linespacing" 2
+    "x" 100
+    "y" 200
+    "font" $font
+))}}
+{{ $img = $img.Filter (images.Text "Wim Deblauwe" (dict
+    "color" "#000000"
+    "size" 80
+    "linespacing" 2
+    "x" 250
+    "y" 750
+    "font" $font
+))}}
+{{ if ne .Type "page" }}
+    {{ if gt .Params.tags 0 }}
+        {{ $tags := delimit .Params.tags ", " }}
+        {{ $tags := string $tags }}
+        {{ $img = $img.Filter (images.Text $tags (dict
+        "color" "#000000"
+        "size" 50
+        "linespacing" 2
+        "x" 100
+        "y" 100
+        "font" $font
+        ))}}
+    {{ end }}
+{{ end }}
+
+{{ return $img }}
