@@ -1,0 +1,31 @@
+---
+title: "Started my YouTube channel"
+date: 2022-11-25
+draft: false
+tags: ["thymeleaf", "spring-boot"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+I started my YouTube channel this week.
+It was quite something to come to this result, speaking to a camera is quite scary at first, but I think I got a nice result in the end 🙂
+
+<!--more-->
+
+Check out my first video here:
+
+{{< youtube fRQQu9mpwBE >}}
+
+It explains the very basics on how to get started with Spring Boot and Thymeleaf.
+
+The corresponding code can be viewed on the https://github.com/wimdeblauwe/youtube-example-code/tree/main/spring-boot-thymeleaf[github repo].
+
+If you want to stay informed about future videos, be sure to subscribe to the channel!
