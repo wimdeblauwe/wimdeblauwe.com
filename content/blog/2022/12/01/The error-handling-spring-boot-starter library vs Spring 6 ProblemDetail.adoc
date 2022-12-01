@@ -1,0 +1,146 @@
+---
+title: "The error-handling-spring-boot-starter library vs Spring 6 ProblemDetail"
+date: 2022-12-01
+draft: false
+tags: ["spring-boot"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+I created the https://github.com/wimdeblauwe/error-handling-spring-boot-starter[error-handling-spring-boot-starter] library for Spring Boot because I was unhappy with the default response that Spring Boot 2 provides out-of-the-box.
+
+With Spring Boot 3, there is now support for https://docs.spring.io/spring-framework/docs/current/reference/html/web.html#mvc-ann-rest-exceptions[ProblemDetail] and we can have a look on how that changes things.
+
+<!--more-->
+
+== Spring 6 ProblemDetail
+
+If you first want to learn more about using ProblemDetail, I would suggest to first read https://www.sivalabs.in/spring-boot-3-error-reporting-using-problem-details/[Spring Boot 3 : Error Responses using Problem Details for HTTP APIs] by https://twitter.com/sivalabs[sivalabs].
+If you like video more, have a look to https://www.youtube.com/watch?v=4YyJUS_7rQE[Spring 6 and Problem Details] on YouTube.
+
+In summary, this is how ProblemDetail works:
+
+* You need to opt-in to enable it for framework errors by setting `spring.webmvc.problemdetails.enabled=true` (or `spring.webflux.problemdetails.enabled` if you use WebFlux).
+* You can also enable it by creating an exception handler that extends from `ResponseEntityExceptionHandler`
++
+[source,java]
+----
+@RestControllerAdvice
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+}
+----
+* For your own exceptions, you need to write a custom `ExceptionHandler` that converts the exception to an instance of `ProblemDetail`. For example:
++
+[source,java]
+----
+@RestControllerAdvice
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+    @ExceptionHandler(BookmarkNotFoundException.class)
+    ProblemDetail handleBookmarkNotFoundException(BookmarkNotFoundException e) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
+        problemDetail.setTitle("Bookmark Not Found");
+        problemDetail.setType(URI.create("https://api.bookmarks.com/errors/not-found"));
+        return problemDetail;
+    }
+}
+----
++
+By doing this, you get a response like this:
++
+[source,json]
+----
+{
+  "type": "https://api.bookmarks.com/errors/not-found",
+  "title": "Bookmark Not Found",
+  "status": 404,
+  "detail": "Bookmark with id: 111 not found",
+  "instance": "/api/bookmarks/111"
+}
+----
+* If you don't want to write an `ExceptionHandler`, you can have your exception classes extend from `org.springframework.web.ErrorResponseException` which forces you to create a `ProblemDetail` instance in the constructor of your custom exception.
+Check out the linked blog post for example.
+* You can add custom fields in the error response by using the `properties` Map of `ProblemDetail`.
+
+
+== The error-handling-spring-boot-starter library
+
+As a reminder, this is how a typical error response looks like with this library:
+
+[source,json]
+----
+{
+  "code": "USER_NOT_FOUND",
+  "message": "Could not find user with id UserId{id=8c7fb13c-0924-47d4-821a-36f73558c898}",
+  "userId": "8c7fb13c-0924-47d4-821a-36f73558c898"
+}
+----
+
+The only thing you need to have this, is an exception like this:
+
+[source,java]
+----
+@ResponseStatus(HttpStatus.NOT_FOUND)
+@ResponseErrorCode("USER_NOT_FOUND")
+public class UserNotFoundException extends RuntimeException {
+
+    private final UserId userId;
+
+    public UserNotFoundException(UserId userId) {
+        super(String.format("Could not find user with id %s", userId));
+        this.userId = userId;
+    }
+
+    @ResponseErrorProperty
+    public String getUserId() {
+        return userId.getValue();
+    }
+}
+----
+
+See https://foojay.io/today/better-error-handling-for-your-spring-boot-rest-apis/[Better Error Handling for Your Spring Boot REST APIs] for a more detailed introduction to the library.
+
+When we compare how error-handling-spring-boot-starter works to using ProblemDetail, we can notice the following:
+
+* With error-handling-spring-boot-starter, you can just add the dependency on your classpath. It becomes enabled right away.
+* It works for any `Exception`, there is no need to extend from the Spring framework exception type `ErrorResponseException` and to manually write code to create a `ProblemDetail` inside each of those exceptions.
+* By annotating your custom exception, you can add fields to the response. For example,
+just annotate a getter on your custom exception with `@ResponseErrorProperty` and the response of that getter will be automatically added to the error response.
+* The error-handling-spring-boot-starter has a rich configuration model to be able to influence the `code` and the `message` that is used for exceptions.
+Both those from your own code and exceptions from other libraries.
+All by just adding some properties to your `application.properties`.
+* There is no need to write a custom exception handler. Everything is driven from the exceptions you throw.
+* ProblemDetail is an implementation of https://datatracker.ietf.org/doc/html/rfc7807[RFC 7807].
+The response used by error-handling-spring-boot-starter is not backed by any standard.
+One of the things this standard dictates is:
++
+[source]
+----
+Consumers MUST use the "type" string as the primary identifier for the problem type.
+----
++
+With `type` a field that should contain an URI reference.
++
+I find the use of the `code` field in responses of `error-handling-spring-boot-starter` a bit easier to work with.
+They are also automatically derived from the name of the Exception.
++
+I really wonder how much projects will actually put a valid URI in there.
+I also wonder if people will use different URI's depending on if the application is running in production or not for example.
+
+Given all of the above, I think that `error-handling-spring-boot-starter` still provides a lot of value, also for Spring Boot 3 and Spring 6.
+To use it with Spring Boot 3, be sure to use https://github.com/wimdeblauwe/error-handling-spring-boot-starter/releases/tag/4.0.0[version 4.0.0].
+
+== Conclusion
+
+This post showed an overview of the `error-handling-spring-boot-starter` library and how it compares to ProblemDetail in Spring 6.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
