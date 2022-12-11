@@ -21,6 +21,11 @@ This blog post shows how to do this.
 
 <!--more-->
 
+[TIP]
+====
+The `HxRefreshHeaderAuthenticationEntryPoint` described in this blog post is available out-of-the-box in the https://github.com/wimdeblauwe/htmx-spring-boot-thymeleaf[htmx-spring-boot-thymeleaf] library.
+====
+
 As an example, we will create a simple webpage with a button that will load a random Chuck Norris joke from https://api.chucknorris.io/.
 The webpage is secured with a very basic Spring Security configuration.
 
