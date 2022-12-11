@@ -1,0 +1,168 @@
+---
+title: "Release 1.0.0 and 2.0.0 of htmx-spring-boot-thymeleaf"
+date: 2022-12-11
+draft: false
+tags: ["spring-boot", "thymeleaf", "htmx"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+I realized I have not written about the official releases I did for https://github.com/wimdeblauwe/htmx-spring-boot-thymeleaf[htmx-spring-boot-thymeleaf] on this blog, so time to right this wrong now.
+
+<!--more-->
+
+== Library origins
+
+The project started out with a https://github.com/wimdeblauwe/wimdeblauwe.com/discussions/1[discussion on GitHub] between https://twitter.com/checketts[Clint Checketts] and myself as we discussed my blog post on https://www.wimdeblauwe.com/blog/2021/10/04/todomvc-with-thymeleaf-and-htmx/[TodoMVC with Thymeleaf and HTMX].
+Clint had the idea of creating a custom https://www.thymeleaf.org/[Thymeleaf] dialect to support using https://htmx.org/[htmx] inside a Thymeleaf template. He also wrote the https://github.com/checketts/wimdeblauwe.com/commit/fd701bf7b88b91e8f9b6eab99f89cfec71def634[first draft of the code].
+
+The project started on https://github.com/wimdeblauwe/htmx-spring-boot-thymeleaf[my GitHub] as I had some experience in putting a Java library on Maven central with https://github.com/wimdeblauwe/error-handling-spring-boot-starter[error-handling-spring-boot-starter] and https://github.com/wimdeblauwe/testcontainers-cypress[testcontainers-cypress]
+
+On May 2nd, 2022, I started actively working on the library, adding support for `@HxRequest`, `@HxTrigger`, `@HxRefresh` and some other things with the help of Clint.
+This resulted in a first https://github.com/wimdeblauwe/htmx-spring-boot-thymeleaf/releases/tag/0.1.0[release 0.1.0] of the libary on May 7th, 2022.
+
+On May 16th, 2022, we had a major contribution by Spring team member https://twitter.com/odrotbohm[Oliver Drotbohm] to support partials and out-of-band swaps.
+Clint helped shape the feature by contributing tests and documentation.
+This all lead to https://github.com/wimdeblauwe/htmx-spring-boot-thymeleaf/releases/tag/0.2.0[release 0.2.0] on May 20th, 2022.
+
+At that point, the library was already quite useful as is.
+After some bugfixes and using the library during my talks at https://www.youtube.com/watch?v=okCdaBTQsik[Spring I/O Barcelona] and https://www.youtube.com/watch?v=POK4Zp1oRN8[Devoxx], I felt confident enough to cut a 1.0 release.
+
+At that time, Spring Boot 3 was also released.
+So we had to accomodate to that and release a compatible version as well.
+It is hard to support both Spring Boot 2 and Spring Boot 3 in the same version of the libary, so it was quickly decided to use https://github.com/wimdeblauwe/htmx-spring-boot-thymeleaf/releases/tag/1.0.0[1.x releases] for Spring Boot 2 and https://github.com/wimdeblauwe/htmx-spring-boot-thymeleaf/releases/tag/2.0.0[2.x releases] for Spring Boot 3.
+
+== Features
+
+This section will show a few things you can do with this library to make it easier to work with Spring Boot, Thymeleaf and htmx.
+
+=== Attribute processor
+
+Htmx relies heavily on adding attributes to your HTML elements.
+Without this library, you need to do something like this to work with Thymeleaf and htmx:
+
+[source,html]
+----
+<button th:attr="hx-get=|/refresh-button/${device.id}|,
+                 hx-target=|#device-info-${device.id}|,
+                 hx-indicator=|#device-info-${device.id}|"
+        hx-swap="outerHTML"
+        class="...">
+</button>
+----
+
+Adding custom attibutes is done using `th:attr` with Thymeleaf. The above code would result in a `<button>` element with 4 htmx related attributes `hx-get`, `hx-target`, `hx-indicator` and `hx-swap`.
+
+Using the library, we can simplify this to:
+
+[source,html]
+----
+<button hx:get="|/refresh-button/${device.id}|"
+        hx:target="|#device-info-${device.id}|"
+        hx:indicator="|#device-info-${device.id}|"
+        hx-swap="outerHTML"
+        class="...">
+</button>
+----
+
+Suppose the `device.id` variable has the value `123`, the resulting HTML that Thymeleaf will generate becomes:
+
+[source,html]
+----
+<button hx-get="/refresh-button/123"
+        hx-target="#device-info-123"
+        hx-indicator="#device-info-123"
+        hx-swap="outerHTML"
+        class="...">
+</button>
+----
+
+=== Request headers
+
+When working with htmx, you normally will have controller endpoints for full page refreshes (Typically using `@GetRequest`) and endpoints that are used for htmx requests returning a HTML partial.
+Htmx requests are indicated by the htmx library by adding the `HX-Request` header.
+Because of this special header, we can cather for both needs on the same URL. We can use the `@HxRequest` annotation on our controller method so Spring MVC knows that if there is a `HX-Request` in the header of the request, it needs to use that particular method to render the response.
+
+Here is an exmple:
+
+[source,java]
+----
+@GetMapping("/users")
+@HxRequest                  // Called when hx-get request to '/users/' is made
+public String htmxRequest(HtmxRequest details){
+    service.doSomething(details);
+
+    return "partial";
+}
+
+@GetMapping("/users")        // Only called on a full page refresh, not an htmx request
+public String normalRequest(HtmxRequest details){
+    service.doSomething(details);
+
+    return "users";
+}
+----
+
+=== Client side triggers
+
+Htmx has a concept of client-side triggers.
+These are events that are sent in the browser when a response is received with a `HX-Trigger` header.
+JavaScript or other htmx attributes can listen for those events and trigger a new request or do some other processing on the client like showing a popup for example.
+
+The htmx-spring-boot-thymeleaf library makes it easy to add such response headers via the `@HxTrigger` annotation:
+
+[source,html]
+----
+@GetMapping("/users")
+@HxRequest
+@HxTrigger("userUpdated") // 'userUpdated' event will be triggered by htmx
+public String hxUpdateUser() {
+    return"users";
+}
+----
+
+=== OOB Swap support
+
+A nice feature of htmx is the ability to handle multiple HTML fragments that are sent in the response and updating multiple places on the page at the same time.
+Without this library, it is impossible to support this using Thymeleaf.
+Luckily, we can now do this thanks to this library:
+
+[source,html]
+----
+@GetMapping("/partials/main-and-partial")
+public HtmxResponse getMainAndPartial(Model model) {
+    model.addAttribute("userCount", 5);
+    return new HtmxResponse()
+            .addTemplate("users :: list")
+            .addTemplate("users :: count");
+}
+----
+
+Assuming there are 2 fragments `list` and `count` in the `users.html` page, then a request to `/partials/main-and-partial` will return HTML like this:
+
+[source,html]
+----
+<div id="list" ...></div>
+<div id="count" hx-swap-oob="true" ...></div>
+----
+
+The `#list` div will be used for the normal swap and the `#count` div will be used for out-of-band swap.
+See https://htmx.org/docs/#oob_swaps[Out of Band Swaps] for more information.
+
+== Conclusion
+
+I am very happy with this library, it makes working with Spring Boot, Thymeleaf and htmx a lot easier.
+
+I would also like to thank all contributors, especially Clint and Oliver. Without them this library might never have existed.
+
+Is there anything you feel is missing currently? Feel free to https://github.com/wimdeblauwe/htmx-spring-boot-thymeleaf/issues[create an issue] or https://github.com/wimdeblauwe/htmx-spring-boot-thymeleaf/discussions[start a discussion], I'd love to hear from you!
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
