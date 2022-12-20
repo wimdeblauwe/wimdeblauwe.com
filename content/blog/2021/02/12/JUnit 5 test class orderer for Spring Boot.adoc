@@ -173,4 +173,4 @@ If you now run the full test suite, you will see that the order is exactly like 
 
 See the https://github.com/wimdeblauwe/blog-example-code/tree/master/junit5-test-order[full sources on GitHub] for reference.
 
-If you want to have a deeper understanding of testing with Spring Boot, be sure to check out the https://transactions.sendowl.com/stores/13745/197022[Testing Spring Boot Applications Masterclass] by Philip Riecks.
+If you want to have a deeper understanding of testing with Spring Boot, be sure to check out the https://rieckpil.de/courses/testing-spring-boot-applications-masterclass/[Testing Spring Boot Applications Masterclass] by Philip Riecks.
