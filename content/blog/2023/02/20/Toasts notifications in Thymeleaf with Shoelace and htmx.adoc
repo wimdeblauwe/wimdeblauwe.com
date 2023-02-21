@@ -19,6 +19,11 @@ I recently played around with https://shoelace.style/[Shoelace], a library of we
 The nice thing about web components is that they are framework agnostic, so we can use them with Thymeleaf as well.
 This blog post will show how to use the https://shoelace.style/components/alert?id=toast-notifications[Alert Toast] component to show a confirmation or an error to the user.
 
+[NOTE]
+====
+See also https://www.wimdeblauwe.com/blog/2023/02/21/toasts-notifications-in-thymeleaf-with-shoelace-and-htmx-part-2/[part 2] for a similar demo where the HTML of the notifications is generated in Thymeleaf instead of in JavaScript.
+====
+
 <!--more-->
 
 == Sample
