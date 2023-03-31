@@ -1,0 +1,191 @@
+---
+title: "Taming Thymeleaf update for Spring Boot 3"
+date: 2023-03-31
+draft: false
+tags: ["spring-boot", "thymeleaf", "alpine"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+My book https://www.wimdeblauwe.com/books/taming-thymeleaf/[Taming Thymeleaf] has just been updated on https://leanpub.com/taming-thymeleaf[leanpub] for Spring Boot 3.
+This blog post will walk you through the most important changes if you want to upgrade to Spring Boot 3 from Spring Boot 2 if you used the previous version of the book.
+
+<!--more-->
+
+To view the changes I did on the demo project, check out https://github.com/wimdeblauwe/taming-thymeleaf-sources/commit/fc3c50b7757f62edc18c39cddd269872f30e9c64[this commit] on GitHub.
+You can also https://github.com/wimdeblauwe/taming-thymeleaf-sources/compare/2.0.0...3.0.0[compare the changes between versions].
+
+== Spring Boot updates
+
+* Be sure you are already on Java 17. If not, first update to Spring Boot 2.7.x and Java 17.
+* Update the Spring Boot version in the `pom.xml` to `3.0.4`
+* Update JPearl to `2.0.0`.
+* Update Testcontainers to `1.17.6`.
+* Update `testcontainers-cypress` to `1.8.0`.
+
+
+I also updated to Maven 3.8.7, altough that is not strictly needed.
+
+== Thymeleaf updates
+
+* Remove `gulpfile.js` as the live reload system no longer needs Gulp when it is generated via https://github.com/wimdeblauwe/ttcli[ttcli].
+* Update `package.json`. Take a look at GitHub to see the exact changes, or generate a new one using the `ttcli` tool.
+* Update `frontend-maven-plugin` to `1.21.1`.
+* Update `frontend-maven-plugin.nodeVersion` to `v18.15.0`.
+* Update `frontend-maven-plugin.npmVersion` to `9.5.0`.
+* Add AlpineJs, Duet datepicker and Luxon as webjar dependencies:
++
+[source,xml]
+----
+<!-- Web dependencies -->
+<dependency>
+    <groupId>org.webjars</groupId>
+    <artifactId>webjars-locator</artifactId>
+    <version>0.46</version>
+</dependency>
+<dependency>
+    <groupId>org.webjars.npm</groupId>
+    <artifactId>alpinejs</artifactId>
+    <version>3.11.1</version>
+</dependency>
+<dependency>
+    <groupId>org.webjars.npm</groupId>
+    <artifactId>duetds__date-picker</artifactId>
+    <version>1.4.0</version>
+</dependency>
+<dependency>
+    <groupId>org.webjars.npm</groupId>
+    <artifactId>luxon</artifactId>
+    <version>3.3.0</version>
+</dependency>
+----
+* Update the `postcss.config.js` to:
++
+[source,js]
+----
+const postcssConfig = {
+    plugins: [require('autoprefixer'),
+        require('tailwindcss')],
+};
+
+// If we are in production mode, then add cssnano
+if (process.env.NODE_ENV === 'production') {
+    postcssConfig.plugins.push(
+        require('cssnano')({
+            // use the safe preset so that it doesn't
+            // mutate or remove code from our css
+            preset: 'default',
+        })
+    );
+}
+
+module.exports = postcssConfig;
+----
+* There is now a warning in Thymeleaf if you use `th:replace` like this:
++
+[source,html]
+----
+<div th:replace="fragments/forms :: fielderrors"></div>
+----
++
+Change it to use the `~{..}` syntax to avoid the warning:
++
+[source,html]
+----
+<div th:replace="~{fragments/forms :: fielderrors}"></div>
+----
+* AlpineJS is now loaded via webjars. Replace:
++
+[source,html]
+----
+<script src="https://unpkg.com/alpinejs@3.7.0/dist/cdn.min.js" defer></script>
+----
++
+with:
++
+[source,html]
+----
+<script type="text/javascript" th:src="@{/webjars/alpinejs/dist/cdn.min.js}" defer>
+----
+* https://github.com/duetds/date-picker[Duet Date Picker] and https://github.com/moment/luxon[Luxon] are also loaded via webjars. Replace:
++
+[source,html]
+----
+<script type="module" src="https://cdn.jsdelivr.net/npm/@duetds/date-picker@1.1.0/dist/duet/duet.esm.js"></script>
+    <script nomodule src="https://cdn.jsdelivr.net/npm/@duetds/date-picker@1.0.1/dist/duet/duet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@1.25.0/build/global/luxon.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@duetds/date-picker@1.1.0/dist/duet/themes/default.css"/>
+----
++
+with:
++
+[source,html]
+----
+<script type="module" th:src="@{/webjars/duetds__date-picker/dist/duet/duet.esm.js}"></script>
+    <script nomodule th:src="@{/webjars/duetds__date-picker/dist/duet/duet.js}"></script>
+    <script th:src="@{/webjars/luxon/build/global/luxon.min.js}"></script>
+    <link rel="stylesheet" th:href="@{/webjars/duetds__date-picker/dist/duet/themes/default.css}"/>
+----
+
+
+== Java code updates
+
+* Replace imports of `org.thymeleaf.spring5.templateresolver.SpringResourceTemplateResolver` with `org.thymeleaf.spring6.templateresolver.SpringResourceTemplateResolver`
+* Rework the `WebSecurityConfiguration` to no longer use `WebSecurityConfigurerAdapter`. See https://spring.io/blog/2022/02/21/spring-security-without-the-websecurityconfigureradapter[Spring Security without the WebSecurityConfigurerAdapter] for more info.
+* Replace all `javax.` imports with `jakarta.` imports.
+* `PagingAndSortingRepository` no longer extends from `CrudRepository`, so you might have to add this to your `Repository` interface yourself.
+
+== Cypress updates
+
+Update the `src/test/e2e/package.json` for the new Cypress:
+
+[source,json]
+----
+{
+  "name": "taming-thymeleaf-tests",
+  "devDependencies": {
+    "cypress": "^12.9.0",
+    "cypress-multi-reporters": "^1.6.3",
+    "mocha": "^10.2.0",
+    "mochawesome": "^7.1.3"
+  }
+}
+----
+
+In Cypress 12, the `cypress.json` configuration file is no longer supported. Replace it with this `cypress.config.js`:
+
+[source,js]
+----
+const {defineConfig} = require('cypress');
+
+module.exports = defineConfig({
+    e2e: {
+        'baseUrl': 'http://localhost:8080',
+        'viewportWidth': 1100,
+        'viewportHeight': 800,
+        "reporter": "cypress-multi-reporters",
+        "reporterOptions": {
+            "configFile": "reporter-config.json"
+        },
+        setupNodeEvents(on, config) {
+            // implement node event listeners here
+        },
+    },
+});
+----
+
+The spec files now must be called `foo.cy.js` instead of `foo.spec.js` and they should be in the `e2e` directory instead of the `integration` directory. Be sure to rename and move them, otherwise Cypress will no longer find them.
+
+== Conclusion
+
+Applying all that should make your application work smoothly on Spring Boot 3.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
