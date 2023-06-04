@@ -132,6 +132,48 @@ img.book-cover {
     margin-top: -2rem;
 }
 
+.riekpil-ad {
+    background: rgb(253, 193, 52);
+    color: rgb(27, 28, 37);
+    border-radius: 4px;
+    padding: 1em;
+    margin-top: 1em;
+    display: flex;
+    align-items: center;
+}
+
+.riekpil-cover {
+    width: 20em;
+    margin-right: 2em;
+    display: none;
+}
+
+@media only screen and (min-width: 375px) {
+    .riekpil-cover {
+        display: flex;
+    }
+}
+
+@media only screen and (min-width: 1024px) {
+    .riekpil-ad {
+        padding: 0.5em;
+    }
+    .riekpil-cover {
+        width: 7em;
+    }
+}
+
+
+.riekpil-ad > div > a {
+    color: white;
+    text-decoration: underline;
+}
+
+.riekpil-tagline {
+    font-style: italic;
+    margin-top: -2rem;
+}
+
 .adr {
     background: #dff1f6;
     margin: 1em;
