@@ -20,7 +20,8 @@ This blog post shows how to use this with https://www.thymeleaf.org/[Thymeleaf].
 
 <!--more-->
 
-In a dynamic application, multiple parts of th page might need to updated in sync. For example, adding a todo item in a todo application needs to add the item to a list, but also update the count showing in a status field.
+In a dynamic application, multiple parts of the page might need to update in sync.
+For example, adding a todo item in a todo application needs to add the item to a list, but also update the count showing in a status field.
 
 In my previous post https://www.wimdeblauwe.com/blog/2021/10/04/todomvc-with-thymeleaf-and-htmx/[TodoMVC with Thymeleaf and HTMX], I showed how adding a new todo item triggered an event on the client side by adding an `HX-Trigger` header in the response from the server.
 Other parts of the page in the browser can react to this event.
