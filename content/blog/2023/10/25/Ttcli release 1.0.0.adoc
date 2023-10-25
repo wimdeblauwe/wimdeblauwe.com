@@ -1,0 +1,61 @@
+---
+title: "Ttcli release 1.0.0"
+date: 2023-10-25
+draft: false
+tags: ["spring-boot", "thymeleaf", "alpine", "tailwindcss"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+I am happy to announce https://github.com/wimdeblauwe/ttcli/releases/tag/1.0.0[version 1.0.0 of ttcli].
+Ttcli is a command line tool to generate a https://spring.io/projects/spring-boot[Spring Boot] with https://www.thymeleaf.org/[Thymeleaf] project with support for live reloading.
+
+<!--more-->
+
+The tool allows selecting various options when you create a project:
+
+. The tool integrates with the API of https://start.spring.io/ to generate the base Spring Boot project.
+You select your group id, artifact id and project name just like on the website. Further, you can also select the Spring Boot version to use.
+. After that, you can select either "NPM based" or "NPM based with Tailwind CSS support" for the live reloading.
+. As a third step, select what frontend libraries you want to use. There is currently support for the following libraries:
+* https://alpinejs.dev/[AlpineJS] - Lightweight reactive client-side scripting framework.
+* https://htmx.org/[Htmx] - JavaScript library that enables fast and seamless updates to web pages by allowing HTML content to be fetched and updated from the server without requiring a full page reload.
+* https://shoelace.style/[Shoelace] - Web component library that provides a set of customizable, modern, and accessible UI components, such as buttons, forms, and modals, designed to be easily integrated into web applications and websites.
+* https://getbootstrap.com/[Bootstrap] - Bootstrap is a popular open-source front-end framework for web development that provides pre-designed, responsive, and customizable CSS and JavaScript components.
+. If you selected to use https://tailwindcss.com/[Tailwind CSS], then the CLI will allow you configure some plugins for Tailwind:
+* https://tailwindcss.com/docs/typography-plugin[@tailwindcss/typography] - Ability to style HTML that you don't control
+* https://github.com/tailwindlabs/tailwindcss-forms[@tailwindcss/forms] - A plugin that provides a basic reset for form styles that makes form elements easy to override with utilities
+* https://github.com/tailwindlabs/tailwindcss-container-queries[@tailwindcss/container-queries] - A plugin for Tailwind CSS v3.2+ that provides utilities for container queries.
+* https://daisyui.com/[DaisyUI] - A component library for Tailwind CSS
+
+Here is a screencast of the tool in action:
+
+image::{imagesdir}/2023/10/ttcli-1.0.0.gif[align="left"]
+
+Once the project is generated, you can open it in your favorite editor and get started on your project.
+The generated `HELP.md` file contains some extra information on how to get started.
+
+If you want to learn more about the tool itself, the source code is open source and can be viewed at https://github.com/wimdeblauwe/ttcli.
+
+I'd like to thank the following projects:
+
+* https://spring.io/projects/spring-shell[Spring Shell] - Framework for providing the CLI integration.
+* https://www.graalvm.org/[Graal VM] - For native compilation of the binaries.
+* https://jreleaser.org/[JReleaser] - Streamlines the release process
+
+Without those projects, this tool would probably not exist.
+
+== Conclusion
+
+Start your next Spring Boot with Thymeleaf project quickly by using the ttcli command line tool.
+This tool is used in https://www.wimdeblauwe.com/books/taming-thymeleaf/[Taming Thymeleaf] as well, and will be used a lot in my upcoming book _Modern Frontends with Htmx_.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
