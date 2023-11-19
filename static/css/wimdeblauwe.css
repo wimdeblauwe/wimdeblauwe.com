@@ -729,3 +729,36 @@ table.linenotable td.linenos {
     display: flex;
     gap: 0.5rem;
 }
+
+.screenshots-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+}
+
+@media only screen and (min-width: 768px) {
+    .screenshots-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+
+.screenshots-grid > div {
+    display: grid;
+    grid-template-rows: 1fr 3rem;
+    margin-bottom: 0.5rem;
+}
+
+.screenshots-grid > div > img {
+    margin-bottom: 0;
+}
+
+.screenshots-grid > div > i {
+    margin-left: 1.5rem;
+}
+
+/* Special treatment for alternative screenshot */
+
+.chat-app-screenshot > img{
+    margin-top: 1.6rem;
+    width: 90%;
+}
