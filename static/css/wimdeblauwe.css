@@ -762,3 +762,60 @@ table.linenotable td.linenos {
     margin-top: 1.6rem;
     width: 90%;
 }
+
+@media only screen and (min-width: 768px) {
+    .books-overview-grid {
+        display: grid;
+        column-gap: 2rem;
+        grid-template-columns: [colum-left] 1fr [column-right] 1fr;
+        grid-template-rows: auto auto auto auto auto;
+        margin-bottom: 5rem;
+    }
+
+    .books-overview-grid > div {
+        display: grid;
+        grid-row: 1 / 5;
+        grid-template-rows: subgrid [title] [content] [image] [cta];
+    }
+
+    .books-overview-grid > div > h2 {
+        grid-area: title;
+        margin-top: 0;
+        margin-bottom: 0;
+    }
+
+    .books-overview-grid > div > p {
+        grid-area: content;
+    }
+
+    .books-overview-grid > div > .book-cover-wrapper {
+        grid-area: image;
+    }
+
+    .books-overview-grid > div > .action-button-wrapper {
+        grid-area: cta;
+    }
+}
+
+.book-cover-wrapper {
+    display: flex;
+    justify-content: center;
+}
+
+@media only screen and (min-width: 768px) {
+    .book-cover-wrapper {
+        justify-content: left;
+    }
+}
+
+.books-overview-grid img {
+    width: 200px;
+    height: auto;
+    /*object-fit: cover;*/
+}
+
+@media only screen and (min-width: 768px) {
+    .books-overview-grid img {
+        width: 300px;
+    }
+}
