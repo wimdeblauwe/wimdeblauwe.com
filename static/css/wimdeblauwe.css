@@ -1,3 +1,7 @@
+:root {
+    --primary-blue: #0066a1;
+}
+
 body {
     font-family: 'Open Sans', sans-serif;
 }
@@ -7,11 +11,13 @@ body {
         max-width: 700px;
     }
 }
+
 @media only screen and (min-width: 1024px) {
     .wrapper {
         max-width: 850px;
     }
 }
+
 @media only screen and (min-width: 1150px) {
     .wrapper {
         max-width: 1024px;
@@ -29,7 +35,7 @@ h6 {
 
 a,
 a:hover {
-    color: #0066a1;
+    color: var(--primary-blue);
     text-decoration: none
 }
 
@@ -38,8 +44,8 @@ a:hover {
 }
 
 .post-tags .tags a {
-    color: #0066a1;
-    border: 1px solid #0066a1;
+    color: var(--primary-blue);
+    border: 1px solid var(--primary-blue);
 }
 
 .meta-container {
@@ -91,7 +97,7 @@ img.book-cover {
 }
 
 .book-ad {
-    background: #0066a1;
+    background: var(--primary-blue);
     color: #f1f1f1;
     border-radius: 4px;
     padding: 1em;
@@ -116,6 +122,7 @@ img.book-cover {
     .book-ad {
         padding: 0.5em;
     }
+
     .book-cover {
         width: 7em;
     }
@@ -158,6 +165,7 @@ img.book-cover {
     .riekpil-ad {
         padding: 0.5em;
     }
+
     .riekpil-cover {
         width: 7em;
     }
@@ -349,26 +357,28 @@ h3.summary a:hover {
 }
 
 a.book-read-more-link {
-    background:linear-gradient(to bottom, #2077ae 5%, #0066A1 100%);
-    background-color:#0066A1;
-    border-radius:8px;
+    background: linear-gradient(to bottom, #2077ae 5%, var(--primary-blue) 100%);
+    background-color: var(--primary-blue);
+    border-radius: 8px;
     display: inline-flex;
     align-items: center;
-    cursor:pointer;
-    color:#ffffff;
-    font-size:20px;
-    font-weight:bold;
-    padding:13px 32px;
-    text-decoration:none;
-    text-shadow:0px 1px 0px #3d768a;
+    cursor: pointer;
+    color: #fff;
+    font-size: 20px;
+    font-weight: bold;
+    padding: 13px 32px;
+    text-decoration: none;
+    text-shadow: 0px 1px 0px #3d768a;
 }
+
 a.book-read-more-link:hover {
-    background:linear-gradient(to bottom, #0066A1 5%, #2077ae 100%);
-    background-color:#2077ae;
+    background: linear-gradient(to bottom, var(--primary-blue) 5%, #2077ae 100%);
+    background-color: #2077ae;
 }
+
 a.book-read-more-link:active {
-    position:relative;
-    top:1px;
+    position: relative;
+    top: 1px;
 }
 
 .book-read-more-link-arrow {
@@ -510,7 +520,7 @@ a.book-read-more-link:active {
 }
 
 #mc_embed_signup .button {
-    background-color: #0066a1;
+    background-color: var(--primary-blue);
     color: #eef1ff;
 }
 
@@ -598,7 +608,7 @@ table.tableblock #preamble > .sectionbody > [class="paragraph"]:first-of-type p 
 
 .admonitionblock td.icon .icon-note::before {
     content: "\f05a";
-    color: #0066a1
+    color: var(--primary-blue)
 }
 
 .admonitionblock td.icon .icon-tip::before {
@@ -625,7 +635,7 @@ table.tableblock #preamble > .sectionbody > [class="paragraph"]:first-of-type p 
 .conum[data-value] {
     display: inline-block;
     color: #fff !important;
-    background: #0066a1;
+    background: var(--primary-blue);
     -webkit-border-radius: 100px;
     border-radius: 100px;
     text-align: center;
@@ -758,7 +768,7 @@ table.linenotable td.linenos {
 
 /* Special treatment for alternative screenshot */
 
-.chat-app-screenshot > img{
+.chat-app-screenshot > img {
     margin-top: 1.6rem;
     width: 90%;
 }
@@ -818,4 +828,42 @@ table.linenotable td.linenos {
     .books-overview-grid img {
         width: 300px;
     }
+}
+
+.screenshot-image-wrapper {
+    position: relative;
+}
+
+.screenshot-image-wrapper:hover .play-gif-overlay {
+    display: flex;
+}
+
+.play-gif-overlay {
+    position: absolute;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    top: 45%;
+    margin: 0 auto;
+    left: 4rem;
+    right: 4rem;
+    z-index: 100;
+    color: white;
+    background-color: var(--primary-blue);
+    padding: 0.5rem;
+}
+
+.play-gif-overlay:hover {
+    text-decoration-line: none;
+    color: #e3e3e3;
+}
+
+.play-gif-overlay svg {
+    width: 2rem;
+    height: 2rem;
+}
+
+.play-gif-overlay span {
+    /*color: white;*/
 }
