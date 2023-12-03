@@ -399,8 +399,9 @@ a.book-read-more-link:active {
 }
 
 @media only screen and (max-width: 425px) {
-    .image-with-text-right-image {
-        display: none;
+    .image-with-text-right {
+        flex-direction: column;
+        align-items: center;
     }
 }
 
