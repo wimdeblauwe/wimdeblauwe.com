@@ -1,0 +1,26 @@
+---
+title: "Book launch: Modern frontends with htmx"
+date: 2023-10-25
+draft: false
+tags: ["spring-boot", "thymeleaf", "alpine", "tailwindcss", "htmx"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+🎉 Thrilled to announce the official release of my new book 'Modern frontends with htmx'! Discover how to master htmx with SpringBoot and Thymeleaf for rich, interactive web applications.
+
+<!--more-->
+
+📚Explore more: https://www.wimdeblauwe.com/books/modern-frontends-with-htmx/[Modern frontends with htmx]
+
+To celebrate the launch of 'Modern frontends with htmx', you can get the book now at a https://leanpub.com/modern-frontends-with-htmx/c/launch10[10% discount].
+
+Alternatively, you can get a https://leanpub.com/b/modern-thymeleaf-bundle[15% bundle discount] if you buy 'Taming Thymeleaf' and 'Modern frontends with htmx' together.
