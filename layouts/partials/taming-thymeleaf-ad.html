@@ -1,9 +1,9 @@
 <!-- Add section about Taming Thymeleaf for blog posts with the 'thymeleaf' tag -->
-{{ if and (ne .Type "page") (gt .Params.tags 0) (in .Params.tags "thymeleaf")}}
-    {{ if not (strings.HasSuffix .Permalink "blog/2020/12/21/release-taming-thymeleaf/") }}
+{{ if and (ne .Type "page") (gt .Params.tags 0) (in .Params.tags "thymeleaf") (not (in .Params.tags "htmx"))}}
+    {{ if and (not (strings.HasSuffix .Permalink "blog/2020/12/21/release-taming-thymeleaf/")) (not (strings.HasSuffix .Permalink "blog/2023/12/03/book-launch-modern-frontends-with-htmx/")) }}
         <div class="book-ad">
             <div class="book-cover">
-                <img src="/images/taming-thymeleaf-cover-3D-transparent.png" alt="Taming Thymeleaf cover">
+                <a href="/books/taming-thymeleaf/"><img src="/images/taming-thymeleaf-cover-3D-transparent.png" alt="Taming Thymeleaf cover"></a>
             </div>
             <div>Interested in learning more about Thymeleaf? Check out my book
             <a href="/books/taming-thymeleaf/">Taming Thymeleaf</a>.
