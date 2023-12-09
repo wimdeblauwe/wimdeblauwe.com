@@ -868,3 +868,17 @@ table.linenotable td.linenos {
 .play-gif-overlay span {
     /*color: white;*/
 }
+
+.bundle-announcement {
+    margin-top: 1rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    align-items: center;
+}
+
+.bundle-announcement svg {
+    width: 2rem;
+    height: 2rem;
+    color: var(--primary-blue);
+}
