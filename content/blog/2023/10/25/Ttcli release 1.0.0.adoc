@@ -56,6 +56,6 @@ Without those projects, this tool would probably not exist.
 == Conclusion
 
 Start your next Spring Boot with Thymeleaf project quickly by using the ttcli command line tool.
-This tool is used in https://www.wimdeblauwe.com/books/taming-thymeleaf/[Taming Thymeleaf] as well, and will be used a lot in my upcoming book _Modern Frontends with Htmx_.
+This tool is used in https://www.wimdeblauwe.com/books/taming-thymeleaf/[Taming Thymeleaf] as well, and will be used a lot in my upcoming book https://www.wimdeblauwe.com/books/modern-frontends-with-htmx/[Modern Frontends with Htmx].
 
 If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].

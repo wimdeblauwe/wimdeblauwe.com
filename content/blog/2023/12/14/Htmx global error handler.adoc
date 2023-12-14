@@ -1,0 +1,175 @@
+---
+title: "Htmx global error handler"
+date: 2023-12-14
+draft: false
+tags: ["spring-boot", "thymeleaf", "htmx"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+The https://github.com/wimdeblauwe/htmx-spring-boot/releases/tag/3.2.0[htmx-spring-boot library 3.2.0] has just been released and now supports using `HtmxResponse` as a return type for error handlers.
+This blog post shows how you can use this.
+
+<!--more-->
+
+Error handling is an important part of any application.
+It ensures that users always know what is happening to the application and they can take action.
+Pressing a button and have no reaction at all is always worse then seeing an error message appear.
+We should obviously strive to avoid them, but having a global error fallback in case something slips through the cracks is surely a good idea.
+
+Let's create a small example to showcase the new feature.
+Use https://github.com/wimdeblauwe/ttcli[ttcli] and select 'NPM Based with TailwindCSS', 'htmx' and 'DaisyUI'.
+
+We add 2 routes to `HomeController`:
+
+[source,java]
+----
+    @GetMapping("/test")
+    @HxRequest
+    public String test() {
+        return "fragments :: message";
+    }
+
+    @GetMapping("/test-exception")
+    @HxRequest
+    public String testException() {
+        throw new RuntimeException("Fake exception");
+    }
+----
+
+The first one returns a simple `<div>` and the second one simulates that an exception happens.
+
+[source,html]
+.src/main/resources/templates/fragments.html
+----
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<div th:fragment="message">
+    Button clicked!
+</div>
+----
+
+In the `index.html`, we place two buttons that trigger our two routes:
+
+[source,html]
+----
+<div layout:fragment="content">
+    <div class="m-4">
+        <button class="btn btn-neutral"
+                hx:get="@{/test}"
+                hx-swap="outerHTML"
+        >Do something</button>
+    </div>
+    <div class="m-4">
+        <button class="btn btn-neutral"
+                hx:get="@{/test-exception}"
+                hx-swap="outerHTML"
+        >Do something</button>
+    </div>
+</div>
+----
+
+If we run this, we see this:
+
+image::{imagesdir}/2023/12/global-error-handler-01.png[align="left"]
+
+Clicking the first button results in a swap of the button with the `div`:
+
+image::{imagesdir}/2023/12/global-error-handler-02.png[align="left"]
+
+Clicking the second button results in no visible change at all.
+If you check the network calls in your browser's development tools, you will see a 500 error response.
+
+With a small change, we can make the error visible to the user.
+
+In `index.html`, add an empty `div` that will act as a placeholder to put the error message on:
+
+[source,html]
+----
+<div layout:fragment="content">
+    <div class="mx-8 mt-4">
+        <div id="global-error"></div>
+    </div>
+    ...
+----
+
+[NOTE]
+====
+You could add this to your `layout/main.html` so it is available on all pages of your application.
+====
+
+We create a fragment that can be used for out of band swaps:
+
+[source,html]
+.src/main/resources/templates/fragments.html
+----
+<div th:fragment="error-message(message)" id="global-error" role="alert" class="alert alert-error" hx-swap-oob="true">
+    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+    <span th:text="${message}">Error!</span>
+</div>
+----
+
+Two things are important:
+
+* The `hx-swap-oob="true"` to allow htmx to use out-of-band swapping.
+* The `id` of the fragment needs to match with the `id` of the placeholder div in the `index.html` template.
+
+The final piece of the puzzle is adding the exception handler to `HomeController`:
+
+[source,java]
+.HomeController.java
+----
+    @ExceptionHandler(Exception.class) // <.>
+    public HtmxResponse handleError(Exception ex) {
+        return HtmxResponse.builder()
+                           .reswap(HtmxReswap.none()) // <.>
+                           .view(new ModelAndView("fragments :: error-message", Map.of("message", ex.getMessage()))) // <.>
+                           .build();
+    }
+----
+<.> Handle `Exception` and all subclasses of `Exception`.
+<.> Set the swapping behaviour to `none` so we don't accidently swap things we don't want to swap. We only want the error message to appear via out-of-band swap.
+<.> Use the `error-message` fragment and pass the message of the caught exception to the fragment.
+
+If we restart the application and press the second button, we get a nice error message:
+
+image::{imagesdir}/2023/12/global-error-handler-03.png[align="left"]
+
+If you want the error handling to apply to all your controllers of your application, you can use `@ControllerAdvice` for that:
+
+[source,java]
+----
+import io.github.wimdeblauwe.htmx.spring.boot.mvc.HtmxResponse;
+import io.github.wimdeblauwe.htmx.spring.boot.mvc.HtmxReswap;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.servlet.ModelAndView;
+
+import java.util.Map;
+
+@ControllerAdvice
+public class GlobalErrorHandler {
+
+    @ExceptionHandler(Exception.class)
+    public HtmxResponse handleError(Exception ex) {
+        return HtmxResponse.builder()
+                           .reswap(HtmxReswap.none())
+                           .view(new ModelAndView("fragments :: error-message", Map.of("message", ex.getMessage())))
+                           .build();
+    }
+}
+----
+
+== Conclusion
+
+Ensuring a fallback error handler is not that hard and with the 3.2.0 release of htmx-spring-boot, it's even easier.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].

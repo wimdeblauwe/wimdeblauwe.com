@@ -1,6 +1,6 @@
 ---
 title: "Book launch: Modern frontends with htmx"
-date: 2023-10-25
+date: 2023-12-03
 draft: false
 tags: ["spring-boot", "thymeleaf", "alpine", "tailwindcss", "htmx"]
 keywords: []
