@@ -172,4 +172,6 @@ public class GlobalErrorHandler {
 
 Ensuring a fallback error handler is not that hard and with the 3.2.0 release of htmx-spring-boot, it's even easier.
 
+See https://github.com/wimdeblauwe/blog-example-code/tree/master/htmx-global-error-handler[htmx-global-error-handler] on GitHub for the full sources of this example.
+
 If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
