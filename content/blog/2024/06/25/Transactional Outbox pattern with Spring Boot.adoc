@@ -534,6 +534,11 @@ We can again test this by using the IntelliJ HTTP client and notice that sometim
 
 What is nice here is that the event is serialized to JSON, so it is readable in the database what it contains. With Spring Integration, it uses Java serialization, so there you only get a meaningless blob of bytes.
 
+[TIP]
+====
+Update: You can use JSON as well with Spring Integration with some additional configuration. See https://www.wimdeblauwe.com/blog/2024/07/10/spring-integration-using-json-serialization/[Spring Integration using JSON serialization] for more info.
+====
+
 === Retry failed events
 
 Unlike with Spring Integration, there is no automatic retry, but we can easily add it.
