@@ -35,14 +35,14 @@
 
 		<div class="next-and-previous-links">
 			<div class="previous-post">
-				{{ if .PrevPage }}
-				<a class="link-reverse" href="{{ .PrevPage.Permalink }}?ref=footer"><i data-feather="arrow-left-circle"></i>Previous: {{ .PrevPage.Title | truncate 50 "..."}}</a>
+				{{ if .Prev }}
+				<a class="link-reverse" href="{{ .Prev.Permalink }}?ref=footer"><i data-feather="arrow-left-circle"></i>Previous: {{ .Prev.Title | truncate 50 "..."}}</a>
 				{{ end }}
 			</div>
 
 			<div class="next-post">
-				{{ if .NextPage }}
-				<a class="link-reverse" href="{{ .NextPage.Permalink }}?ref=footer">Next: {{ .NextPage.Title | truncate 50 "..." }}<i data-feather="arrow-right-circle"></i></a>
+				{{ if .Next }}
+				<a class="link-reverse" href="{{ .Next.Permalink }}?ref=footer">Next: {{ .Next.Title | truncate 50 "..." }}<i data-feather="arrow-right-circle"></i></a>
 
 				{{ end }}
 			</div>
