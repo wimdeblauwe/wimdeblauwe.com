@@ -1,0 +1,178 @@
+---
+title: "Redirect attributes with Spring MVC and htmx"
+date: 2024-11-19
+draft: false
+tags: ["spring-boot", "thymeleaf", "htmx"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+A common implementation pattern with Spring MVC is showing a notification message after a redirect has happened.
+For example, you edit a product in a page and after saving the product you are redirected back to the list of products. At the top, you show a message "Product xyz updated". If the user manually refreshes the page, the message should disappear.
+
+To implement this, you can use redirect attributes, sometimes also called flash attributes.
+
+<!--more-->
+
+== Redirect attributes with Spring MVC
+
+To use redirect attributes, you need to add `org.springframework.web.servlet.mvc.support.RedirectAttributes` as a parameter to your controller method. In https://github.com/wimdeblauwe/blog-example-code/tree/master/redirect-attributes[the example code], I have this controller method to get started:
+
+[source,java]
+----
+  @PostMapping("/new")
+  public String create(@ModelAttribute("formData") CreateProductFormData formData,
+      BindingResult bindingResult) {
+    if (bindingResult.hasErrors()) {
+      return "products/edit";
+    }
+
+    productRepository.save(formData.toProduct());
+
+    return "redirect:/products";
+  }
+----
+
+It shows the `POST` mapping to create a new product in the application. See https://www.wimdeblauwe.com/blog/2021/05/23/form-handling-with-thymeleaf/[Form handling with Thymeleaf] if you need more information about how forms work with Thymeleaf.
+
+We see that if there are no validation errors on the form, the browser will be redirected to the `/products` path.
+
+If we want to show a message `Product created` on our list of products page, we can use `RedirectAttributes` like this:
+
+[source,java]
+----
+  @PostMapping("/new")
+  public String create(@ModelAttribute("formData") CreateProductFormData formData,
+      BindingResult bindingResult, RedirectAttributes redirectAttributes) { //<.>
+    if (bindingResult.hasErrors()) {
+      return "products/edit";
+    }
+
+    productRepository.save(formData.toProduct());
+
+    redirectAttributes.addFlashAttribute("message", "Product created"); //<.>
+    return "redirect:/products";
+  }
+----
+<.> Inject `RedirectAttributes` as a parameter.
+<.> Add a flash attribute with the key `message` and the value `Product created`.
+
+To now use this flash attribute, we can use it like any other `Model` attribute:
+
+[source,html]
+.src/main/resources/templates/products/index.html
+----
+    ...
+    <th:block th:if="${message}"> <!--.-->
+        <div th:replace="~{fragments :: success-message(${message})}"></div>
+    </th:block>
+    <ul class="mt-4 ml-4 list-disc">
+        <li th:each="product : ${products}">
+            <span th:text="${product.name}"></span> -
+            <span th:text="|€ ${product.price}|"></span> -
+        </li>
+    </ul>
+    ...
+----
+<.> Show a notification message if the `message` attribute is present.
+
+Screenshot of the notification after a product is added:
+
+image::{imagesdir}/2024/11/redirect-attributes-1.png[align="left"]
+
+If you refresh the page, the message automatically disappears:
+
+image::{imagesdir}/2024/11/redirect-attributes-2.png[align="left"]
+
+== Redirect attributes with htmx
+
+If you are working with htmx, you can also use redirect attributes if you want, but you need to know how to do this exactly.
+
+[NOTE]
+====
+If you rather use a toast notification on the same page that you are editing, have a look at my blog post https://www.wimdeblauwe.com/blog/2023/02/20/toasts-notifications-in-thymeleaf-with-shoelace-and-htmx/[Toasts notifications in Thymeleaf with Shoelace and htmx].
+====
+
+For our example, we will add a `Delete` link for each product that will send a HTTP `DELETE` request via htmx.
+
+This is the updated Thymeleaf template:
+
+[source,html]
+----
+<li th:each="product : ${products}">
+    <span th:text="${product.name}"></span> -
+    <span th:text="|€ ${product.price}|"></span> -
+    <span hx:delete="@{/products/{id}(id=${product.id})}"
+          hx-trigger="click"
+          class="text-red-500 hover:underline hover:cursor-pointer">
+        Delete
+    </span>
+</li>
+----
+
+Note the `hx:delete` and `hx-trigger` tags.
+
+The corresponding controller method looks like this:
+
+[source,java]
+----
+  @HxRequest //<.>
+  @DeleteMapping("/{id}")
+  public String delete(@PathVariable("id") UUID id, RedirectAttributes redirectAttributes) { //<.>
+    productRepository.deleteById(id);
+
+    redirectAttributes.addFlashAttribute("message", "Product deleted"); //<.>
+    return "redirect:htmx:/products"; //<.>
+  }
+----
+<.> Indicate that this controller method should only match if the request was done by htmx.
+<.> Inject `RedirectAttributes`.
+<.> Add the flash attribute.
+<.> Use the `redirect:htmx:` prefix to force htmx to do a client-side redirect to `/products`.
+
+An alternative implementation is using the `HtmxRedirectView` as return type instead of `String`:
+
+[source,java]
+----
+  @HxRequest
+  @DeleteMapping("/{id}")
+  public HtmxRedirectView delete(@PathVariable("id") UUID id, RedirectAttributes redirectAttributes) {
+    productRepository.deleteById(id);
+
+    redirectAttributes.addFlashAttribute("message", "Product deleted");
+    return new HtmxRedirectView("/products"); //<.>
+  }
+----
+<.> Use `HtmxRedirectView` to force htmx to do a redirect to `/products`.
+
+Both the `String` variant and the `HtmxRedirectView` are equivalent, you can use whatever variant you prefer.
+
+Screenshot of the application showing the 'Delete' link:
+
+image::{imagesdir}/2024/11/redirect-attributes-3.png[align="left"]
+
+Showing the message after clicking the 'Delete' link:
+
+image::{imagesdir}/2024/11/redirect-attributes-4.png[align="left"]
+
+[NOTE]
+====
+The htmx redirect support is only possible if you add the https://github.com/wimdeblauwe/htmx-spring-boot[htmx-spring-boot] library with at least version https://github.com/wimdeblauwe/htmx-spring-boot/releases/tag/3.6.1[3.6.1] to your project.
+====
+
+
+== Conclusion
+
+Redirect attributes provide a clean way to pass temporary messages across redirects in Spring MVC applications. The `htmx-spring-boot` library makes this integration seamless by providing dedicated support for htmx redirects through either string-based redirects or the `HtmxRedirectView` class. This approach gives developers flexibility in implementing user feedback while maintaining a smooth user experience.
+
+See https://github.com/wimdeblauwe/blog-example-code/tree/master/redirect-attributes[redirect-attributes] on GitHub for the full sources of this example.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
