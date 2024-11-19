@@ -11,6 +11,7 @@ googleAnalytics = "G-VJZ8LM94JG"
     featherIconsCDN = true
     customCSS = "css/wimdeblauwe.css"
     images = ['images/wim-deblauwe.jpg']
+    favicon = 'favicon.svg'
 
 [[menu.main]]
 name = "Blog"
