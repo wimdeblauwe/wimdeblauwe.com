@@ -34,7 +34,7 @@ I have heard stories of people that never close their computer or browser and ke
 They never get the updated version of the client because they never refresh their browser page.
 Finally, things start to break as the client is no longer compatible with the server.
 
-By adding versioning (which can be done via a segment in the URL, or [via a header](https://opensource.zalando.com/restful-api-guidelines/#114)), you can support multiple versions of clients.
+By adding versioning (which can be done via a segment in the URL, or https://opensource.zalando.com/restful-api-guidelines/#114[via a header]), you can support multiple versions of clients.
 This is a nice benefit and something you really need to do if you have mobile apps as clients for example.
 
 But if you have a web application, there is no need for this.
