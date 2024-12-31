@@ -1,0 +1,234 @@
+---
+title: "Problems I no longer have by using Server-side rendering"
+date: 2024-12-31
+draft: false
+tags: ["spring-boot", "thymeleaf", "htmx"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+I really like to use Spring Boot, Thymeleaf and htmx for a productive web application stack.
+However, most of my day-to-day work involves writing REST API backends (Well, https://www.htmx.org/essays/how-did-rest-come-to-mean-the-opposite-of-rest/[JSON Data APIs really]) for Angular or React frontends.
+During that work, I sometimes can’t help but think “We would not have this issue we are discussing now if we had used server-side rendering instead of a JavaScript Single Page Application.”.
+This blog explains some of those thoughts in more detail.
+
+<!--more-->
+
+NOTE: I admit that for most of these things there are solutions, but the point is that in many cases, you don’t really need those solutions as the problem does not exist in the first place.
+The main goal here is to have people think about what technology they choose to build a web application and the consequences that come with that choice.
+
+== API versioning
+
+One of the first things you need to think about when building a REST API is versioning.
+Since the client is a separate application from the server with an SPA (Single Page Application), they have a separate lifecycle.
+Different versions of the client can interact with a single server.
+I have heard stories of people that never close their computer or browser and keep that same SPA loaded for months.
+They never get the updated version of the client because they never refresh their browser page.
+Finally, things start to break as the client is no longer compatible with the server.
+
+By adding versioning (which can be done via a segment in the URL, or [via a header](https://opensource.zalando.com/restful-api-guidelines/#114)), you can support multiple versions of clients.
+This is a nice benefit and something you really need to do if you have mobile apps as clients for example.
+
+But if you have a web application, there is no need for this.
+With server-side rendering (SSR), the page refreshes on each interaction, so you always have the latest version of the page in your browser.
+
+== Validation
+
+Since you should https://medium.com/@berniedurfee/never-trust-a-client-not-even-your-own-2de342723674[never trust a client, not even your own frontend], you need to do validation of incoming requests on the server.
+With Spring MVC, you add the validation annotations on the Java code and Thymeleaf can display them when something is wrong.
+Using htmx, you can even query the server for validation problems and dynamically show them while typing.
+(I have an example of this in my book https://www.wimdeblauwe.com/books/modern-frontends-with-htmx/[Modern frontends with htmx]).
+
+With an SPA, you need to duplicate the rules already defined in your backend language of choice into JavaScript or TypeScript.
+You also have to make sure the rules are exactly the same, always making changes in both places at the same time if the validation rules change.
+
+== Security
+
+Any non-trivial application has users and roles that define what a certain user of the system can and cannot do.
+With a SSR application, the server decides on the server what the current user can or cannot do.
+It is for instance trivial to *not* render a ‘delete’ button if the user is not an administrator.
+The `<button>` or `<form>` is not rendered on the page and so the action cannot be done by the user.
+
+With an SPA, the client has to decide what HTML to render based on the incoming JSON.
+While https://en.wikipedia.org/wiki/HATEOAS[HATEOAS] has a nice solution for this, most REST APIs are not conforming to that.
+Some applications read the roles that the user has from the JSON token and completely decide client side what to render and what not.
+This is duplication of logic that already exists on the server.
+
+A related example is a button that should be disabled in certain cases.
+If the client checks some status flag in the JSON to decide on that, you are again duplicating logic that already exists on the server.
+With a template engine rendering HTML on the server, you can use that server logic to disable the button and avoid the duplication on the client.
+The browser will happily render that disabled button, no JavaScript needs to run for that.
+
+== Secured file downloads
+
+Allowing a user to download a file in an SPA application is a surprisingly non-trivial task.
+With a SSR application, you can have a normal `<a href=".."/>` and the security aspect is handled on the server via the session.
+With an SPA, you normally use an `Authentication` header to pass the JWT token.
+But you can’t do that with a normal hyperlink.
+
+As a solution, you need to write the JWT token to a cookie for example, or you need to do an AJAX call to first load the document in memory and then write it to disk.
+Workarounds that work, but still, you know, workarounds.
+🙂
+
+== Documentation
+
+Good documentation is paramount to ensure the frontend team knows how to call the REST API, what calls are available, what responses can be expected, etc… You can use https://swagger.io/[Swagger] or https://spring.io/projects/spring-restdocs[Spring REST Docs] (my favorite) to do this.
+The reality is that many server teams dread writing those docs, leaving the frontend team to guess that endpoints exist, or what enum values that they can use in certain fields in the JSON requests.
+
+With SSR, there is no need for documentation as the HTML and CSS is part of the server application.
+If there is a documentation need, it is on the same level as having Javadoc on other parts of the code.
+That said, it can be unclear at times what variables are available inside a Thymeleaf template if you are not careful.
+This is something that is quite nice in https://jte.gg/[JTE] for example.
+You explicitly declare what is available like you do with a regular Java method.
+
+== Translations
+
+If you make your application multilingual, you can reach a wider audience and improve user experience.
+Translations can be done purely in the frontend, and it seems the obvious choice at first.
+However, if you need to do server pagination, it might be that you will need to move translations to the backend.
+Think of a status column in a table that is sorted and paginated.
+A user expects that the sorting corresponds to the translated string, not sorted by the English version and then translated on the client.
+
+With server-side rendering, the choice is obvious.
+All translations live on the server.
+
+== Slow first load
+
+The appeal of SPAs is that you have an initial cost to load the framework and the application, but after that, you can communicate with the server with lightweight JSON messages.
+The reason that an SPA is initially slower is due to the fact that the browser first needs to download the JavaScript library and the JavaScript of the application itself.
+After that, it needs to parse that JavaScript and build up the application.
+Only then, a request is made to the server to get the actual data for the application via a REST API call.
+The JavaScript parses the JSON and turns it into HTML that the browser then finally can render.
+
+On a server-rendered page, only the HTML that is needed is sent.
+Browsers are extremely fast at rendering HTML, so the time to get to the https://web.dev/articles/lcp[Largest Contentful Paint] is usually lower.
+
+With server-side rendering, you need to send more data as the HTML page will have more bytes to send.
+While all of that is true in theory, it does not quite work that way in practice most of the time.
+
+If a user opens a link in the application in a new tab, the initial cost is repeated.
+I also see in most implementations that a lot of data is pre-loaded in case the user might need it in the future.
+This further offsets the potential gains of using JSON.
+
+Even if users don’t open multiple tabs with the application, the initial cost can be repeated.
+Chrome for example will https://developer.chrome.com/blog/memory-and-energy-saver-mode/[proactively discard tabs that have been unused in the background for some time].
+If the user returns to the tab, the application needs to load and start again.
+
+The slightly bigger amount of bytes is not really what makes a site appear fast or slow.
+The https://www.youtube.com/watch?v=-Ln-8QM8KhQ[McMaster-Carr website is perceived as extremely fast] and uses server-side rendering.
+Even just adding a `hx-boost` tag to your application https://www.reddit.com/r/htmx/comments/1hb2tme/accidentally_impressed_my_teacher_by_adding_htmx/[might be enough to impress some people]:
+
+> We were tasked with making a simple crud app and my teacher was pretty impressed with how fast our website was, especially since we were using the schools Wi-Fi.
+> I just chucked `hx-boost="true"` on the html tag, but I'll take it.
+
+
+Taking these observations into account, an SPA really only makes sense if you user spends many hours on that application.
+
+== Reimplementation of browser behaviour
+
+Ah, the notorious back button.
+In your Spring Boot with Thymeleaf application, the back button just works as you navigate from page to page.
+With an SPA (be it React, Angular or Vue), the back button does not work out of the box.
+Here is what https://www.reddit.com/r/htmx/comments/1g7qn1t/comment/lst0a90/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button[one redditor had to say about it]:
+
+> Just last week I had to review code for Vue that was trying to replicate what naturally happens when the user presses the back button of their browser or reloads the page.
+Such an incredible mess just to attempt to get working what naturally works without all the SPA junk.
+
+But the back button is just one example. SPAs often need to reimplement many features that browsers provide for free:
+
+* Form handling: Browsers have built-in form validation, submission handling, and error reporting. SPAs typically reimplement this with JavaScript libraries like https://formik.org/[Formik] or https://react-hook-form.com/[React Hook Form].
+* Focus management: Browsers naturally manage focus when navigating between pages. SPAs need https://blog.maisie.ink/react-ref-autofocus/[complex focus management solutions], especially for accessibility.
+* Navigation: Beyond just the back button, SPAs need to handle URL updates, scroll position restoration, and navigation state management. This is why libraries like https://reactrouter.com/[React Router] need complex APIs for features that work automatically in traditional web applications.
+* Loading states: Browsers show native loading indicators during navigation. SPAs need to implement their own loading spinners and progress bars.
+
+== Flash of wrong state
+
+Have you seen a page on a web application where you initially see 1 thing but after a second or so, something else appears, or something is replaced with something else?
+Most likely that application is an SPA.
+You might say that it is badly implemented and nothing should be shown until it has been decided if the user is logged in or not for example.
+But unfortunately, it seems to be all to common to make this mistake.
+
+As an example, consider the GitLab page to edit a draft pull request.
+The checkbox for “Mark as draft” is displayed to the user unchecked at first.
+Then, when all the JavaScript is loaded, the checkbox is correctly checked to indicate the PR is a draft.
+This video shows this on a simulated slow 4G connection to make it more obvious to see what is happening:
+
+image::{imagesdir}/2024/12/GitLab init checkbox.gif[align="left"]
+
+Not to blame GitLab, there are certainly a lot of other web applications that have the same issue.
+
+If the full web page had been rendered on the server and sent to the browser, there would never be an unchecked checkbox visible.
+
+== Team composition
+
+With a Single Page Application, you usually have a dedicated front end team, or at least a dedicated front end developer.
+Because of the split between backend and frontend developers, you need to make sure the load on the members is about equal during a sprint.
+However, sometimes, sprints will be naturally backend heavy, or frontend heavy.
+Teams can use that time to work away some technical debt in best case, but worst case features are delivered slower because not everybody on the team can work on the most important tasks.
+
+In a server-side rendering application, people can more easily work on the whole application.
+There will still be specialisations in that some developers will always be consulted to fix tricky CSS issues, just as some developers on the team are the go-to person to fix tricky database issues.
+But over time, backend developers will become more familiar with frontend code and frontend devs will become more familiar with backend code.
+
+One real-world example of this is the https://docs.google.com/presentation/d/1jW7vTiHFzA71m2EoCywjNXch-RPQJuAkTiLpleYFQjI/edit#slide=id.g35f391192_00[migration of a React app to Python/Django/htmx]:
+
+image::{imagesdir}/2024/12/team composition.png[align="left"]
+
+Everybody became a full-stack developer over the course of the migration, which makes it a lot easier for the Product Owner or Team Lead to hand out the different tasks that need to be done.
+
+== Public vs private API
+
+The advantage of using a REST API is that you can build any client with it.
+Not only a Single Page Application, but also a mobile application or a desktop application.
+However, in most real-world projects I have seen, the mobile apps always have a different user base compared to the web application.
+The web application is most of the time a more administrative application and the endpoints that are used by that one are seen as “internal” API.
+Most of the times, the developers will be less strict there with backwards compatibility as the backend and the frontend will be released at the same time and the users can “refresh the browser” anyway.
+
+A drawback here is that as soon as the application starts to grow, it becomes less obvious what part of the API is used by what client.
+It becomes difficult to answer questions like “Can we change this endpoint?
+What would break if we do?”.
+
+If you make the web application server-rendered and have a dedicated API just for the mobile app, then it becomes very clear what part should be considered private and what part is public API.
+If you follow proper coding practice of making controllers a very thin layer that delegates to services or use cases, then there should not be a whole lot of duplication happening.
+
+== Only add complexity when you need it
+
+Anybody that has worked on a real production-ready SPA application will tell you that there is a lot of complexity involved.
+You need to select the proper build tool, the proper state management library, the proper routing library, etc.. All these choices need to be made before you can start to implement anything.
+
+If you use server-side rendering with htmx, then you can start out with simple HTML and CSS.
+As the application grows, you can decide where you invest your [complexity budget](https://htmx.org/essays/complexity-budget/).
+
+NOTE: An exception to this is building something like Miro or Figma web applications.
+Those kind of applications really need to be SPAs.
+But those type of applications are exceptions to the common case of administrative business applications that many of us developers build.
+
+Adding a few htmx interactions where it most makes sense to the user is a trade-off that any team will want to make.
+The important part here is that the team is in control.
+They decide if the time and effort for the extra complexity is worth it.
+With an SPA, you have the complexity, whether you need or want it or not.
+
+== Conclusion
+
+Server-side rendering with progressive enhancement offers a compelling alternative to Single Page Applications for many business applications.
+While SPAs have their place, particularly in highly interactive applications like Miro or Figma, the added complexity they bring isn't always justified by the benefits they provide.
+
+By choosing server-side rendering with selective client-side enhancements through tools like htmx, teams can avoid many common challenges: versioning issues, duplicated validation logic, security concerns, and complex state management.
+This approach allows teams to start simple and incrementally add complexity where it provides clear value to users.
+
+Most importantly, this isn't about choosing between "modern" and "traditional" development - it's about selecting the right tools for your specific needs.
+Server-side rendering with progressive enhancement can provide excellent user experiences while keeping codebases maintainable and teams productive.
+Before automatically reaching for a SPA framework for your next project, consider whether a simpler approach might better serve your users and your team.
+
+The web platform continues to evolve with new capabilities, and frameworks like htmx show how we can leverage these capabilities while maintaining the simplicity and robustness that made the web successful in the first place.
+Sometimes, less really is more.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
