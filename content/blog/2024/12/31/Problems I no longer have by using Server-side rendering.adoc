@@ -205,7 +205,7 @@ Anybody that has worked on a real production-ready SPA application will tell you
 You need to select the proper build tool, the proper state management library, the proper routing library, etc.. All these choices need to be made before you can start to implement anything.
 
 If you use server-side rendering with htmx, then you can start out with simple HTML and CSS.
-As the application grows, you can decide where you invest your [complexity budget](https://htmx.org/essays/complexity-budget/).
+As the application grows, you can decide where you invest your https://htmx.org/essays/complexity-budget/[complexity budget].
 
 NOTE: An exception to this is building something like Miro or Figma web applications.
 Those kind of applications really need to be SPAs.
