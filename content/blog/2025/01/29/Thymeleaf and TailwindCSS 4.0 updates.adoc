@@ -1,0 +1,131 @@
+---
+title: "Thymeleaf and TailwindCSS 4.0 updates"
+date: 2025-01-29
+draft: false
+tags: ["tailwindcss", "thymeleaf", "ttcli"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+Last week https://tailwindcss.com/blog/tailwindcss-v4[Tailwind CSS v4.0] was released.
+This, unfortunately, broke the https://github.com/wimdeblauwe/ttcli[ttcli tool] to generate a Spring Boot with Thymeleaf project when you selected Tailwind CSS.
+
+<!--more-->
+
+== Ttcli update
+
+I have just released https://github.com/wimdeblauwe/ttcli/releases/tag/1.7.0[ttcli 1.7.0] that restored compatibility so Tailwind CSS can be selected again to generate a project.
+
+The `tailwind.config.js` file is no longer created as Tailwind CSS 4 now configures everything in CSS.
+
+You will notice that `application.css` now looks like this:
+
+[source,css]
+----
+@import "tailwindcss";
+@source "../../templates";
+----
+
+The first line is the replacement of the `@tailwind` directives used previously in Tailwind CSS 3:
+
+[source,css]
+----
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+----
+
+The `@source` directive helps Tailwind CSS 4 to discover where our HTML templates are to generate the proper CSS.
+
+Tailwind CSS plugins are now also configured in `application.css` using the `@plugin` directive:
+
+[source,css]
+----
+@import "tailwindcss";
+@source "../../templates";
+@plugin "@tailwindcss/forms";
+----
+
+== Upgrading to Tailwind CSS 4.0
+
+If you want to upgrade an existing project to Tailwind CSS 4.0, you can run their upgrade tool:
+
+[source]
+----
+npx @tailwindcss/upgrade@next
+----
+
+I have run it on the sources of the final application that you build in my https://www.wimdeblauwe.com/books/taming-thymeleaf/[Taming Thymeleaf] book.
+Most of the upgrade was successful.
+However, the postcss configuration could not be updated.
+You need to do the following manually:
+
+. Run `npm i -D @tailwindcss/postcss` to install the new Tailwind CSS postcss plugin.
+. Update `postcss.config.js` to this:
++
+[source,js]
+----
+const postcssConfig = {
+    plugins: [
+        require('@tailwindcss/postcss')
+    ]
+};
+
+// If we are in production mode, then add cssnano
+if (process.env.NODE_ENV === 'production') {
+    postcssConfig.plugins.push(
+        require('cssnano')({
+            // use the safe preset so that it doesn't
+            // mutate or remove code from our css
+            preset: 'default',
+        })
+    );
+}
+
+module.exports = postcssConfig;
+----
+
+== Book updates
+
+I will be releasing updates to my books https://www.wimdeblauwe.com/books/taming-thymeleaf/[Taming Thymeleaf] and https://www.wimdeblauwe.com/books/modern-frontends-with-htmx/[Modern frontends with htmx] later this year with updates for Tailwind CSS 4.0.
+
+Some tips for now:
+
+* Setting the `Inter var` font is now done in CSS:
++
+[source,css]
+----
+@theme {
+  --font-sans: Inter var, ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    'Segoe UI Symbol', 'Noto Color Emoji';
+}
+----
+* Plugins are configured in CSS:
++
+[source,css]
+----
+@import "tailwindcss";
+@source "../../templates";
+@plugin "@tailwindcss/forms";
+----
++
+Note that recent versions of https://tailwindui.com/[Tailwind UI] no longer require the https://github.com/tailwindlabs/tailwindcss-forms[tailwindcss-forms] plugin.
+
+I hope that the above information will provide the necessary guidance to use Tailwind CSS 4.0 already when learning from the books.
+
+== Conclusion
+
+Tailwind CSS 4.0 is the next generation of Tailwind CSS with quite some advantages.
+I look forward to discovering more about the new features in my Thymeleaf projects.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
