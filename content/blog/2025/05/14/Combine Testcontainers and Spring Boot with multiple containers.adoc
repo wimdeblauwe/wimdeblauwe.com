@@ -1,0 +1,549 @@
+---
+title: "Combine Testcontainers and Spring Boot with multiple containers"
+date: 2025-05-14
+draft: false
+tags: ["spring-boot", "testcontainers"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+Testcontainers is a great technology to run Docker containers of dependencies like a database or a messaging middleware like ActiveMq or Kafka.
+It might not immediately be obvious how to combine JUnit, Testcontainers and Spring Boot when you have multiple containers that your application needs.
+This blog post aims to provide some guidance on how to combine them.
+
+<!--more-->
+
+== Possible ways of working
+
+There are a few possible ways to start the Testcontainers.
+The https://testcontainers.com/guides/testcontainers-container-lifecycle/[Testcontainers container lifecycle management using JUnit 5] article on the testcontainers website already provides a good introduction.
+However, in combination with Spring Boot, there are 3 possible ways that have their advantages and disadvantages:
+
+* Use an `ApplicationContextInitializer`
+* Use a `@TestConfiguration` with Testcontainer instances as Spring beans
+* Use Docker Compose
+
+== Use an `ApplicationContextInitializer`
+
+This is how I have mostly used it so far.
+I learned it from the excellent https://rieckpil.de/courses/testing-spring-boot-applications-masterclass/[Testing Spring Boot Applications Masterclass] video course.
+
+This is the basic usage pattern:
+
+[source,java]
+----
+public class DatabaseInitializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
+  private static final PostgreSQLContainer CONTAINER = new PostgreSQLContainer(DockerImageName.parse("postgres:latest"));
+
+  static {
+    CONTAINER.start();
+  }
+
+  @Override
+  public void initialize(ConfigurableApplicationContext applicationContext) {
+    TestPropertyValues.of(
+        "spring.datasource.url=" + CONTAINER.getJdbcUrl(),
+        "spring.datasource.username=" + CONTAINER.getUsername(),
+        "spring.datasource.password=" + CONTAINER.getPassword()
+    ).applyTo(applicationContext);
+  }
+}
+----
+
+You define the Testcontainer you want to use and start it in a `static` block.
+This ensures the Docker image is started once at the start of the test suite and remains active for all the tests.
+In the `initialize` method, we ask the container for the necessary info so our Spring Boot application can connect to the database.
+
+You use this as follows in your test:
+
+[source,java]
+----
+@SpringBootTest
+@ContextConfiguration(initializers = DatabaseInitializer.class)
+class MyIntegrationTest {
+
+  @Test
+  void testSomething() {
+    // ...
+  }
+}
+----
+
+You can also use it in a `@DataJpaTest` test slice like this:
+
+[source,java]
+----
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@ContextConfiguration(initializers = DatabaseInitializer.class)
+class MyRepositoryTest {
+  ...
+}
+----
+
+You can create an `ApplicationContextInitializer` for each of the external systems you need to communicate with.
+Suppose your application uses PostgreSQL and Kafka, then you can create a 2nd initializer called `KafkaInitializer` for example and have both systems available in your integration test like this:
+
+[source,java]
+----
+@SpringBootTest
+@ContextConfiguration(initializers = {DatabaseInitializer.class, KafkaInitializer.class})
+class MyIntegrationTest {
+  // ...
+}
+----
+
+Advantages:
+
+* As the initializers are split up per external system, you can just configure the `DatabaseInitializer` for the `@DataJpaTest` test classes and all initializers for the `@SpringBootTest` integration tests.
+This ensures that if you want to run a single `@DataJpaTest`, it is faster as only the database needs to be started.
+
+Disadvantages:
+
+* You need to know the Spring Boot properties to fill them in using `TestPropertyValues`.
+* When developing locally and running a single test, the containers need to start every time, which might be a bit slow depending on the speed of your computer.
+When running all tests, the containers are only started once, so that is not really an issue.
+
+== Use a `@TestConfiguration` with Testcontainer instances as Spring beans
+
+Since Spring Boot 3.1, there is a better way to configure Testcontainers with Spring Boot.
+It is also the way that https://start.spring.io[Spring Initializr] configures the project if you select to use Testcontainers.
+
+Instead of creating an `ApplicationContextInitializer`, you create a `TestConfiguration`:
+
+[source,java]
+----
+@TestConfiguration(proxyBeanMethods = false)
+class TestcontainersConfiguration {
+
+  @Bean
+  @ServiceConnection
+  PostgreSQLContainer<?> postgresContainer() {
+    return new PostgreSQLContainer<>(DockerImageName.parse("postgres:latest"));
+  }
+
+}
+----
+
+You can use this as follows:
+
+[source,java]
+----
+@SpringBootTest
+@Import(TestcontainersConfiguration.class)
+class MyIntegrationTest {
+
+  @Test
+  void testSomething() {
+    // ...
+  }
+}
+----
+
+Note how we don't have to configure the Spring Boot database properties (`spring.datasource.url`, `spring.datasource.username`, `spring.datasource.password`) in this case.
+The `@ServiceConnection` annotation that is added on the `postgresContainer` bean takes care of this automatically.
+
+If you need to start multiple systems, you can either add them all to a single `@TestConfiguration` class, or split them up.
+
+This is an example of PostgreSQL with Kafka and the Kafka Schema Registry combined:
+
+[source,java]
+----
+@TestConfiguration(proxyBeanMethods = false)
+class TestcontainersConfiguration {
+
+  public static final int SCHEMA_REGISTRY_PORT = 8081;
+
+  @Bean
+  public Network network() {
+    return Network.newNetwork();
+  }
+
+  @Bean
+  @ServiceConnection
+  ConfluentKafkaContainer kafkaContainer(Network network) {
+    return new ConfluentKafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:latest"))
+        .withNetworkAliases("kafka")
+        .withNetwork(network);
+  }
+
+  @Bean
+  GenericContainer<?> schemaRegistryContainer(ConfluentKafkaContainer kafkaContainer,
+                                              Network network) {
+    return new GenericContainer<>(DockerImageName.parse("confluentinc/cp-schema-registry:latest"))
+        .withNetwork(network)
+        .dependsOn(kafkaContainer)
+        .withExposedPorts(SCHEMA_REGISTRY_PORT)
+        .withEnv("SCHEMA_REGISTRY_HOST_NAME", "schema-registry")
+        .withEnv("SCHEMA_REGISTRY_LISTENERS", "http://0.0.0.0:" + SCHEMA_REGISTRY_PORT)
+        .withEnv("SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS", "PLAINTEXT://" + kafkaContainer.getNetworkAliases().getFirst() + ":9093")
+        .withEnv("SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL", "PLAINTEXT")
+        .waitingFor(Wait.forHttp("/subjects").forStatusCode(200).withStartupTimeout(Duration.ofSeconds(10)));
+  }
+
+  @Bean
+  public DynamicPropertyRegistrar schemaRegistryProperties(GenericContainer<?> schemaRegistryContainer) {
+    return (properties) -> {
+      properties.add("spring.kafka.properties.schema.registry.url", () -> "http://" + schemaRegistryContainer.getHost() + ":" + schemaRegistryContainer.getMappedPort(SCHEMA_REGISTRY_PORT));
+    };
+  }
+
+  @Bean
+  public Consumer<String, String> testConsumer(ConfluentKafkaContainer kafka) {
+    Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(
+        kafka.getBootstrapServers(),
+        "testGroup",
+        "true");
+    consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+    Consumer<String, String> consumer = new DefaultKafkaConsumerFactory<>(
+        consumerProps,
+        new StringDeserializer(),
+        new StringDeserializer())
+        .createConsumer();
+    consumer.subscribe(List.of("bicycle-created"));
+    return consumer;
+  }
+
+  @Bean
+  @ServiceConnection
+  PostgreSQLContainer<?> postgresContainer() {
+    return new PostgreSQLContainer<>(DockerImageName.parse("postgres:latest"));
+  }
+
+}
+----
+
+We use `@ServiceConnection` for PostgreSQL and Kafka.
+For the schema registry, there is no support, so we need to use a `GenericContainer` and a `DynamicPropertyRegistrar` bean that fills in the necessary properties.
+Also note the use of the `Network` as a bean so that Kafka and the schema registry can communicate with each other.
+
+For `@DataJpaTest` test slices, you can create a separate `@TestConfiguration` class that only has the database so repository tests only need to start a single container instead of all containers:
+
+[source,java]
+----
+@TestConfiguration(proxyBeanMethods = false)
+class DatabaseTestcontainersConfiguration {
+
+  @Bean
+  @ServiceConnection
+  PostgreSQLContainer<?> postgresContainer() {
+    return new PostgreSQLContainer<>(DockerImageName.parse("postgres:latest"));
+  }
+
+}
+----
+
+Use it like this:
+
+[source,java]
+----
+@DataJpaTest
+@Import(DatabaseTestcontainersConfiguration.class)
+class MyRepositoryTest {
+  ...
+}
+----
+
+Advantages:
+
+* This setup has the advantage that you don't need to manually specify the properties for Spring Boot for supported containers.
+* You can start the application locally with the dependent containers started. Spring Initializr generates this class to run the main application with the dependent containers:
++
+[source,java]
+----
+public class TestDemoApplication {
+
+  public static void main(String[] args) {
+    SpringApplication.from(DemoApplication::main)
+      .with(TestcontainersConfiguration.class)
+      .run(args);
+  }
+
+}
+----
++
+This assumes your main application looks like this:
++
+[source,java]
+----
+@SpringBootApplication
+public class DemoApplication {
+
+  public static void main(String[] args) {
+    SpringApplication.run(DemoApplication.class, args);
+  }
+
+}
+----
+* You don't need to set `@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)` for `@DataJpaTest` as Spring Boot automatically configures this properly due to the `@ServiceConnection` annotation.
+
+Disadvantages:
+
+* With the `ApplicationContextInitializer` setup, you are sure that the docker images are only started once.
+This is even the case if you have multiple tests that cannot re-use the same https://docs.spring.io/spring-framework/reference/testing/testcontext-framework/ctx-management/caching.html[Spring test cache context].
+With this `@TestConfiguration` setup, the docker images will start again if there is no re-use of the Spring context between tests.
+You could argue that this disadvantage is actually an advantage since it becomes obvious that the context caching is not properly working, and you might want to check your tests.
+
+== Use Docker Compose
+
+A final way to tell Spring Boot to start some Docker containers for testing is creating a Docker Compose file and point to that file when the tests are starting.
+This is in fact a variation of the `ApplicationContextInitializer` method, but using Docker Compose instead of individual containers.
+
+For our PostgreSQL + Kafka example, we need for example this `compose.yaml` file (This is typically put in root of the project where your `pom.xml` is also located):
+
+[source,yaml]
+.compose.yaml
+----
+services:
+  postgres:
+    image: 'postgres:latest'
+    environment:
+      - 'POSTGRES_DB=mydatabase'
+      - 'POSTGRES_PASSWORD=secret'
+      - 'POSTGRES_USER=myuser'
+    ports:
+      - '5432'
+  kafka:
+    image: 'confluentinc/cp-kafka:latest'
+    ports:
+      - '9092:9092'
+    environment:
+      CLUSTER_ID: '4L6g3nShT-eMCtK--X86sw'
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka:29092,CONTROLLER://kafka:9093,PLAINTEXT_HOST://0.0.0.0:9092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9093'
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: [ 'CMD-SHELL', 'kafka-topics --bootstrap-server kafka:29092 --list || exit 1']
+      timeout: 4s
+      interval: 1s
+      retries: 3
+
+  schema-registry:
+    image: 'confluentinc/cp-schema-registry:latest'
+    ports:
+      - '8081:8081'
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: 'schema-registry'
+      SCHEMA_REGISTRY_LISTENERS: 'http://0.0.0.0:8081'
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'PLAINTEXT://kafka:29092'
+      SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL: 'PLAINTEXT'
+    healthcheck:
+      test: [ 'CMD-SHELL', 'curl --output /dev/null --silent --head --fail http://schema-registry:8081/subjects || exit 1']
+      timeout: 4s
+      interval: 1s
+      retries: 3
+----
+
+Notice how we need to set a lot more environment variables to ensure we can talk to Kafka and the schema registry from our host where the Spring Boot tests will run.
+
+The `ApplicationContextInitializer` to start the Docker Compose setup is this:
+
+[source,java]
+----
+public class IntegrationTestInitializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
+
+  private static final ComposeContainer CONTAINER = new ComposeContainer(new File("compose.yaml"))
+      .withExposedService("postgres", 5432)
+      .withExposedService("kafka", 9092)
+      .withExposedService("schema-registry", 8081)
+      .waitingFor("schema-registry", Wait.forHealthcheck())
+      .withTailChildContainers(true);
+
+  static {
+    CONTAINER.start();
+  }
+
+  @Override
+  public void initialize(ConfigurableApplicationContext applicationContext) {
+    TestPropertyValues.of(
+        // db properties
+        "spring.datasource.url=jdbc:postgresql://%s:%s/mydatabase".formatted(
+            CONTAINER.getServiceHost("postgres", 5432),
+            CONTAINER.getServicePort("postgres", 5432)),
+        "spring.datasource.username=myuser",
+        "spring.datasource.password=secret",
+        // kafka properties
+        "spring.kafka.bootstrap-servers=%s:%s".formatted(
+            CONTAINER.getServiceHost("kafka", 9092),
+            CONTAINER.getServicePort("kafka", 9092)),
+        "spring.kafka.properties.schema.registry.url=http://%s:%s".formatted(
+            CONTAINER.getServiceHost("schema-registry", 8081),
+            CONTAINER.getServicePort("schema-registry", 8081)
+        )
+    ).applyTo(applicationContext);
+  }
+}
+----
+
+We use `ComposeContainer` and point to the `compose.yaml` file we created.
+We also need to use `withExposedService` to get access to the individual container services.
+This allows to use `CONTAINER.getServiceHost` and `CONTAINER.getServicePort` to build up the values of the properties needed for Spring Boot connections.
+
+Advantages:
+
+* You can use the `compose.yaml` setup to run your application locally for local testing. With the `ApplicationContextInitializer` solution, this is not possible. In that case, you can add a `compose.yaml`, but it is independent of what the tests are running (which might be what you want sometimes).
+
+Disadvantages:
+
+* The ports on the host are hardcoded inside the `compose.yaml`.
+This means that on the Continuous Integration server, those ports have to be available, which might not always be the case.
+The other solutions use free random ports, so it is not an issue.
+* When using Testcontainers modules for the services that you use, they are automatically configured for integration testing use. When using Docker Compose, you need to figure out the good properties yourself (For instance, configure that there is only one replica for Kafka).
+* You need to build the connection string values yourself. When using the Testcontainers modules, there are methods you can call to get the values.
+
+== Container reuse during local development
+
+All provided solutions will start the container(s) once for the test suite and re-use them for all tests.
+When you develop locally and run a single test for the code you are working on, the containers are started and stopped each time.
+This can quickly slow down your development cycle if you are on a slower machine.
+For the `ApplicationContextInitializer` and `@TestConfiguration` solutions, there is an easy fix you can do.
+Add `.withReuse(true)` on each container like this:
+
+[source,java]
+----
+@TestConfiguration(proxyBeanMethods = false)
+class TestcontainersConfiguration {
+
+  @Bean
+  @ServiceConnection
+  PostgreSQLContainer<?> postgresContainer() {
+    return new PostgreSQLContainer<>(DockerImageName.parse("postgres:latest"))
+            .withReuse(true);
+  }
+
+}
+----
+
+After doing this, you also need to update `.testcontainers.properties` in your home directory to define `testcontainers.reuse.enable=true`.
+This indicates to testcontainers that this is a good environment for actually enable the reuse.
+Typically in your CI, this property is not set and the `.withReuse(true)` will not have any effect (which is what you want in CI).
+
+If you now run a test, the containers are started, but never stopped, even after the test is done.
+On the next run, the same container is reused so your test starts a lot faster.
+
+One thing you need to keep in mind is that there might be stale data in there.
+Or if you change a Flyway script, Flyway will fail since the old Flyway script is active.
+When this happens, manually delete the running container, and a new one will be started when you run the test again.
+
+== Container reuse during local development with Docker Compose
+
+If you use the Docker Compose solution, you need to do a lot more work.
+You want to have the option that either the Docker Compose containers are started automatically, or that they are not, since you manually started them before.
+
+A possible solution to this is using a system property.
+
+[source,java]
+----
+public class IntegrationTestInitializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
+
+  private static final ComposeContainer CONTAINER = new ComposeContainer(new File("compose.yaml"))
+      .withExposedService("postgres", 5432)
+      .withExposedService("kafka", 9092)
+      .withExposedService("schema-registry", 8081)
+      .waitingFor("schema-registry", Wait.forHealthcheck())
+      .withTailChildContainers(true);
+
+  static {
+    if( isAutoStartTestContainersEnabled() ) {
+      CONTAINER.start();
+    }
+  }
+
+  @Override
+  public void initialize(ConfigurableApplicationContext applicationContext) {
+    TestPropertyValues.of(
+        // db properties
+        "spring.datasource.url=jdbc:postgresql://%s:%s/mydatabase".formatted(
+            getPostgresHost(),
+            getPostgresPort()),
+        "spring.datasource.username=myuser",
+        "spring.datasource.password=secret",
+        // kafka properties
+        "spring.kafka.bootstrap-servers=%s:%s".formatted(
+            getKafkaHost(),
+            getKafkaPort()),
+        "spring.kafka.properties.schema.registry.url=http://%s:%s".formatted(
+            getSchemaRegistryHost(),
+            getSchemaRegistryPort()
+        )
+    ).applyTo(applicationContext);
+  }
+
+  private String getPostgresHost() {
+    if(!isAutoStartTestContainersEnabled()) {
+      return "localhost";
+    }
+
+    return CONTAINER.getServiceHost("postgres", 5432);
+  }
+
+  private Integer getPostgresPort() {
+    if(!isAutoStartTestContainersEnabled()) {
+      return 5432;
+    }
+
+    return CONTAINER.getServicePort("postgres", 5432);
+  }
+
+  // Other methods there to get host and port for Kafka and schema registry
+
+  private static boolean isAutoStartTestContainersEnabled() {
+    return Objects.equals(System.getProperty("auto-start-test-containers"), "true");
+  }
+
+}
+----
+
+By default, `isAutoStartTestContainersEnabled` returns false so that is straightforward to start a single test locally during development from your IDE where it is assumed that the Docker Compose containers are already running.
+
+For CI, you can configure the property in the `maven-surefire-plugin` so that the containers are started automatically:
+
+[source,xml]
+----
+<plugin>
+    <artifactId>maven-surefire-plugin</artifactId>
+    <configuration>
+      <redirectTestOutputToFile>true</redirectTestOutputToFile>
+      <printSummary>true</printSummary>
+      <systemPropertyVariables>
+        <auto-start-test-containers>true</auto-start-test-containers>
+      </systemPropertyVariables>
+    </configuration>
+</plugin>
+----
+
+== Conclusion
+
+We have explored three ways to combine Spring Boot and Testcontainers for writing integration tests.
+For me personally, I believe that using `@TestConfiguration` with the containers as beans and `@ServiceConnection` and using `withReuse(true)` seems to be the best way to combine Spring Boot and TestContainers.
+
+To get started practically, you can do the following:
+
+. Use Spring Initializr and be sure to select Testcontainers there.
+. Create separate `@TestConfiguration` classes for integration tests such as `@DataJpaTest` that only need the database and `@SpringBootTest` tests that need the full setup of all containers.
+. Add `withReuse(true)` if you have a slower machine and want to avoid waiting for container starts during local development.
+. Create your own meta-annotations that combine the Spring Boot test slices annotations with the `@TestConfiguration` that is needed to ensure maximum test context caching. See https://www.wimdeblauwe.com/blog/2020/04/17/spring-boot-test-slices-with-custom-annotations/[Spring Boot test slices with custom annotations] for more info.
+
+See https://github.com/wimdeblauwe/blog-example-code/tree/master/testcontainers-multiple-services/testcontainers-multiple-configurations[testcontainers-multiple-configurations] and https://github.com/wimdeblauwe/blog-example-code/tree/master/testcontainers-multiple-services/testcontainers-docker-compose[testcontainers-docker-compose] on GitHub for the full sources of these examples.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
