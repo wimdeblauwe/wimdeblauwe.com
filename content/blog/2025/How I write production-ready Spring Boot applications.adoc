@@ -1,0 +1,255 @@
+---
+title: "How I write production-ready Spring Boot applications"
+date: 2025-05-14
+draft: false
+tags: ["spring-boot", "architecture"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+This blog post will explain how I currently write Spring Boot applications.
+I have been writing Java for over 25 years, and most of that involved Spring and its ecosystem.
+I will talk about how I architect my app, package structure, naming conventions, etc.
+
+<!--more-->
+
+== Getting started
+
+A new project gets started in 2 possible ways:
+
+* https://start.spring.io[Spring Initializr]: When I am building a REST API application, I use https://start.spring.io to generate the project.
+* https://github.com/wimdeblauwe/ttcli[ttcli]: For projects using server-side rendering with Thymeleaf, I use the command line tool I purposely built for starting that type of projects.
+
+== High-level architecture
+
+The architecture leans heavily on the Domain Driven Design concept of the _Aggregate Root_.
+
+An _Aggregate_ is the collection of domain entities that together form a consistent whole.
+The entity inside the aggregate that is to be considered the most important entity is called the aggregate root.
+
+A simple example is an `Order` with `List<OrderEntry>`.
+The aggregate entails the 2 entities: `Order` and `OrderEntry`.
+The `Order` would be the aggregate root.
+
+If we apply this to the https://github.com/spring-projects/spring-petclinic[Petclinic] example, we see the following entities:
+
+* Owner
+* Pet
+* Visit
+* Veterinarian
+* Speciality
+
+Three of these entities are clearly aggregate roots: Owner, Visit and Veterinarian.
+
+An Owner can exist independently and would typically be the entry point for managing pet ownership.
+A Veterinarian should also be an aggregate root.
+Veterinarians exist independently in the business domain and have their own lifecycle.
+They can practice multiple specialties and see many pets, but they're not owned by or dependent on other entities.
+Visit is likely an aggregate root as well.
+While a Visit involves an Owner, a Pet and a Veterinarian, it represents a distinct business transaction with its own lifecycle, business rules, and consistency requirements (scheduling, billing, medical records, etc.).
+
+We can consider a Pet to be an aggregate root or part of the Owner aggregate.
+Remember:
+
+[quote,George Box]
+“All models are wrong, some are useful.”
+
+If we want to model that the Pet exists on its own, as an animal without being a Pet, we can consider the Pet an aggregate root.
+However, an animal is only a Pet when considered as such by an owner.
+For that reason, I would consider Pet to be part of the Owner aggregate.
+
+We will also consider Speciality to be an entity within the Veterinarian aggregate.
+
+This class diagram shows an overview:
+
+image::petclinic-aggregates.png[]
+
+Why do we need to know this?
+
+Because it defines how I build my packages.
+
+== Package structure
+
+I name my packages based on the aggregate roots of the application.
+
+In our example, this would be:
+
+[source]
+----
+com.company.app
+  + owner
+  + visit
+  + veterinarian
+----
+
+Inside each of those packages, I place all entities of the aggregate.
+
+For example, in `com.company.app.owner`, I would have the following classes:
+
+[source]
+----
+com.company.app.owner
+  + OwnerId
+  + Owner
+  + PetId
+  + Pet
+----
+
+[WARNING]
+====
+The classes here a domain models.
+They are not be confused with the `@Entity` JPA classes.
+While you can annotate them with JPA annotations, if you don't want to do an extra mapping, you don't need to.
+It is a trade-off you can do between keeping the domain pure and doing some extra work in the repository layer, or re-use the same classes to be the domain classes and the JPA entities.
+====
+
+For each of those packages, I add the following sub-packages: `repository`, `usecase`, and `web`.
+
+[source]
+----
+com.company.app.owner
+  * repository
+  * usecase
+  * web
+  + OwnerId
+  + Owner
+  + PetId
+  + Pet
+----
+
+Any of those sub-packages can use the domain classes, but the domain classes cannot use any of the classes from the subpackages.
+
+The `repository` package has all classes related to database interaction.
+It will either use the domain classes directly when using JPA, or there will be dedicated entity objects inside the `repository` package in case you want to do a mapping.
+If you don't use JPA, but `JdbcClient` for example, then the domain objects can remain "pure" and you put all JDBC-related code inside that package.
+
+The `usecase` package contains what is tradionally considered the _service layer_.
+But instead of one big service class, I like to split things up into smaller, focused classes.
+
+Finally, the `web` package will contain the controller and the _Data Transfer Objects_ (DTO) for the JSON serialization and deserialization.
+
+[NOTE]
+====
+There is no Kafka or message queue in the example.
+If there would be, I would probably add another sub-package called `messaging` where I would place the message listeners.
+====
+
+== Repository implementation
+
+If this is an application where I have full control over the database, I will usually put JPA annotations on the domain objects.
+In our Owner example, this would like as follows:
+
+[source,java]
+----
+package com.company.app.owner.repository;
+
+import io.github.wimdeblauwe.jpearl.AbstractEntity;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.OneToMany;
+import java.util.HashSet;
+
+@Entity
+public class Owner extends AbstractEntity<OwnerId> {
+
+  private String name;
+
+  @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
+  private Set<Pet> pets = new HashSet<>();
+
+  protected Owner() {}
+
+  public Owner(OwnerId id, String name, Set<Pet> pets) {
+    super(id);
+    this.name = name;
+    for(Pet pet : pets) {
+      addPet(pet);
+    }
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public void addPet(Pet pet) {
+    pet.setOwner(this);
+    pets.add(pet);
+  }
+}
+----
+
+With `OwnerId` defined as:
+
+[source,java]
+----
+package com.company.app.owner.repository;
+
+import io.github.wimdeblauwe.jpearl.AbstractEntityId;
+
+import java.util.UUID;
+
+public class OwnerId extends AbstractEntityId<UUID> {
+
+  protected OwnerId() {
+  }
+
+  public OwnerId(UUID id) {
+    super(id);
+  }
+}
+----
+
+The classes use the https://github.com/wimdeblauwe/jpearl[JPearl] library which makes it easy to work with value objects for the primary keys (e.g. `OwnerId`).
+
+Now, inside each `repository` package, I create the following structure:
+
+[source]
+----
+com.company.app.owner.repository
++ OwnerRepository
++ JpaOwnerRepository
++ SpringDataJpaOwnerRepository
+----
+
+The `OwnerRepository` is the most important interface.
+It is the public part, while the other two should be considered implementation details.
+
+[source,java]
+----
+package com.company.app.owner.repository;
+
+public interface OwnerRepository {
+  OwnerId nextId();
+
+  PetId nextPetId();
+
+  void save(Owner owner);
+
+  Optional<Owner> findById(OwnerId owner);
+}
+----
+
+By defining our repository like this, we hide the fact that we use Spring Data JPA.
+This has two advantages:
+
+* We can freely change our persistence technology. Suppose we want to use JDBC instead of Spring Data JPA. We can just add a different implementation in the `repository` package and the rest of the code base would not be affected.
+* We can write an in memory version of the repository which will be very convenient to write tests for our use cases.  If we directly would do `OwnerRepository extends CrudRepository<Owner, OwnerId>`, then we need to implement more methods than we would like to given all the methods that `CrudRepository` has.
+
+
+== Conclusion
+
+TODO
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].

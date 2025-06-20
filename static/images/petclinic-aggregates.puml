@@ -1,0 +1,12 @@
+@startuml
+
+class Owner <<AR>>
+class Pet <<AR>>
+class Visit <<AR>>
+class Veterinarian <<AR>>
+class Speciality <<E>>
+
+Owner *-- Pet
+Veterinarian *-- Speciality
+
+@enduml
