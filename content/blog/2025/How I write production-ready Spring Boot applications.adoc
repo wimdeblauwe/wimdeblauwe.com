@@ -107,7 +107,7 @@ com.company.app.owner
 [WARNING]
 ====
 The classes here a domain models.
-They are not be confused with the `@Entity` JPA classes.
+They are not to be confused with the `@Entity` JPA classes.
 While you can annotate them with JPA annotations if you don't want to do an extra mapping, you don't need to.
 It is a trade-off you can do between keeping the domain pure and doing some extra work in the repository layer, or re-use the same classes to be the domain classes and the JPA entities.
 ====
@@ -261,7 +261,7 @@ There are several advantages to this:
 
 * The JPA mapping is simpler. You don't need to think about `@OneToMany` or `@ManyToMany`, do you use unidirectional or bidirectional mapping, etc...
 * You avoid queries would get a large amount of data that maybe you don't need. In this example, if we mapped the complete `Owner`, we would retrieve all its `Pet` instances as well while we are only interested in the `Pet` that is part of the visit.
-* Less chance of competing updates. If you update the Veterinarian while updating visits of that Veterinarian, there is no chance that you will overwrite the Veterinarian change by the old data that is part of the Visit you are updating.
+* Less chance of competing updates. If you update a Veterinarian while simultaneously updating their visits, you won't accidentally overwrite the Veterinarian changes with stale data from the Visit update.
 
 The only drawback is that you need to do extra database calls in case you want more information from the entities that are referenced by id only.
 This drawback can be mitigated by using https://docs.spring.io/spring-data/jpa/reference/repositories/projections.html[projections] for example, to retrieve the id and the name if that makes sense for the use case.
@@ -275,6 +275,8 @@ com.company.app.owner.repository
 + JpaOwnerRepository
 + SpringDataJpaOwnerRepository
 ----
+
+This three-layer approach separates concerns cleanly: the public interface `OwnerRepository` defines what operations are available, the implementation handles the business logic of those operations, and the Spring Data interface provides the actual database interactions. This separation makes the code more testable and allows you to swap persistence technologies without affecting the rest of your application.
 
 The `OwnerRepository` is the most important interface.
 It is the public part, while the other two should be considered implementation details.
@@ -307,9 +309,9 @@ We can just add a different implementation in the `repository` package and the r
 * We can write an in memory version of the repository which will be very convenient to write tests for our use cases.
 If we directly would do `OwnerRepository extends CrudRepository<Owner, OwnerId>`, then we need to implement more methods than we would like to given all the methods that `CrudRepository` has.
 
-The `nextId` and `nextPetId` methods allow getting a primary key from the repository.
-If the `OwnerId` for example is using a `UUID`, then this is not really needed, but it allows to be ready in case we change our minds.
-We might want to use a database sequence and use `Long`, or use a https://vladmihalcea.com/uuid-database-primary-key/[Time-sorted Identifier] for better performance.
+What you might not recognize are the `nextId` and `nextPetId` methods. They allow getting a primary key from the repository.
+If the `OwnerId` for example is using a `UUID` internally, then this is not really needed, but it allows to be ready in case we change our minds.
+We might want to use a `Long` taken from a database sequence, or use a https://vladmihalcea.com/uuid-database-primary-key/[Time-sorted Identifier] for better performance.
 By getting the id from the repository, these kind of changes are fairly easy to implement.
 
 [NOTE]
@@ -327,7 +329,8 @@ The `JpaOwnerRepository` contains the implementation of the `OwnerRepository` in
 ----
 import java.util.UUID;
 
-public class JpaOwnerRepository implements OwnerRepository {
+@Repository
+class JpaOwnerRepository implements OwnerRepository {
 
   private final SpringDataJpaOwnerRepository repository;
 
@@ -372,7 +375,7 @@ As you can see, the heavy lifting is delegated to the `SpringDataJpaOwnerReposit
 
 [source,java]
 ----
-interface SpringDataJpaOwnerRepository extends PagingAndSortingRepository<Owner, OwnerId> {
+interface SpringDataJpaOwnerRepository extends CrudRepository<Owner, OwnerId>, PagingAndSortingRepository<Owner, OwnerId> {
 
 }
 ----
@@ -381,7 +384,7 @@ Let's move up to the next layer: use cases.
 
 === Use cases
 
-Using use cases instead a single service class is a concept coming from https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html[Clean Architecture].
+Using use cases instead of a single service class is a concept coming from https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html[Clean Architecture].
 
 For a simple https://en.wikipedia.org/wiki/Create,_read,_update_and_delete[CRUD] application, these would be something like:
 
@@ -390,7 +393,7 @@ For a simple https://en.wikipedia.org/wiki/Create,_read,_update_and_delete[CRUD]
 * `GetOwner`
 * `DeleteOwner`
 
-We can get a bit more creative and use something like `RegisterOwner` or `RegisterOwnerWithPet` or `RegisterPetToExistingOwner`, but the basic idea is the same: the usecase class does one action (as seen from the user's point-of-view).
+We can get a bit more creative and use something like `RegisterOwner` or `RegisterOwnerWithPet` or `RegisterPetToExistingOwner`, but the basic idea is the same: the use case class does one action (as seen from the user's point-of-view).
 
 They have a single method `execute`.
 This method can be `void`, or return something.
@@ -421,6 +424,8 @@ public class RegisterOwnerWithPet {
     owner.addPet(pet);
 
     repository.save(owner);
+
+    return owner;
   }
 }
 ----
@@ -484,7 +489,7 @@ Inside the `web` sub-package, I will put the `RestController` (or `Controller` f
 I do like a DTO as a construct, but I really don't like putting it in the name of a class as a suffix.
 You also don't use `OwnerRepositoryInterface` or `OwnerClass` as names.
 
-I use `...Request` for DTOs that are used as request bodies and `...Reponse` for those that are used as response bodies.
+Instead, I use `...Request` for DTOs that are used as request bodies and `...Reponse` for those that are used as response bodies.
 Keeping up with our "register owner with pet" example, the REST controller would be something like this:
 
 [source,java]
@@ -559,6 +564,7 @@ If there are no validation issues, we convert the request into a parameters obje
 In this example, the conversion to the `RegisterOwnerWithPetParameters` object is trivial, but when more value objects are used, there will be slightly more code involved.
 The rule to remember is that parameter objects are defined in terms of the domain and should use all the richness like Value Objects.
 The request objects are defined in terms of the JSON they represent.
+For that reason, while they look similar, they are two distinct things that warrant to have their own class.
 
 The result of the use case is converted into a response via a static factory method on `OwnerResponse`:
 
@@ -588,14 +594,99 @@ This usually means unwrapping value objects like calling the `value()` method on
 
 === Infrastructure code
 
+What about the code that is not relevant to a single aggregate root, but rather is setup to  the complete application?
+For that code, I always have an `infrastructure` package at the level of the aggregate root packages:
 
+[source]
+----
+com.company.app
+  + infrastructure
+  + owner
+  + visit
+  + veterinarian
+----
 
-== Testing
+Some typical layout of the `infrastructure` package would be this:
 
+[source]
+----
+coim.company.app.infrastructure
+  + security
+    + WebSecurityConfiguration --> Spring Security configuration
+  + stereotype
+    + UseCase
+  + util
+    + ObjectUtils --> Some helper methods.
+  + web
+    + WebMvcConfiguration
+----
 
+[TIP]
+====
+One helper method I like to add to my `ObjectUtils` is something that applies a Function to a possible `null` instance. The code for this is:
+
+[source,java]
+----
+  public static @Nullable <A, T> T transformOrNull(@Nullable A obj,
+                                                   Function<A, T> transformer) {
+    Assert.notNull(transformer, "Transformer cannot be null");
+
+    if (Objects.isNull(obj)) {
+      return null;
+    }
+
+    return transformer.apply(obj);
+  }
+----
+
+It allows to use this:
+
+[source,java]
+----
+String name = transformOrNull(owner, Owner::name);
+----
+
+Alternativly, you can use `Optional.ofNullable(owner).map(Owner::name)`, but that just creates a `Optional` for no good reason.
+====
+
+Here's a suggested chapter you could add before the conclusion:
+
+== Why Not Hexagonal Architecture?
+
+You might be wondering why I don't use Hexagonal Architecture (also known as Ports and Adapters), especially since my approach shares some similarities with its layered structure.
+
+While Hexagonal Architecture is a solid architectural pattern, I find it introduces more ceremony than necessary for most Spring Boot applications. Here's why I prefer the approach outlined in this post:
+
+* **Reduced Abstraction Overhead**: Hexagonal Architecture requires defining ports (interfaces) for every external dependency - databases, message queues, external APIs, etc. While this provides maximum flexibility, it often results in interfaces that have only one implementation. My approach uses abstractions where they add real value (like the repository interface) but doesn't force abstraction everywhere.
+
+* **Simpler Mental Model**: Developers can quickly understand the three-layer structure within each aggregate (domain, use cases, infrastructure concerns). Hexagonal Architecture's inside-out thinking and port/adapter terminology can be harder for teams to grasp and apply consistently.
+
+* **Less Boilerplate**: You don't need to create adapter classes for every external integration. Spring's built-in abstractions (like `@Repository`, `@RestController`) serve as sufficient boundaries in most cases.
+
+* **Focused Domain Protection**: My approach still protects the domain layer - domain objects can't depend on infrastructure concerns. But it does so without the extensive interface definitions that Hexagonal Architecture requires.
+
+That said, if you like Hexagonal Architecture, by all means use it. But for typical Spring Boot applications, the approach I've outlined provides the right balance of structure and simplicity in my opinion.
+
+For me, it hits the sweet spot between under-architecture (everything in one layer) and over-architecture (too many abstractions) for most Spring Boot projects I've encountered.
 
 == Conclusion
 
-TODO
+This architectural approach has served me well across numerous Spring Boot projects over the years. By organizing code around aggregate roots and separating concerns into distinct layers, we achieve several key benefits:
+
+* **Maintainability**: Each aggregate is self-contained with clear boundaries. Changes to one aggregate rarely affect others, making the codebase easier to modify and extend.
+
+* **Testability**: The separation between domain logic, use cases, and infrastructure allows for focused unit tests. You can test business logic without databases, and test repositories without web controllers.
+
+* **Flexibility**: The abstraction layers mean you can swap out persistence technologies, change web frameworks, or add new interfaces (like message queues) without major refactoring.
+
+* **Team Productivity**: New team members can quickly understand the structure and contribute to specific aggregates without needing to grasp the entire system.
+
+* **Domain Focus**: By keeping domain objects at the center and pushing technical concerns to the edges, the code better reflects the business domain it serves.
+
+While this approach requires more initial setup than a typical Spring Boot tutorial, the investment pays dividends as your application grows in complexity. The structure scales well from small applications to large enterprise systems.
+
+I find that this architecture works equally well for CRUD applications as well. Even simple create, read, update, and delete operations benefit from the clear structure and separation of concerns, making them easier to maintain and extend over time.
+
+The key is to be intentional about your architectural decisions and consistent in their application. Start with these patterns, adapt them to your specific needs, and don't be afraid to evolve them as you learn what works best for your team and domain.
 
 If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
