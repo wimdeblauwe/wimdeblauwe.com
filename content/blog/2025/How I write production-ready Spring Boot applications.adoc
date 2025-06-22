@@ -1,6 +1,6 @@
 ---
 title: "How I write production-ready Spring Boot applications"
-date: 2025-05-14
+date: 2025-06-22
 draft: false
 tags: ["spring-boot", "architecture"]
 keywords: []
@@ -39,7 +39,7 @@ A simple example is an `Order` with `List<OrderEntry>`.
 The aggregate entails the 2 entities: `Order` and `OrderEntry`.
 The `Order` would be the aggregate root.
 
-If we apply this to the https://github.com/spring-projects/spring-petclinic[Petclinic] example, we see the following entities:
+If we apply this to the well-known https://github.com/spring-projects/spring-petclinic[Petclinic] example, we see the following entities:
 
 * Owner
 * Pet
@@ -56,7 +56,8 @@ They can practice multiple specialties and see many pets, but they're not owned 
 Visit is likely an aggregate root as well.
 While a Visit involves an Owner, a Pet and a Veterinarian, it represents a distinct business transaction with its own lifecycle, business rules, and consistency requirements (scheduling, billing, medical records, etc.).
 
-We can consider a Pet to be an aggregate root or part of the Owner aggregate.
+For the Pet entity, things are less clear.
+We can consider a Pet to be a separate aggregate root or part of the Owner aggregate.
 Remember:
 
 [quote,George Box]
@@ -107,7 +108,7 @@ com.company.app.owner
 ====
 The classes here a domain models.
 They are not be confused with the `@Entity` JPA classes.
-While you can annotate them with JPA annotations, if you don't want to do an extra mapping, you don't need to.
+While you can annotate them with JPA annotations if you don't want to do an extra mapping, you don't need to.
 It is a trade-off you can do between keeping the domain pure and doing some extra work in the repository layer, or re-use the same classes to be the domain classes and the JPA entities.
 ====
 
@@ -142,7 +143,9 @@ There is no Kafka or message queue in the example.
 If there would be, I would probably add another sub-package called `messaging` where I would place the message listeners.
 ====
 
-== Repository implementation
+== Production code
+
+=== Repository implementation
 
 If this is an application where I have full control over the database, I will usually put JPA annotations on the domain objects.
 In our Owner example, this would like as follows:
@@ -212,6 +215,56 @@ public class OwnerId extends AbstractEntityId<UUID> {
 ----
 
 The classes use the https://github.com/wimdeblauwe/jpearl[JPearl] library which makes it easy to work with value objects for the primary keys (e.g. `OwnerId`).
+The library also assumes that the primary key is passed into the constructor so you never have an object that is different depending on whether it has been saved in the database.
+It makes it easier to use the object as a domain object if you are not using it as a JPA entity, and it makes the equals and hashcode implementations trivial.
+
+The `AbstractEntity` class defines `equals()` and `hashCode()` by comparing the `id` only which is the correct way for an entity.
+If you need to implement equals and hashcode yourself on your JPA entities, be sure to read https://vladmihalcea.com/how-to-implement-equals-and-hashcode-using-the-jpa-entity-identifier/[How to implement equals and hashCode using the JPA entity identifier] and https://vladmihalcea.com/the-best-way-to-implement-equals-hashcode-and-tostring-with-jpa-and-hibernate/[The best way to implement equals, hashCode, and toString with JPA and Hibernate].
+
+Because `Pet` is considered to be part of the `Owner` aggregate root, we can use the `@OneToMany` JPA annotation to map the full `Pet` objects from the `Owner`.
+If we have references between aggregate roots, then we should link by id only!
+As an example, this is how the `Visit` aggregate root could look like:
+
+[source,java]
+----
+@Entity
+public class Visit extends AbstractEntity<VisitId> {
+
+  private VeterinarianId veterinarianId;
+
+  private OwnerId ownerId;
+
+  private PetId petId;
+
+  private Instant appointmentTime;
+
+  protected Visit() {
+  }
+
+  public Visit(VisitId id,
+               VeterinarianId veterinarianId,
+               OwnerId ownerId,
+               PetId petId,
+               Instant appointmentTime) {
+    super(id);
+    this.veterinarianId = veterinarianId;
+    this.ownerId = ownerId;
+    this.petId = petId;
+    this.appointmentTime = appointmentTime;
+  }
+
+  // ....
+}
+----
+
+There are several advantages to this:
+
+* The JPA mapping is simpler. You don't need to think about `@OneToMany` or `@ManyToMany`, do you use unidirectional or bidirectional mapping, etc...
+* You avoid queries would get a large amount of data that maybe you don't need. In this example, if we mapped the complete `Owner`, we would retrieve all its `Pet` instances as well while we are only interested in the `Pet` that is part of the visit.
+* Less chance of competing updates. If you update the Veterinarian while updating visits of that Veterinarian, there is no chance that you will overwrite the Veterinarian change by the old data that is part of the Visit you are updating.
+
+The only drawback is that you need to do extra database calls in case you want more information from the entities that are referenced by id only.
+This drawback can be mitigated by using https://docs.spring.io/spring-data/jpa/reference/repositories/projections.html[projections] for example, to retrieve the id and the name if that makes sense for the use case.
 
 Now, inside each `repository` package, I create the following structure:
 
@@ -237,15 +290,308 @@ public interface OwnerRepository {
 
   void save(Owner owner);
 
-  Optional<Owner> findById(OwnerId owner);
+  Optional<Owner> findById(OwnerId id);
+
+  Owner getById(OwnerId id);
+
+  Page<Owner> findAll(Pageable pageable);
 }
 ----
 
 By defining our repository like this, we hide the fact that we use Spring Data JPA.
 This has two advantages:
 
-* We can freely change our persistence technology. Suppose we want to use JDBC instead of Spring Data JPA. We can just add a different implementation in the `repository` package and the rest of the code base would not be affected.
-* We can write an in memory version of the repository which will be very convenient to write tests for our use cases.  If we directly would do `OwnerRepository extends CrudRepository<Owner, OwnerId>`, then we need to implement more methods than we would like to given all the methods that `CrudRepository` has.
+* We can freely change our persistence technology.
+Suppose we want to use JDBC instead of Spring Data JPA.
+We can just add a different implementation in the `repository` package and the rest of the code base would not be affected.
+* We can write an in memory version of the repository which will be very convenient to write tests for our use cases.
+If we directly would do `OwnerRepository extends CrudRepository<Owner, OwnerId>`, then we need to implement more methods than we would like to given all the methods that `CrudRepository` has.
+
+The `nextId` and `nextPetId` methods allow getting a primary key from the repository.
+If the `OwnerId` for example is using a `UUID`, then this is not really needed, but it allows to be ready in case we change our minds.
+We might want to use a database sequence and use `Long`, or use a https://vladmihalcea.com/uuid-database-primary-key/[Time-sorted Identifier] for better performance.
+By getting the id from the repository, these kind of changes are fairly easy to implement.
+
+[NOTE]
+====
+If you don't want to use early primary key generation, but more traditional ways of having the database set the primary key on save, you can still use this architecture.
+You just don't have those `nextId()` methods on your repository in that case.
+====
+
+One last thing about my repository interface is that I usually have `findBy...` methods that return `Optional` and also `getBy..` methods that will throw an exception when not found.
+It avoids having these duplicate `orElseThrow(...)` statements in my use cases.
+
+The `JpaOwnerRepository` contains the implementation of the `OwnerRepository` interface:
+
+[source,java]
+----
+import java.util.UUID;
+
+public class JpaOwnerRepository implements OwnerRepository {
+
+  private final SpringDataJpaOwnerRepository repository;
+
+  public JpaOwnerRepository(SpringDataJpaOwnerRepository repository) {
+    this.repository = repository;
+  }
+
+  @Override
+  public OwnerId nextId() {
+    return new OwnerId(UUID.randomUUID());
+  }
+
+  @Override
+  public PetId nextPetId() {
+    return new PetId(UUID.randomUUID());
+  }
+
+  @Override
+  void save(Owner owner) {
+    repository.save(owner);
+  }
+
+  @Override
+  Optional<Owner> findById(OwnerId id) {
+    return repository.findById(id);
+  }
+
+  @Override
+  Owner getById(OwnerId id) {
+    return repository.findById(id)
+      .orElseThrow(new OwnerNotFoundException(id));
+  }
+
+  @Override
+  Page<Owner> findAll(Pageable pageable) {
+    return repository.findAll(pageable);
+  }
+}
+----
+
+As you can see, the heavy lifting is delegated to the `SpringDataJpaOwnerRepository` which looks like this:
+
+[source,java]
+----
+interface SpringDataJpaOwnerRepository extends PagingAndSortingRepository<Owner, OwnerId> {
+
+}
+----
+
+Let's move up to the next layer: use cases.
+
+=== Use cases
+
+Using use cases instead a single service class is a concept coming from https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html[Clean Architecture].
+
+For a simple https://en.wikipedia.org/wiki/Create,_read,_update_and_delete[CRUD] application, these would be something like:
+
+* `CreateOwner`
+* `UpdateOwner`
+* `GetOwner`
+* `DeleteOwner`
+
+We can get a bit more creative and use something like `RegisterOwner` or `RegisterOwnerWithPet` or `RegisterPetToExistingOwner`, but the basic idea is the same: the usecase class does one action (as seen from the user's point-of-view).
+
+They have a single method `execute`.
+This method can be `void`, or return something.
+It can also have no parameters, or it can have a few.
+
+As an example, this is the `RegisterOwnerWithPet` use case:
+
+[source,java]
+----
+package com.company.app.owner.usecase;
+
+@UseCase
+public class RegisterOwnerWithPet {
+
+  private final OwnerRepository repository;
+
+  public RegisterOwnerWithPet(OwnerRepository repository) {
+    this.repository = repository;
+  }
+
+  public Owner execute(RegisterOwnerWithPetParameters parameters) {
+    OwnerId id = repository.nextId();
+    Owner owner = new Owner(id, parameters.ownerName());
+
+    PetId id = repository.nextPetId();
+    Pet pet = new Pet(id, parameters.petName());
+
+    owner.addPet(pet);
+
+    repository.save(owner);
+  }
+}
+----
+
+The `@UseCase` annotation is a custom annotation that combines `@Component` with `@Transactional`:
+
+[source,java]
+----
+import org.springframework.core.annotation.AliasFor;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Component
+@Transactional
+public @interface UseCase {
+
+  @AliasFor(annotation = Transactional.class, attribute = "readOnly")
+  boolean readOnly() default false;
+}
+----
+
+The `RegisterOwnerWithPetParameters` is a record that has already validated all parts that it contains.
+The nice thing about this is that a use case does not need to worry if there are things in the parameters that are not valid.
+Like being `null` if they should not.
+When we get to the web layer, we will see how we do the validation there and convert to such a parameters object.
+
+[NOTE]
+.Command
+====
+I have seen people use `...Command` classes for what I call the parameters (See https://medium.com/@roshikanayanadhara/clean-architecture-in-net-a-practical-guide-with-examples-817568b3f42e[Clean Architecture in .NET: A Practical Guide with Examples] for an example).
+I find command confusing as a command seems like something that does something, which is not the case.
+Calling the set of parameters `...Parameters` makes more sense to me.
+====
+
+This is the code of the `RegisterOwnerWithPetParameters` record:
+
+[source,java]
+----
+record RegisterOwnerWithPetParameters(String ownerName, String petName) {
+  RegisterOwnerWithPetParameters {
+    Assert.hasText(ownerName, "The RegisterOwnerWithPetParameters ownerName should have text");
+    Assert.hasText(petName, "The RegisterOwnerWithPetParameters petName should have text");
+  }
+}
+----
+
+Using Spring's `Assert` methods, we fail quickly in case the parts that make up the parameters are invalid.
+
+Now we can again go up to the next layer: the web layer
+
+=== Controllers on the web layer
+
+Inside the `web` sub-package, I will put the `RestController` (or `Controller` for a Thymeleaf project) and any DTOs that are required.
+I do like a DTO as a construct, but I really don't like putting it in the name of a class as a suffix.
+You also don't use `OwnerRepositoryInterface` or `OwnerClass` as names.
+
+I use `...Request` for DTOs that are used as request bodies and `...Reponse` for those that are used as response bodies.
+Keeping up with our "register owner with pet" example, the REST controller would be something like this:
+
+[source,java]
+----
+@RestController
+@RequestMapping("/api/owners")
+public class OwnerController {
+  private final RegisterOwnerWithPet registerOwnerWithPet;
+  // There would be more use cases here
+
+  public OwnerController(RegisterOwnerWithPet registerOwnerWithPet) {
+    this.registerOwnerWithPet = registerOwnerWithPet;
+  }
+
+  @PostMapping
+  public OwnerResponse registerOwnerWithPet(@Valid @RequestBody RegisterOwnerWithPetRequest request) {
+
+    RegisterOwnerWithPetParameters parameters = request.toParameters();
+    Owner owner = registerOwnerWithPet.execute(parameters);
+
+    return OwnerResponse.of(owner);
+  }
+
+  // More controller methods here
+}
+----
+
+The `RegisterOwnerWithPetRequest` looks quite similar to `RegisterOwnerWithPetParameters`:
+
+[source,java]
+----
+record RegisterOwnerWithPetRequest(
+    @NotBlank String ownerName,
+    @NotBlank String petName){
+
+  RegisterOwnerWithPetParameters toParameters() {
+    return new RegisterOwnerWithPetParameters(ownerName, petName);
+  }
+}
+----
+
+The main difference is that we use validation annotations here.
+This allows returning a nice error message to the caller in case there are validation issues.
+
+By using my https://github.com/wimdeblauwe/error-handling-spring-boot-starter[error-handling-spring-boot-starter] library, I just need to add the dependency and I get something like this out of the box:
+
+[source,json]
+----
+{
+  "code": "VALIDATION_FAILED",
+  "message": "Validation failed for object='request'. Error count: 2",
+  "fieldErrors": [
+    {
+      "code": "REQUIRED_NOT_BLANK",
+      "property": "ownerName",
+      "message": "must not be blank",
+      "rejectedValue": "",
+      "path": "ownerName"
+    },
+    {
+      "code": "REQUIRED_NOT_BLANK",
+      "property": "petName",
+      "message": "must not be blank",
+      "rejectedValue": null,
+      "path": "petName"
+    }
+  ]
+}
+----
+
+If there are no validation issues, we convert the request into a parameters object and pass it to the use case.
+In this example, the conversion to the `RegisterOwnerWithPetParameters` object is trivial, but when more value objects are used, there will be slightly more code involved.
+The rule to remember is that parameter objects are defined in terms of the domain and should use all the richness like Value Objects.
+The request objects are defined in terms of the JSON they represent.
+
+The result of the use case is converted into a response via a static factory method on `OwnerResponse`:
+
+[source,java]
+----
+record OwnerResponse(UUID id, String ownerName, List<String> petNames) {
+
+  static OwnerResponse of(Owner owner) {
+    return new OwnerResponse(
+        owner.id().value(),
+        owner.name(),
+        owner.pets().stream().map(Pet::name).toList()
+    );
+  }
+}
+----
+
+[NOTE]
+====
+Something I see a lot in tutorials and also in real code is the use of a single DTO to be used as a request body for creating _and_ updating something, and also use that as a response object.
+This is not a good idea as most of the time, you don't have exactly the same fields used in those 3 cases.
+By using `...Response` and `...Request` naming, you avoid this problem as many people will be hesitant to use something called `OwnerResponse` as the request body in the controller.
+====
+
+In the `OwnerResponse`, I use basic Java classes which serialize easily.
+This usually means unwrapping value objects like calling the `value()` method on `OwnerId()`.
+
+=== Infrastructure code
+
+
+
+== Testing
+
 
 
 == Conclusion
