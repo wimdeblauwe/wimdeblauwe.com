@@ -111,7 +111,8 @@ Value objects like `Mass` eliminate the guesswork around units.
 Without them, you're left wondering "what unit did we choose for the pet's mass?" when you see a simple `double mass` property.
 The alternative is awkward naming like `double massInKg` or `double massInGrams`.
 
-Another advantage of the `Mass` value object is guaranteed validity. You know the mass is already valid (for example, not a negative number) because the value object validates this during construction.
+Another advantage of the `Mass` value object is guaranteed validity.
+You know the mass is already valid (for example, not a negative number) because the value object validates this during construction.
 
 [WARNING]
 ====
@@ -290,6 +291,13 @@ com.company.app.owner.repository
 
 This three-layer approach separates concerns cleanly: the public interface `OwnerRepository` defines what operations are available, the implementation handles the business logic of those operations, and the Spring Data interface provides the actual database interactions.
 This separation makes the code more testable and allows you to swap persistence technologies without affecting the rest of your application.
+
+[NOTE]
+.Only aggregate roots get repositories
+====
+Because `Pet` is an entity within the `Owner` aggregate, we don't create a `PetRepository`.
+All database interactions for Pets will be done via the `OwnerRepository`.
+====
 
 The `OwnerRepository` is the most important interface.
 It is the public part, while the other two should be considered implementation details.
@@ -494,6 +502,18 @@ record RegisterOwnerWithPetParameters(String ownerName, String petName) {
 ----
 
 Using Spring's `Assert` methods, we fail quickly in case the parts that make up the parameters are invalid.
+
+[NOTE]
+====
+One thing that comes up frequently when working with use cases is "Can/Should a use case call other use cases?".
+As a rule of thumb, I try to avoid this.
+This keeps use cases focused on a single responsibility and makes them easier to test independently.
+When there's common code, I extract it into helper components instead.
+
+For example, suppose you have an application that displays sports scores.
+You might have use cases like `GetScoreForGame` and `GetScoresForTeamInSeason`.
+You might be tempted to call the `GetScoreForGame` use case from within `GetScoresForTeamInSeason`, but it's better to extract a `ScoreCalculator` helper component that both use cases can depend on.
+====
 
 Now we can again go up to the next layer: the web layer
 
