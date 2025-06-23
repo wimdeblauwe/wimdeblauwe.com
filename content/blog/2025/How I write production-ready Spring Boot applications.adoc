@@ -158,6 +158,8 @@ If there would be, I would probably add another sub-package called `messaging` w
 === Repository implementation
 
 If this is an application where I have full control over the database, I will usually put JPA annotations on the domain objects.
+If you don't want to do this and keep your domain "pure", then you can create extra JPA specific objects (e.g. `OwnerEntity`, `PetEntity`) in the `repository` package. See https://reflectoring.io/book/[Get Your Hands Dirty on Clean Architecture] for more information on the various ways that you can do mapping between application layers.
+
 In our Owner example, this would like as follows:
 
 [source,java]
