@@ -111,16 +111,27 @@ Value objects like `Mass` eliminate the guesswork around units.
 Without them, you're left wondering "what unit did we choose for the pet's mass?" when you see a simple `double mass` property.
 The alternative is awkward naming like `double massInKg` or `double massInGrams`.
 
+The code for the `Mass` class could look something like this:
+
+[source,java]
+----
+public record Mass(int value) {
+  public Mass {
+    Assert.isTrue( value > 0, "The Mass value should be a positive number" );
+  }
+
+  public static Mass ofGrams(int value) {
+    return new Mass(value);
+  }
+
+  public static Mass ofKg(double value) {
+    return new Mass((int)(value * 1000));
+  }
+}
+----
+
 Another advantage of the `Mass` value object is guaranteed validity.
 You know the mass is already valid (for example, not a negative number) because the value object validates this during construction.
-
-[WARNING]
-====
-The classes here a domain models.
-They are not to be confused with the `@Entity` JPA classes.
-While you can annotate them with JPA annotations if you don't want to do an extra mapping, you don't need to.
-It is a trade-off you can do between keeping the domain pure and doing some extra work in the repository layer, or re-use the same classes to be the domain classes and the JPA entities.
-====
 
 For each of those packages, I add the following sub-packages: `repository`, `usecase`, and `web`.
 
