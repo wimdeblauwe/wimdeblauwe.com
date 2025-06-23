@@ -564,10 +564,14 @@ The `RegisterOwnerWithPetRequest` looks quite similar to `RegisterOwnerWithPetPa
 ----
 record RegisterOwnerWithPetRequest(
     @NotBlank String ownerName,
-    @NotBlank String petName){
+    @NotBlank String petName,
+    @Positive int petWeight) {
 
   RegisterOwnerWithPetParameters toParameters() {
-    return new RegisterOwnerWithPetParameters(ownerName, petName);
+    return new RegisterOwnerWithPetParameters(
+        ownerName,
+        petName,
+        Mass.ofGrams(petWeight));
   }
 }
 ----
