@@ -443,7 +443,7 @@ public class RegisterOwnerWithPet {
     Owner owner = new Owner(id, parameters.ownerName());
 
     PetId id = repository.nextPetId();
-    Pet pet = new Pet(id, parameters.petName());
+    Pet pet = new Pet(id, parameters.petName(), parameters.petWeight());
 
     owner.addPet(pet);
 
@@ -479,6 +479,7 @@ public @interface UseCase {
 ----
 
 The `RegisterOwnerWithPetParameters` is a record that has already validated all parts that it contains.
+It is part of the domain and should use domain objects and/or value objects when possible.
 The nice thing about this is that a use case does not need to worry if there are things in the parameters that are not valid.
 Like being `null` if they should not.
 When we get to the web layer, we will see how we do the validation there and convert to such a parameters object.
@@ -495,10 +496,14 @@ This is the code of the `RegisterOwnerWithPetParameters` record:
 
 [source,java]
 ----
-record RegisterOwnerWithPetParameters(String ownerName, String petName) {
+record RegisterOwnerWithPetParameters(
+    String ownerName,
+    String petName,
+    Mass petWeight) {
   RegisterOwnerWithPetParameters {
     Assert.hasText(ownerName, "The RegisterOwnerWithPetParameters ownerName should have text");
     Assert.hasText(petName, "The RegisterOwnerWithPetParameters petName should have text");
+    Assert.notNull(petWeight, "The RegisterOwnerWithPetParameters petWeight should not be null");
   }
 }
 ----
