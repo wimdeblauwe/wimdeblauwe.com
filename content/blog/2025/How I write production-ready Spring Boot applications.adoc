@@ -169,7 +169,8 @@ If there would be, I would probably add another sub-package called `messaging` w
 === Repository implementation
 
 If this is an application where I have full control over the database, I will usually put JPA annotations on the domain objects.
-If you don't want to do this and keep your domain "pure", then you can create extra JPA specific objects (e.g. `OwnerEntity`, `PetEntity`) in the `repository` package. See https://reflectoring.io/book/[Get Your Hands Dirty on Clean Architecture] for more information on the various ways that you can do mapping between application layers.
+If you don't want to do this and keep your domain "pure", then you can create extra JPA specific objects (e.g. `OwnerEntity`, `PetEntity`) in the `repository` package.
+See https://reflectoring.io/book/[Get Your Hands Dirty on Clean Architecture] for more information on the various ways that you can do mapping between application layers.
 
 In our Owner example, this would like as follows:
 
@@ -666,7 +667,7 @@ Some typical layout of the `infrastructure` package would be this:
 
 [source]
 ----
-coim.company.app.infrastructure
+com.company.app.infrastructure
   + security
     + WebSecurityConfiguration --> Spring Security configuration
   + stereotype
