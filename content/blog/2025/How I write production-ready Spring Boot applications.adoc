@@ -762,4 +762,8 @@ Even simple create, read, update, and delete operations benefit from the clear s
 The key is to be intentional about your architectural decisions and consistent in their application.
 Start with these patterns, adapt them to your specific needs, and don't be afraid to evolve them as you learn what works best for your team and domain.
 
+I will explain more about how I approach testing with this setup in a follow-up post coming soon.
+
 If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
+
+_A big thank you to my colleagues Musa Kapan, Mike Seghers, Gregory Sabbe, Pieter Senden and Wout Deleu for reviewing this blog post._
