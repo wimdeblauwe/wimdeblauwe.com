@@ -1,6 +1,6 @@
 ---
 title: "How I write production-ready Spring Boot applications"
-date: 2025-06-22
+date: 2025-06-24
 draft: false
 tags: ["spring-boot", "architecture"]
 keywords: []
@@ -71,7 +71,7 @@ We will also consider Speciality to be an entity within the Veterinarian aggrega
 
 This class diagram shows an overview:
 
-image::petclinic-aggregates.png[]
+image::2025/06/petclinic-aggregates.png[]
 
 Why do we need to know this?
 
