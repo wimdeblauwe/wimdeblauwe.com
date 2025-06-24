@@ -532,9 +532,11 @@ When there's common code, I extract it into helper components instead.
 For example, suppose you have an application that displays sports scores.
 You might have use cases like `GetScoreForGame` and `GetScoresForTeamInSeason`.
 You might be tempted to call the `GetScoreForGame` use case from within `GetScoresForTeamInSeason`, but it's better to extract a `ScoreCalculator` helper component that both use cases can depend on.
+
+Another drawback of having use cases call other use cases is potential performance issues. If a use case queries the database for a single record and you reuse it to fetch many records, you'll end up with an inefficient database access pattern. Using a dedicated query to retrieve all the information you need in one go can massively improve the use case's performance.
 ====
 
-Now we can again go up to the next layer: the web layer
+Now we can again go up to the next layer: the web layer.
 
 === Controllers on the web layer
 
