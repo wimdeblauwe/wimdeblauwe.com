@@ -709,8 +709,6 @@ String name = transformOrNull(owner, Owner::name);
 Alternativly, you can use `Optional.ofNullable(owner).map(Owner::name)`, but that just creates a `Optional` for no good reason.
 ====
 
-Here's a suggested chapter you could add before the conclusion:
-
 == Why Not Hexagonal Architecture?
 
 You might be wondering why I don't use Hexagonal Architecture (also known as Ports and Adapters), especially since my approach shares some similarities with its layered structure.
