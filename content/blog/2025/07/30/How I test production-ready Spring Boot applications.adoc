@@ -359,7 +359,7 @@ public @interface PetclinicDataJpaTest {
 <.> Ensure all my repositories are added into the context by default so they are available for testing.
 <.> Import the test containers configuration to start the real database via Docker.
 
-The `TestcontainersConfiguration` configures test containers to start the real database:
+The `TestcontainersConfiguration` configures https://testcontainers.com/[Testcontainers] to start the real database:
 
 [source,java]
 ----
@@ -495,7 +495,7 @@ This ensures that the changes are written to the database so we can validate usi
 
 == Controller tests
 
-For testing RestController classes, Spring provides the `@WebMvcTest` test slice.
+For testing `@RestController` classes, Spring provides the `@WebMvcTest` test slice.
 In combination with MockMvc, we can test all the HTTP interactions of our controller.
 It makes no sense to have a unit test that just calls the methods of the controller.
 That would not test the most important part of the controller which is the mapping of the URLs, the path variables, the JSON serialization and deserialization, etc.
@@ -669,6 +669,8 @@ Otherwise, things might get confusing if you do a POST on an endpoint with a `na
 As an alternative, you can use the real use cases and in-memory repository implementations.
 That way, you don't need Mockito, and the use case works as it will in the real application.
 
+This `VisitControllerTest` shows how to implement a controller test without using Mockito:
+
 [source,java]
 ----
 import com.wimdeblauwe.petclinic.owner.Owner;
@@ -825,7 +827,7 @@ Use real use cases with in-memory repositories when you want to test the complet
 
 So far, we have tested use cases, repositories and controllers.
 But we have not tested end-to-end.
-To ensure that works, I always add a new `@SpringBootTest` tests as well.
+To ensure that works, I always add a few `@SpringBootTest` tests as well.
 
 It makes little sense to try to replicate every possible scenario, but the most important paths of the application are best covered with such tests.
 This should give you good confidence that the application will work fine.
@@ -1017,6 +1019,8 @@ class PetclinicApplicationTests {
 }
 ----
 
+Using the API of our application, we simulate a complete user interaction in this integration test.
+
 == Architecture tests
 
 It is nice to have the architecture in your head and adhere to it.
@@ -1201,7 +1205,7 @@ If you want to learn more, check out the documentation on the ArchUnit website.
 This testing strategy provides comprehensive coverage while maintaining fast feedback loops and realistic test scenarios.
 The layered approach ensures that each component is thoroughly tested in isolation, while integration tests validate the complete system behavior.
 
-Key Benefits of This Approach:
+Key benefits of this approach:
 
 * Fast Unit Tests: Pure functions and value objects test quickly with minimal setup
 * Realistic Repository Tests: Test containers ensure database interactions work correctly
@@ -1209,8 +1213,6 @@ Key Benefits of This Approach:
 * Comprehensive Controller Tests: MockMvc validates HTTP concerns without external dependencies
 * Confidence Through Integration: End-to-end tests catch issues that unit tests miss
 * Architectural Guardrails: ArchUnit prevents architectural drift over time
-
-Testing Philosophy:
 
 The testing strategy mirrors the architectural principles: clear separation of concerns, focused responsibilities, and pragmatic trade-offs.
 Just as the architecture avoids over-engineering, the testing approach avoids test code that's harder to maintain than the production code it validates.
