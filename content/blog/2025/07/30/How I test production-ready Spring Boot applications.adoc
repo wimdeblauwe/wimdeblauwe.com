@@ -39,13 +39,13 @@ If you want to jump to a particular section of this blog post, use the following
 A Spring Boot project generated from https://start.spring.io/[start.spring.io] has the `spring-boot-starter-test` dependency added by default.
 This dependency brings in a lot of tools to make our testing life easier:
 
-* JUnit
-* AssertJ
-* Awaitility
-* Mockito
-* XmlUnit
-* JsonAssert
-* Spring Boot Test
+* JUnit - The foundational testing framework for writing and running tests
+* AssertJ - Fluent assertion library that makes test assertions more readable
+* Awaitility - Library for testing asynchronous code with polling and waiting capabilities
+* Mockito - Mocking framework for creating test doubles and stubbing dependencies
+* XmlUnit - Utilities for comparing and asserting XML content in tests
+* JsonAssert - Library for making assertions about JSON data structures
+* Spring Boot Test - Spring-specific testing utilities and annotations
 
 I won't be explaining those tools here, there are a lot of resources about it that you can find on the internet.
 I will focus on how I use them in my day-to-day work.
@@ -1173,6 +1173,97 @@ For one-off scenarios, it's often better to use the raw MockMvc calls rather tha
 
 This concludes the sections on testing if our code does what we want it to do.
 We will now investigate how we can be sure our code is written in a way that the team has agreed upon.
+
+[TIP]
+.Using real HTTP integration test
+====
+Using MockMvc is good most of the time.
+However, real HTTP tests catch issues that MockMvc might miss, such as actual HTTP serialization problems, Tomcat-specific configuration issues, servlet filter behavior, and multipart file handling edge cases.
+
+If you want to be even more sure that everything works fine in the real application, you can have `@SpringBootTest` start the real Tomcat (or whatever you have configured in your dependencies) and use RestAssured to interact with the API.
+
+To do this:
+
+. Add the https://github.com/rest-assured/rest-assured/wiki/GettingStarted#rest-assured[io.rest-assured:rest-assured] dependency to your project.
+. Create a new annotation `@PetclinicSpringBootRealTomcatTest` to use the `RANDOM_PORT` web environment insteaed of the default `MOCK`,
++
+[source,java]
+----
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Import(TestcontainersConfiguration.class)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@ExtendWith({CleanDatabaseExtension.class,RestAssuredSetupExtension.class})
+public @interface PetclinicSpringBootRealTomcatTest {
+}
+----
+. Create a Junit extension that will set up RestAssured to connect to the correct random port:
++
+[source,java]
+----
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.restassured.RestAssured;
+import io.restassured.config.LogConfig;
+import io.restassured.config.ObjectMapperConfig;
+import io.restassured.config.RestAssuredConfig;
+import io.restassured.filter.log.LogDetail;
+import io.restassured.internal.mapping.Jackson2Mapper;
+import org.junit.jupiter.api.extension.BeforeEachCallback;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.springframework.core.env.Environment;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+
+public class RestAssuredSetupExtension implements BeforeEachCallback {
+
+  @Override
+  public void beforeEach(ExtensionContext context) {
+    var applicationContext = SpringExtension.getApplicationContext(context);
+    Environment env = applicationContext.getEnvironment();
+    int port = Integer.parseInt(env.getProperty("local.server.port"));
+    ObjectMapper objectMapper = (ObjectMapper) applicationContext.getBean("jacksonObjectMapper");
+    RestAssured.port = port;
+    RestAssured.config = RestAssuredConfig.config()
+        .logConfig(LogConfig.logConfig().enableLoggingOfRequestAndResponseIfValidationFails(LogDetail.ALL))
+        .objectMapperConfig(new ObjectMapperConfig(new Jackson2Mapper((type, s) -> objectMapper)));
+
+  }
+}
+----
+. Use the RestAssured API to drive the HTTP interactions.
++
+[source,java]
+----
+@Test
+void happyPathToPlannedVisits() {
+  // 1. Create an owner with a pet
+      RestAssured.given()
+        .contentType(ContentType.JSON)
+        .body("""
+            {
+               "owner": {
+                 "firstName": "John",
+                 "lastName": "Doe",
+                 "street": "123 Main Street",
+                 "city": "Springfield",
+                 "telephone": "123-456-7890"
+               },
+               "pet": {
+                 "name": "Rufus",
+                 "birthDate": "2020-01-01",
+                 "type": "DOG",
+                 "weightInGrams": 10000
+               }
+             }
+            """)
+    .when()
+        .post("/api/owners")
+    .then()
+        .statusCode(HttpStatus.CREATED.value());
+
+      ...
+}
+----
+====
 
 == Architecture tests
 
