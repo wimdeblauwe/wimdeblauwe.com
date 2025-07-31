@@ -146,9 +146,9 @@ class PlanVisitTest {
 
   @Test
   void testExecute() {
-    Veterinarian veterinarian = VeterinarianMother.veterinarian().build();
+    Veterinarian veterinarian = veterinarian().build();
     veterinarianRepository.save(veterinarian);
-    Owner owner = OwnerMother.owner().withPet(PetMother.pet().build()).build();
+    Owner owner = owner().withPet(pet().build()).build();
     ownerRepository.save(owner);
 
     Visit visit = planVisit.execute(new PlanVisitParameters(veterinarian.getId(), owner.getId(), owner.getPets().getFirst().getId(), Instant.now()));
@@ -159,7 +159,7 @@ class PlanVisitTest {
 
   @Test
   void testExecuteWhenVeterinarianIsNotFound() {
-    Owner owner = OwnerMother.owner().withPet(PetMother.pet().build()).build();
+    Owner owner = owner().withPet(pet().build()).build();
     ownerRepository.save(owner);
 
     PlanVisitParameters parameters = new PlanVisitParameters(new VeterinarianId(UUID.randomUUID()), owner.getId(), owner.getPets().getFirst().getId(), Instant.now());
@@ -240,6 +240,16 @@ The stream `filter()` method would usually be your best friend for getting there
 
 To help make tests more readable, I use object mothers.
 In the example test, you see this here:
+
+[source,java]
+----
+    Veterinarian veterinarian = veterinarian().build();
+    veterinarianRepository.save(veterinarian);
+    Owner owner = owner().withPet(pet().build()).build();
+    ownerRepository.save(owner);
+----
+
+For reability, I use static imports. Without the static imports, the code would look like this:
 
 [source,java]
 ----
@@ -426,15 +436,15 @@ class JpaVisitRepositoryTest {
 
   @Test
   void testSaveVisit() {
-    Pet pet = PetMother.pet()
+    Pet pet = pet()
         .id(ownerRepository.nextPetId())
         .build();
-    Owner owner = OwnerMother.owner()
+    Owner owner = owner()
         .id(ownerRepository.nextId())
         .withPet(pet)
         .build();
     ownerRepository.save(owner);
-    Veterinarian veterinarian = VeterinarianMother.veterinarian()
+    Veterinarian veterinarian = veterinarian()
         .id(veterinarianRepository.nextId())
         .build();
     veterinarianRepository.save(veterinarian);
@@ -453,15 +463,15 @@ class JpaVisitRepositoryTest {
 
   @Test
   void testFindById() {
-    Pet pet = PetMother.pet()
+    Pet pet = pet()
         .id(ownerRepository.nextPetId())
         .build();
-    Owner owner = OwnerMother.owner()
+    Owner owner = owner()
         .id(ownerRepository.nextId())
         .withPet(pet)
         .build();
     ownerRepository.save(owner);
-    Veterinarian veterinarian = VeterinarianMother.veterinarian()
+    Veterinarian veterinarian = veterinarian()
         .id(veterinarianRepository.nextId())
         .build();
     veterinarianRepository.save(veterinarian);
@@ -568,7 +578,7 @@ class OwnerControllerTest {
   @Test
   void testRegisterOwnerWithPet_emptyRequest() throws Exception {
     when(registerOwnerWithPet.execute(any()))
-        .thenReturn(OwnerMother.owner().build());
+        .thenReturn(owner().build());
 
     mockMvc.perform(post("/api/owners")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -586,7 +596,7 @@ class OwnerControllerTest {
   @Test
   void testRegisterOwnerWithPet_missingTelephone() throws Exception {
     when(registerOwnerWithPet.execute(any()))
-        .thenReturn(OwnerMother.owner().build());
+        .thenReturn(owner().build());
 
     mockMvc.perform(post("/api/owners")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -615,8 +625,8 @@ class OwnerControllerTest {
   @Test
   void testRegisterOwnerWithPet() throws Exception {
     when(registerOwnerWithPet.execute(any()))
-        .thenReturn(OwnerMother.owner()
-                        .withPet(PetMother.pet().build())
+        .thenReturn(owner()
+                        .withPet(pet().build())
                         .build());
 
     mockMvc.perform(post("/api/owners")
@@ -713,11 +723,11 @@ class VisitControllerTest {
 
   @Test
   void testPlanVisit_emptyRequest() throws Exception {
-    Pet pet = PetMother.pet().build();
-    Owner owner = OwnerMother.owner()
+    Pet pet = pet().build();
+    Owner owner = owner()
         .withPet(pet)
         .build();
-    Veterinarian veterinarian = VeterinarianMother.veterinarian().build();
+    Veterinarian veterinarian = veterinarian().build();
     ownerRepository.save(owner);
     veterinarianRepository.save(veterinarian);
 
@@ -736,11 +746,11 @@ class VisitControllerTest {
 
   @Test
   void testPlanVisit_missingAppointmentTime() throws Exception {
-    Pet pet = PetMother.pet().build();
-    Owner owner = OwnerMother.owner()
+    Pet pet = pet().build();
+    Owner owner = owner()
         .withPet(pet)
         .build();
-    Veterinarian veterinarian = VeterinarianMother.veterinarian().build();
+    Veterinarian veterinarian = veterinarian().build();
     ownerRepository.save(owner);
     veterinarianRepository.save(veterinarian);
 
@@ -761,11 +771,11 @@ class VisitControllerTest {
 
   @Test
   void testPlanVisit() throws Exception {
-    Pet pet = PetMother.pet().build();
-    Owner owner = OwnerMother.owner()
+    Pet pet = pet().build();
+    Owner owner = owner()
         .withPet(pet)
         .build();
-    Veterinarian veterinarian = VeterinarianMother.veterinarian().build();
+    Veterinarian veterinarian = veterinarian().build();
     ownerRepository.save(owner);
     veterinarianRepository.save(veterinarian);
 
