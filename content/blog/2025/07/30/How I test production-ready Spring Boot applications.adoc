@@ -1069,10 +1069,9 @@ This should really be avoided as much as possible since that throws away the tes
 If you want to learn more why `@DirtiesContext` is do bad, check out https://www.youtube.com/watch?v=c-GV2PxymoY[How fixing a broken window cut down our build time by 50% by Philip Riecks @ Spring I/O].
 ====
 
-The integration test above works well for a single test, but as you add more integration tests, you'll notice significant duplication.
+The integration test above works well for a single test, but as you add more integration tests as the application grows, you'll notice significant duplication.
 Let's see how API clients can help reduce this maintenance burden.
 
-As the application grows, you will have more integration tests.
 To avoid having to duplicate those MockMvc lines for common things you need in a lot of the integration tests, I sometimes write an API client that hides that calling of MockMvc.
 
 Imagine having 20 integration tests that all need to create an owner with a pet.
