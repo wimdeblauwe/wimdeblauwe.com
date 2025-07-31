@@ -21,6 +21,20 @@ I will talk about how I architect my app, package structure, naming conventions,
 
 <!--more-->
 
+[TIP]
+====
+If you want to jump to a particular section of this blog post, use the following links:
+
+* <<Getting started>>
+* <<High-level architecture>>
+* <<Package structure>>
+* <<Repository implementation>>
+* <<Use cases>>
+* <<Controllers on the web layer>>
+* <<Infrastructure code>>
+* <<Why Not Hexagonal Architecture?>>
+====
+
 == Getting started
 
 A new project gets started in 2 possible ways:
@@ -760,7 +774,9 @@ Even simple create, read, update, and delete operations benefit from the clear s
 The key is to be intentional about your architectural decisions and consistent in their application.
 Start with these patterns, adapt them to your specific needs, and don't be afraid to evolve them as you learn what works best for your team and domain.
 
-I will explain more about how I approach testing with this setup in a follow-up post coming soon.
+Continue reading about how I approach testing with this setup in the next post in this series: https://www.wimdeblauwe.com/blog/2025/07/30/how-i-test-production-ready-spring-boot-applications/[How I test production-ready Spring Boot applications]
+
+See https://github.com/wimdeblauwe/petclinic/tree/main[wimdeblauwe/petclinic] on GitHub for the full sources of these examples.
 
 If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
 

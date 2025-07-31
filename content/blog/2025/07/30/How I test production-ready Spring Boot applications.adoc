@@ -1,0 +1,1518 @@
+---
+title: "How I test production-ready Spring Boot applications"
+date: 2025-07-30
+draft: false
+tags: ["spring-boot", "architecture"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+My previous blog post https://www.wimdeblauwe.com/blog/2025/06/24/how-i-write-production-ready-spring-boot-applications/[How I write production-ready Spring Boot applications] explained how I like to write and structure my production code in Spring Boot applications.
+This blog post will further explain how I write tests for the code.
+
+<!--more-->
+
+[TIP]
+====
+If you want to jump to a particular section of this blog post, use the following links:
+
+* <<Spring Boot Starter Test>>
+* <<Unit tests>>
+* <<Use case tests>>
+* <<JPA repository tests>>
+* <<Controller tests>>
+* <<Integration tests>>
+* <<Architecture tests>>
+
+====
+
+== Spring Boot Starter Test
+
+A Spring Boot project generated from https://start.spring.io/[start.spring.io] has the `spring-boot-starter-test` dependency added by default.
+This dependency brings in a lot of tools to make our testing life easier:
+
+* JUnit - The foundational testing framework for writing and running tests
+* AssertJ - Fluent assertion library that makes test assertions more readable
+* Awaitility - Library for testing asynchronous code with polling and waiting capabilities
+* Mockito - Mocking framework for creating test doubles and stubbing dependencies
+* XmlUnit - Utilities for comparing and asserting XML content in tests
+* JsonAssert - Library for making assertions about JSON data structures
+* Spring Boot Test - Spring-specific testing utilities and annotations
+
+I won't be explaining those tools here, there are a lot of resources about it that you can find on the internet.
+I will focus on how I use them in my day-to-day work.
+
+== Unit tests
+
+The easiest tests to write are those that only need JUnit and AssertJ.
+They usually test some pure function, a utility class or a value object.
+
+As an example, let's take the `Mass` value object that represents the weight of a pet:
+
+[source,java]
+----
+import org.springframework.util.Assert;
+
+public record Mass(int value) {
+  public Mass {
+    Assert.isTrue(value > 0, "The Mass value should be greater than zero");
+  }
+
+  public static Mass ofKilograms(double kilograms) {
+    return new Mass((int) (kilograms * 1000));
+  }
+
+  public static Mass ofGrams(int grams) {
+    return new Mass(grams);
+  }
+}
+----
+
+A test for this record could look something like this:
+
+[source,java]
+----
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+
+class MassTest {
+
+  @Test
+  void testMassCanBeCreatedWithAPositiveValue() {
+    Mass mass = new Mass(1000);
+    assertThat(mass).isNotNull();
+  }
+
+  @Test
+  void testMassCannotBeCreatedWithANegativeValue() {
+    assertThatExceptionOfType(IllegalArgumentException.class)
+        .isThrownBy( () -> new Mass(-1))
+        .withMessage("The Mass value should be greater than zero");
+  }
+
+  @Test
+  void testOfKilogramFactoryMethod() {
+    Mass mass = Mass.ofKilograms(1);
+    assertThat(mass).isNotNull();
+    assertThat(mass.value()).isEqualTo(1000);
+  }
+
+  @Test
+  void testOfGramsFactoryMethod() {
+    Mass mass = Mass.ofGrams(1000);
+    assertThat(mass).isNotNull();
+    assertThat(mass.value()).isEqualTo(1000);
+  }
+}
+----
+
+== Use case tests
+
+A use case orchestrates the business logic and will usually use one or more repositories to store the data in the database.
+Given the way I have coded my repositories (Using an interface, see the https://www.wimdeblauwe.com/blog/2025/06/24/how-i-write-production-ready-spring-boot-applications/[Repository implementation] section in the previous blog post), I can write an in-memory implementation and use that in my use case tests.
+This makes the use case tests very fast, and I don't need to write a lot of Mockito code to simulate what the repository is supposed to do.
+This approach has several advantages over mocking: the tests run faster, you avoid complex mock setups, and the repository behavior is more realistic since you're testing actual data operations rather than stubbed responses.
+
+As an example, consider the test for the https://github.com/wimdeblauwe/petclinic/blob/main/src/main/java/com/wimdeblauwe/petclinic/visit/usecase/PlanVisit.java[`PlanVisit`] use case:
+
+[source,java]
+----
+class PlanVisitTest {
+
+  private PlanVisit planVisit;
+  private InMemoryVisitRepository repository;
+  private InMemoryVeterinarianRepository veterinarianRepository;
+  private InMemoryOwnerRepository ownerRepository;
+
+  @BeforeEach
+  void setUp() {
+    repository = new InMemoryVisitRepository();
+    veterinarianRepository = new InMemoryVeterinarianRepository();
+    ownerRepository = new InMemoryOwnerRepository();
+    planVisit = new PlanVisit(repository,
+                              veterinarianRepository,
+                              ownerRepository);
+  }
+
+  @Test
+  void testExecute() {
+    Veterinarian veterinarian = veterinarian().build();
+    veterinarianRepository.save(veterinarian);
+    Owner owner = owner().withPet(pet().build()).build();
+    ownerRepository.save(owner);
+
+    Visit visit = planVisit.execute(new PlanVisitParameters(veterinarian.getId(), owner.getId(), owner.getPets().getFirst().getId(), Instant.now()));
+
+    assertThat(visit).isNotNull();
+    assertThat(repository.findAll(PageRequest.of(0, 10))).hasSize(1);
+  }
+
+  @Test
+  void testExecuteWhenVeterinarianIsNotFound() {
+    Owner owner = owner().withPet(pet().build()).build();
+    ownerRepository.save(owner);
+
+    PlanVisitParameters parameters = new PlanVisitParameters(new VeterinarianId(UUID.randomUUID()), owner.getId(), owner.getPets().getFirst().getId(), Instant.now());
+
+    assertThatExceptionOfType(VeterinarianNotFoundException.class)
+        .isThrownBy(() -> planVisit.execute(parameters));
+  }
+
+}
+----
+
+In the `setUp` method, we create our use case and inject in-memory implementations of the three repositories.
+Such an in-memory implementation looks like this:
+
+[source,java]
+----
+import com.wimdeblauwe.petclinic.owner.Owner;
+import com.wimdeblauwe.petclinic.owner.OwnerId;
+import com.wimdeblauwe.petclinic.owner.OwnerNotFoundException;
+import com.wimdeblauwe.petclinic.owner.PetId;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+
+import java.util.*;
+
+public class InMemoryOwnerRepository implements OwnerRepository {
+  private final Map<OwnerId, Owner> values = new HashMap<>();
+
+
+  @Override
+  public OwnerId nextId() {
+    return new OwnerId(UUID.randomUUID());
+  }
+
+  @Override
+  public PetId nextPetId() {
+    return new PetId(UUID.randomUUID());
+  }
+
+  @Override
+  public void save(Owner owner) {
+    values.put(owner.getId(), owner);
+  }
+
+  @Override
+  public Optional<Owner> findById(OwnerId id) {
+    return Optional.ofNullable(values.get(id));
+  }
+
+  @Override
+  public Owner getById(OwnerId id) {
+    return findById(id)
+        .orElseThrow(() -> new OwnerNotFoundException(id));
+  }
+
+  @Override
+  public Page<Owner> findAll(Pageable pageable) {
+    List<Owner> content = values.values().stream()
+        .skip((long) pageable.getPageNumber() * pageable.getPageSize())
+        .limit(pageable.getPageSize())
+        .toList();
+    return new PageImpl<>(content, pageable, values.size());
+  }
+
+  @Override
+  public void validateExistsById(OwnerId ownerId) {
+    if (!values.containsKey(ownerId)) {
+      throw new OwnerNotFoundException(ownerId);
+    }
+  }
+}
+----
+
+You use a `Map` to keep track of the entities.
+If you have complex queries, it might get a bit trickier to implement.
+The stream `filter()` method would usually be your best friend for getting there.
+
+To help make tests more readable, I use object mothers.
+In the example test, you see this here:
+
+[source,java]
+----
+    Veterinarian veterinarian = veterinarian().build();
+    veterinarianRepository.save(veterinarian);
+    Owner owner = owner().withPet(pet().build()).build();
+    ownerRepository.save(owner);
+----
+
+For reability, I use static imports.
+Without the static imports, the code would look like this:
+
+[source,java]
+----
+    Veterinarian veterinarian = VeterinarianMother.veterinarian().build();
+    veterinarianRepository.save(veterinarian);
+    Owner owner = OwnerMother.owner().withPet(PetMother.pet().build()).build();
+    ownerRepository.save(owner);
+----
+
+They are really great to quickly get a full usuable object for use in a test, and they allow to customize themselves if needed for a particular test.
+
+If you want to learn more about them, go read the excellent blog post https://jonasg.io/posts/object-mother/[Mastering the Object Mother] of Jonas Geiregat.
+
+Writing code for an Object Mother is a bit of repetitive work, but luckily, there is the https://plugins.jetbrains.com/plugin/23056-test-nurturer[Tesy Nurturer] plugin for IntelliJ IDEA that automates most of the work.
+
+As an example, this is how the `OwnerMother` looks like:
+
+[source,java]
+----
+import com.wimdeblauwe.petclinic.infrastructure.vo.Address;
+import com.wimdeblauwe.petclinic.infrastructure.vo.PersonName;
+import com.wimdeblauwe.petclinic.infrastructure.vo.Telephone;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+public final class OwnerMother {
+  public static Builder owner() {
+    return new Builder();
+  }
+
+  public static final class Builder {
+    private OwnerId id = new OwnerId(UUID.randomUUID());
+    private PersonName name = new PersonName("John", "Doe");
+    private Address address = new Address("123 Main Street", "Springfield");
+    private Telephone telephone = new Telephone("123-456-7890");
+    private List<Pet> pets = new ArrayList<>();
+
+    public Builder id(OwnerId id) {
+      this.id = id;
+      return this;
+    }
+
+    public Builder name(PersonName name) {
+      this.name = name;
+      return this;
+    }
+
+    public Builder address(Address address) {
+      this.address = address;
+      return this;
+    }
+
+    public Builder telephone(Telephone telephone) {
+      this.telephone = telephone;
+      return this;
+    }
+
+    public Builder pets(List<Pet> pets) {
+      this.pets = pets;
+      return this;
+    }
+
+    public Builder withPet(Pet pet) {
+      pets.add(pet);
+      return this;
+    }
+
+    public Owner build() {
+      return new Owner(id, name, address, telephone, pets);
+    }
+  }
+}
+----
+
+== JPA repository tests
+
+It is essential that interaction with the database works flawlessly.
+Any application that does not properly store the data we give it won't be used very much.
+
+The JPA based implementations of our repositories are tested by using the `@DataJpaTest` test slice.
+
+The main advantage of using `@DataJpaTest` over `@SpringBootTest` is that it will only start the application context with the repositories of the application.
+A `@SpringBootTest` would start the whole application including use cases and controllers.
+But we don't need those to test just the database interaction, so we can make our tests faster by using the `@DataJpaTest` test slice.
+
+To have the setup of my JPA repository test in a single place, I create a meta-annotation for the application.
+Such an annotation allows combining annotations and configuration into a single annotation that all tests can use.
+
+In our example application, I called it `PetclinicDataJpaTest` and it looks like this:
+
+[source,java]
+----
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Import;
+import org.springframework.stereotype.Repository;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@DataJpaTest(includeFilters = { //<.>
+    @ComponentScan.Filter(type = FilterType.ANNOTATION, classes = Repository.class) //<.>
+})
+@Import(TestcontainersConfiguration.class) //<.>
+public @interface PetclinicDataJpaTest {
+}
+----
+
+<.> Add `@DataJpaTest` to have all the default setup that comes with that test slice.
+<.> Ensure all my repositories are added into the context by default so they are available for testing.
+<.> Import the test containers configuration to start the real database via Docker.
+
+The `TestcontainersConfiguration` configures https://testcontainers.com/[Testcontainers] to start the real database:
+
+[source,java]
+----
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Bean;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.utility.DockerImageName;
+
+@TestConfiguration(proxyBeanMethods = false)
+class TestcontainersConfiguration {
+
+	@Bean
+	@ServiceConnection
+	PostgreSQLContainer<?> postgresContainer() {
+		return new PostgreSQLContainer<>(DockerImageName.parse("postgres:latest"));
+	}
+}
+----
+
+My JPA repository tests always use the real database via Docker to ensure everything is working fine.
+This gives me great peace of mind that everything will work in the real application, and most computers nowadays are fast enough that using it is not a big problem anymore.
+While H2 in-memory databases are faster, they often behave differently from production databases, leading to false confidence.
+The slight performance cost of test containers is worth the increased reliability.
+
+As an example, this is the test for the https://github.com/wimdeblauwe/petclinic/blob/main/src/main/java/com/wimdeblauwe/petclinic/visit/repository/JpaVisitRepository.java[`JpaVisitRepository`]:
+
+[source,java]
+----
+import com.wimdeblauwe.petclinic.infrastructure.test.PetclinicDataJpaTest;
+import com.wimdeblauwe.petclinic.owner.Owner;
+import com.wimdeblauwe.petclinic.owner.OwnerMother;
+import com.wimdeblauwe.petclinic.owner.Pet;
+import com.wimdeblauwe.petclinic.owner.PetMother;
+import com.wimdeblauwe.petclinic.owner.repository.OwnerRepository;
+import com.wimdeblauwe.petclinic.veterinarian.Veterinarian;
+import com.wimdeblauwe.petclinic.veterinarian.VeterinarianMother;
+import com.wimdeblauwe.petclinic.veterinarian.repository.VeterinarianRepository;
+import com.wimdeblauwe.petclinic.visit.Visit;
+import com.wimdeblauwe.petclinic.visit.VisitId;
+import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.simple.JdbcClient;
+
+import java.time.Instant;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@PetclinicDataJpaTest
+class JpaVisitRepositoryTest {
+
+  @Autowired
+  private JpaVisitRepository repository;
+  @Autowired
+  private OwnerRepository ownerRepository;
+  @Autowired
+  private VeterinarianRepository veterinarianRepository;
+  @Autowired
+  private EntityManager entityManager;
+  @Autowired
+  private JdbcClient jdbcClient;
+
+  @Test
+  void testSaveVisit() {
+    Pet pet = pet()
+        .id(ownerRepository.nextPetId())
+        .build();
+    Owner owner = owner()
+        .id(ownerRepository.nextId())
+        .withPet(pet)
+        .build();
+    ownerRepository.save(owner);
+    Veterinarian veterinarian = veterinarian()
+        .id(veterinarianRepository.nextId())
+        .build();
+    veterinarianRepository.save(veterinarian);
+    VisitId id = repository.nextId();
+    Instant appointmentTime = Instant.now();
+    repository.save(new Visit(id, veterinarian.getId(), owner.getId(), pet.getId(), appointmentTime));
+    entityManager.flush();
+    entityManager.clear();
+
+    assertThat(jdbcClient.sql("SELECT id FROM visit").query(UUID.class).single()).isEqualTo(id.getId());
+    assertThat(jdbcClient.sql("SELECT owner_id FROM visit").query(UUID.class).single()).isEqualTo(owner.getId().getId());
+    assertThat(jdbcClient.sql("SELECT pet_id FROM visit").query(UUID.class).single()).isEqualTo(pet.getId().getId());
+    assertThat(jdbcClient.sql("SELECT veterinarian_id FROM visit").query(UUID.class).single()).isEqualTo(veterinarian.getId().getId());
+    assertThat(jdbcClient.sql("SELECT appointment_time FROM visit").query(Instant.class).single()).isEqualTo(appointmentTime);
+  }
+
+  @Test
+  void testFindById() {
+    Pet pet = pet()
+        .id(ownerRepository.nextPetId())
+        .build();
+    Owner owner = owner()
+        .id(ownerRepository.nextId())
+        .withPet(pet)
+        .build();
+    ownerRepository.save(owner);
+    Veterinarian veterinarian = veterinarian()
+        .id(veterinarianRepository.nextId())
+        .build();
+    veterinarianRepository.save(veterinarian);
+    VisitId id = repository.nextId();
+    Instant appointmentTime = Instant.now();
+    repository.save(new Visit(id, veterinarian.getId(), owner.getId(), pet.getId(), appointmentTime));
+    entityManager.flush();
+    entityManager.clear();
+
+    assertThat(repository.findById(id))
+        .hasValueSatisfying(visit -> {
+          assertThat(visit.getId()).isEqualTo(id);
+          assertThat(visit.getVeterinarianId()).isEqualTo(veterinarian.getId());
+          assertThat(visit.getOwnerId()).isEqualTo(owner.getId());
+          assertThat(visit.getPetId()).isEqualTo(pet.getId());
+          assertThat(visit.getAppointmentTime()).isEqualTo(appointmentTime);
+        });
+  }
+}
+----
+
+Some points to note:
+
+* The `@PetclinicDataJpaTest` annotation is used on the class level to ensure the proper test setup.
+* The repository is `@Autowired` so we can interact with it.
+Note that I do use field injection in tests (never in production code!).
+You can also use constructor injection in tests if you want, but I like field injection for tests better.
+It gives less "noise" at the top of the test class.
+* `EntityManager` gets autowired to force a flush and a clear.
+This ensures that the changes are written to the database so we can validate using `JdbcClient` if the proper tables and columns are updated.
+* For the testing of the `save()` method, I use `JdbcClient` and SQL statements to make sure the relevant tables and columns are updated.
+For testing of the other repository methods, I only use what the repository offers and assert on the returned objects.
+
+On a final note, if you want to set default properties, you should use a Spring profile.
+
+For instance, update `@PetclinicDataJpaTest` like this:
+
+[source,java]
+----
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@DataJpaTest(includeFilters = {
+    @ComponentScan.Filter(type = FilterType.ANNOTATION, classes = Repository.class)
+})
+@Import(TestcontainersConfiguration.class)
+@ActiveProfiles("datajpatest") //<.>
+public @interface PetclinicDataJpaTest {
+}
+----
+
+<.> Make the `datajpatest` Spring profile active when the test runs.
+
+You can now create a `src/test/resources/application-datajpatest.properties` or `src/test/resources/application-datajpatest.yaml` file with some default properties that should be active when running the database tests.
+
+[CAUTION]
+====
+Never create a `src/test/resource/application.{properties|yaml}` file.
+Such a file overwrites the `application.{properties|yaml}` of the main application and you can never write a relevant integration test anymore.
+Always use a profile and a dedicated properties file for settings you want in your tests.
+====
+
+== Controller tests
+
+For testing `@RestController` classes, Spring provides the `@WebMvcTest` test slice.
+In combination with MockMvc, we can test all the HTTP interactions of our controller.
+It makes no sense to have a unit test that just calls the methods of the controller.
+That would not test the most important part of the controller which is the mapping of the URLs, the path variables, the JSON serialization and deserialization, etc.
+
+In the example application I did not create a separate meta annotation for `@WebMvcTest`, but if I did, it would be called `@PetclinicWebMvcTest`.
+The application is so simple currently that it is not needed, but in a real application, you will have some more complex setup, so creating such an annotation would be benefical there.
+
+This is the code of the `OwnerController`:
+
+[source,java]
+----
+import com.wimdeblauwe.petclinic.owner.Owner;
+import com.wimdeblauwe.petclinic.owner.usecase.RegisterOwnerWithPet;
+import com.wimdeblauwe.petclinic.owner.usecase.RegisterOwnerWithPetParameters;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/owners")
+public class OwnerController {
+  private final RegisterOwnerWithPet registerOwnerWithPet;
+
+  public OwnerController(RegisterOwnerWithPet registerOwnerWithPet) {
+    this.registerOwnerWithPet = registerOwnerWithPet;
+  }
+
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public OwnerResponse registerOwnerWithPet(@Valid @RequestBody RegisterOwnerWithPetRequest request) {
+    RegisterOwnerWithPetParameters parameters = request.toParameters();
+    Owner owner = registerOwnerWithPet.execute(parameters);
+
+    return OwnerResponse.of(owner);
+  }
+}
+----
+
+A test for this controller could look like this:
+
+[source,java]
+----
+import com.wimdeblauwe.petclinic.owner.OwnerMother;
+import com.wimdeblauwe.petclinic.owner.PetMother;
+import com.wimdeblauwe.petclinic.owner.usecase.RegisterOwnerWithPet;
+import org.hamcrest.Matchers;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(OwnerController.class) //<.>
+class OwnerControllerTest {
+
+  @Autowired
+  private MockMvc mockMvc; //<.>
+
+  @MockitoBean
+  private RegisterOwnerWithPet registerOwnerWithPet; //<.>
+
+  @Test
+  void testRegisterOwnerWithPet_emptyRequest() throws Exception {
+    when(registerOwnerWithPet.execute(any()))
+        .thenReturn(owner().build());
+
+    mockMvc.perform(post("/api/owners")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                     {
+
+                                     }
+                                     """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("code").value("VALIDATION_FAILED"))
+        .andExpect(jsonPath("fieldErrors[*].code", Matchers.hasItems("REQUIRED_NOT_NULL", "REQUIRED_NOT_NULL")))
+        .andExpect(jsonPath("fieldErrors[*].property", Matchers.hasItems("owner", "pet")));
+  }
+
+  @Test
+  void testRegisterOwnerWithPet_missingTelephone() throws Exception {
+    when(registerOwnerWithPet.execute(any()))
+        .thenReturn(owner().build());
+
+    mockMvc.perform(post("/api/owners")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                     {
+                                        "owner": {
+                                          "firstName": "John",
+                                          "lastName": "Doe",
+                                          "street": "123 Main street",
+                                          "city": "Springfield"
+                                        },
+                                        "pet": {
+                                          "name": "Rufus",
+                                          "birthDate": "2022-06-07",
+                                          "type": "DOG",
+                                          "weightInGrams": 7500
+                                        }
+                                      }
+                                     """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("code").value("VALIDATION_FAILED"))
+        .andExpect(jsonPath("fieldErrors[*].code", Matchers.hasItems("REQUIRED_NOT_BLANK")))
+        .andExpect(jsonPath("fieldErrors[*].property", Matchers.hasItems("owner.telephone")));
+  }
+
+  @Test
+  void testRegisterOwnerWithPet() throws Exception {
+    when(registerOwnerWithPet.execute(any()))
+        .thenReturn(owner()
+                        .withPet(pet().build())
+                        .build());
+
+    mockMvc.perform(post("/api/owners")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                     {
+                                        "owner": {
+                                          "firstName": "John",
+                                          "lastName": "Doe",
+                                          "street": "123 Main Street",
+                                          "city": "Springfield",
+                                          "telephone": "123-456-7890"
+                                        },
+                                        "pet": {
+                                          "name": "Rufus",
+                                          "birthDate": "2020-01-01",
+                                          "type": "DOG",
+                                          "weightInGrams": 10000
+                                        }
+                                      }
+                                     """))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("id").exists())
+        .andExpect(jsonPath("firstName").value("John"))
+        .andExpect(jsonPath("lastName").value("Doe"))
+        .andExpect(jsonPath("address.street").value("123 Main Street"))
+        .andExpect(jsonPath("address.city").value("Springfield"))
+        .andExpect(jsonPath("telephone").value("123-456-7890"))
+        .andExpect(jsonPath("pets[0].id").exists())
+        .andExpect(jsonPath("pets[0].name").value("Rufus"))
+        .andExpect(jsonPath("pets[0].birthDate").value("2020-01-01"))
+        .andExpect(jsonPath("pets[0].type").value("DOG"))
+        .andExpect(jsonPath("pets[0].weightInGrams").value(10000))
+    ;
+  }
+}
+----
+
+<.> Setup the test slice with the `@WebMvcTest` annotation.
+Note how we need to add the controller class we want to test.
+If we don't do this, all controllers of the application are started by the testing framework and we would need to provide mocks for all the collaboraters of all those controllers in this test.
+<.> Inject `MockMvc` to drive the HTTP interactions.
+<.> Have Mockito create a mock implementation of the use case that the controller needs.
+
+In this example, I am using Mockito to setup the expectations and how the use case should behave.
+If your use case is complex, it can be the easiest way.
+The only thing you have to be careful with is that the return value that comes back from the use case corresponds to the input parameters you give it.
+Otherwise, things might get confusing if you do a POST on an endpoint with a `name` of `John`, but the HTTP response returns a name of `Alice` because you have set up your mocks that way.
+
+As an alternative, you can use the real use cases and in-memory repository implementations.
+That way, you don't need Mockito, and the use case works as it will in the real application.
+
+This `VisitControllerTest` shows how to implement a controller test without using Mockito:
+
+[source,java]
+----
+import com.wimdeblauwe.petclinic.owner.Owner;
+import com.wimdeblauwe.petclinic.owner.OwnerMother;
+import com.wimdeblauwe.petclinic.owner.Pet;
+import com.wimdeblauwe.petclinic.owner.PetMother;
+import com.wimdeblauwe.petclinic.owner.repository.InMemoryOwnerRepository;
+import com.wimdeblauwe.petclinic.owner.repository.OwnerRepository;
+import com.wimdeblauwe.petclinic.veterinarian.Veterinarian;
+import com.wimdeblauwe.petclinic.veterinarian.VeterinarianMother;
+import com.wimdeblauwe.petclinic.veterinarian.repository.InMemoryVeterinarianRepository;
+import com.wimdeblauwe.petclinic.veterinarian.repository.VeterinarianRepository;
+import com.wimdeblauwe.petclinic.visit.repository.InMemoryVisitRepository;
+import com.wimdeblauwe.petclinic.visit.repository.VisitRepository;
+import com.wimdeblauwe.petclinic.visit.usecase.PlanVisit;
+import org.hamcrest.Matchers;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(VisitController.class)
+class VisitControllerTest {
+
+  @Autowired
+  private MockMvc mockMvc;
+
+  @Autowired
+  private OwnerRepository ownerRepository;
+
+  @Autowired
+  private VeterinarianRepository veterinarianRepository;
+
+  @Test
+  void testPlanVisit_emptyRequest() throws Exception {
+    Pet pet = pet().build();
+    Owner owner = owner()
+        .withPet(pet)
+        .build();
+    Veterinarian veterinarian = veterinarian().build();
+    ownerRepository.save(owner);
+    veterinarianRepository.save(veterinarian);
+
+    mockMvc.perform(post("/api/visits")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                     {
+
+                                     }
+                                     """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("code").value("VALIDATION_FAILED"))
+        .andExpect(jsonPath("fieldErrors[*].code", Matchers.hasItems("REQUIRED_NOT_NULL", "REQUIRED_NOT_NULL", "REQUIRED_NOT_NULL", "REQUIRED_NOT_NULL")))
+        .andExpect(jsonPath("fieldErrors[*].property", Matchers.hasItems("veterinarianId", "ownerId", "petId", "appointmentTime")));
+  }
+
+  @Test
+  void testPlanVisit_missingAppointmentTime() throws Exception {
+    Pet pet = pet().build();
+    Owner owner = owner()
+        .withPet(pet)
+        .build();
+    Veterinarian veterinarian = veterinarian().build();
+    ownerRepository.save(owner);
+    veterinarianRepository.save(veterinarian);
+
+    mockMvc.perform(post("/api/visits")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(String.format("""
+                                                   {
+                                                      "veterinarianId": "%s",
+                                                      "ownerId": "%s",
+                                                      "petId": "%s"
+                                                   }
+                                                   """, veterinarian.getId().getId(), owner.getId().getId(), pet.getId().getId())))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("code").value("VALIDATION_FAILED"))
+        .andExpect(jsonPath("fieldErrors[*].code", Matchers.hasItems("REQUIRED_NOT_NULL")))
+        .andExpect(jsonPath("fieldErrors[*].property", Matchers.hasItems("appointmentTime")));
+  }
+
+  @Test
+  void testPlanVisit() throws Exception {
+    Pet pet = pet().build();
+    Owner owner = owner()
+        .withPet(pet)
+        .build();
+    Veterinarian veterinarian = veterinarian().build();
+    ownerRepository.save(owner);
+    veterinarianRepository.save(veterinarian);
+
+    mockMvc.perform(post("/api/visits")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(String.format("""
+                                                   {
+                                                      "veterinarianId": "%s",
+                                                      "ownerId": "%s",
+                                                      "petId": "%s",
+                                                      "appointmentTime": "2023-01-15T10:00:00Z"
+                                                   }
+                                                   """, veterinarian.getId().getId(), owner.getId().getId(), pet.getId().getId())))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("id").exists())
+        .andExpect(jsonPath("veterinarianId").value(veterinarian.getId().asString()))
+        .andExpect(jsonPath("ownerId").value(owner.getId().asString()))
+        .andExpect(jsonPath("petId").value(pet.getId().asString()))
+        .andExpect(jsonPath("appointmentTime").value("2023-01-15T10:00:00Z"));
+  }
+
+  @TestConfiguration
+  static class TestConfig { //<.>
+    @Bean
+    public PlanVisit planVisit(VisitRepository visitRepository,
+                               VeterinarianRepository veterinarianRepository,
+                               OwnerRepository ownerRepository) {
+      return new PlanVisit(visitRepository, veterinarianRepository, ownerRepository);
+    }
+
+    @Bean
+    public VisitRepository visitRepository() {
+      return new InMemoryVisitRepository();
+    }
+
+    @Bean
+    public VeterinarianRepository veterinarianRepository() {
+      return new InMemoryVeterinarianRepository();
+    }
+
+    @Bean
+    public OwnerRepository ownerRepository() {
+      return new InMemoryOwnerRepository();
+    }
+  }
+}
+
+----
+
+<.> The framework loads the configuration of this inner class automatically.
+It contains the configuration for the real use case with the in-memory versions of the repositories that the use case needs.
+
+I showed two possible ways to work with controller tests.
+Both have their pros and cons.
+Use mocking when you want to test edge cases or error scenarios that are hard to reproduce with real data.
+Use real use cases with in-memory repositories when you want to test the complete request-response flow with realistic data transformations.
+
+== Integration tests
+
+So far, we have tested use cases, repositories and controllers.
+But we have not tested end-to-end.
+To ensure that works, I always add a few `@SpringBootTest` tests as well.
+
+It makes little sense to try to replicate every possible scenario, but the most important paths of the application are best covered with such tests.
+This should give you good confidence that the application will work fine.
+As the application grows, there might be bugs that are only reproducable in an end-to-end test.
+I always first try to isolate the bug and see if I can write a use case test, repository test or controller test.
+If that is not possible, I will write a `@SpringBootTest` to ensure there is no regression in the future.
+
+Just as with `@DataJpaTest`, I write a meta-annation for all the integration tests:
+
+[source,java]
+----
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Import(TestcontainersConfiguration.class)
+@SpringBootTest
+@AutoConfigureMockMvc
+@ExtendWith(CleanDatabaseExtension.class)
+public @interface PetclinicSpringBootTest {
+}
+----
+
+It again imports `TestcontainersConfiguration` so we have our real PostgreSQL database in Docker running.
+We also need to add `AutoConfigureMockMvc` so we can use `MockMvc` to drive the interaction with the application.
+
+An important part of integration tests is the cleanup.
+Some people add `@Transactional` with `@SpringBootTest`, but that is a bad idea.
+Sure, your database gets rolled back at the end of the test so the database is fresh for the next test.
+But by making the test transactional, you influence how the transactions of the application behave.
+You can have a transaction already because the test started it, but if you run your application, it fails as there is no transaction in reality.
+
+The whole point of these kind of integration tests is to be as realistic as possible.
+For that reason, it is better to add a JUnit extension to clean up the database (or any other resource that might need cleaning up).
+Our meta-annation has `@ExtendWith(CleanDatabaseExtension.class)` for this purpose.
+
+The code of the extension itself looks like this:
+
+[source,java]
+----
+import com.wimdeblauwe.petclinic.infrastructure.repository.DatabaseCleaner;
+import org.junit.jupiter.api.extension.AfterEachCallback;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+
+public class CleanDatabaseExtension implements AfterEachCallback {
+
+  @Override
+  public void afterEach(ExtensionContext context) throws Exception {
+    var applicationContext = SpringExtension.getApplicationContext(context);
+    DatabaseCleaner cleaner = applicationContext.getBean(DatabaseCleaner.class);
+    cleaner.clean();
+  }
+}
+----
+
+It basically delegates to a `DatabaseCleaner` class after each test has run.
+This is the code for the cleaner itself:
+
+[source,java]
+----
+import com.wimdeblauwe.petclinic.owner.repository.OwnerRepository;
+import com.wimdeblauwe.petclinic.veterinarian.repository.VeterinarianRepository;
+import com.wimdeblauwe.petclinic.visit.repository.VisitRepository;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+@Component
+@Transactional
+public class DatabaseCleaner {
+  private final OwnerRepository ownerRepository;
+  private final VeterinarianRepository veterinarianRepository;
+  private final VisitRepository visitRepository;
+
+  public DatabaseCleaner(OwnerRepository ownerRepository,
+                         VeterinarianRepository veterinarianRepository,
+                         VisitRepository visitRepository) {
+    this.ownerRepository = ownerRepository;
+    this.veterinarianRepository = veterinarianRepository;
+    this.visitRepository = visitRepository;
+  }
+
+  public void clean() {
+    visitRepository.deleteAll();
+    veterinarianRepository.deleteAll();
+    ownerRepository.deleteAll();
+  }
+}
+----
+
+It injects all the repositories and calls `deleteAll()` in the proper order.
+
+With all this setup in place, we can get to our actual integration test:
+
+[source,java]
+----
+import com.jayway.jsonpath.JsonPath;
+import com.wimdeblauwe.petclinic.infrastructure.test.PetclinicSpringBootTest;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@PetclinicSpringBootTest
+class PetclinicApplicationTests {
+
+  @Autowired
+  private MockMvc mockMvc;
+
+  @Test
+  void happyPathToPlannedVisits() throws Exception {
+    // 1. Create an owner with a pet
+    MvcResult ownerResult = mockMvc.perform(post("/api/owners")
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content("""
+                                                             {
+                                                                "owner": {
+                                                                  "firstName": "John",
+                                                                  "lastName": "Doe",
+                                                                  "street": "123 Main Street",
+                                                                  "city": "Springfield",
+                                                                  "telephone": "123-456-7890"
+                                                                },
+                                                                "pet": {
+                                                                  "name": "Rufus",
+                                                                  "birthDate": "2020-01-01",
+                                                                  "type": "DOG",
+                                                                  "weightInGrams": 10000
+                                                                }
+                                                              }
+                                                             """))
+        .andExpect(status().isCreated())
+        .andReturn();
+
+    // Extract owner and pet id from the response
+    String ownerId = JsonPath.read(ownerResult.getResponse().getContentAsString(), "$.id");
+    String petId = JsonPath.read(ownerResult.getResponse().getContentAsString(), "$.pets[0].id");
+
+    // 2. Create a veterinarian
+    MvcResult vetResult = mockMvc.perform(post("/api/veterinarians")
+                                              .contentType(MediaType.APPLICATION_JSON)
+                                              .content("""
+                                                           {
+                                                              "firstName": "Jane",
+                                                              "lastName": "Smith",
+                                                              "specialities": [
+                                                                  {
+                                                                      "name": "Surgery",
+                                                                      "since": "2020-01-01"
+                                                                  }
+                                                              ]
+                                                           }
+                                                           """))
+        .andExpect(status().isCreated())
+        .andReturn();
+
+    // Extract veterinarian ID from the response
+    String veterinarianId = JsonPath.read(vetResult.getResponse().getContentAsString(), "$.id");
+
+    // 3. Plan a visit
+    Instant appointmentTime = Instant.now().plus(Duration.of(1, ChronoUnit.HOURS));
+    mockMvc.perform(post("/api/visits")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(String.format("""
+                                                   {
+                                                      "veterinarianId": "%s",
+                                                      "ownerId": "%s",
+                                                      "petId": "%s",
+                                                      "appointmentTime": "%s"
+                                                   }
+                                                   """, veterinarianId, ownerId, petId, appointmentTime)))
+        .andExpect(status().isCreated());
+  }
+}
+----
+
+Using the API of our application, we simulate a complete user interaction in this integration test.
+
+[NOTE]
+====
+Some people will use `@DirtiesContext` for the cleanup of each integration test.
+This should really be avoided as much as possible since that throws away the test context cache and makes the test suite very, very slow.
+If you want to learn more why `@DirtiesContext` is do bad, check out https://www.youtube.com/watch?v=c-GV2PxymoY[How fixing a broken window cut down our build time by 50% by Philip Riecks @ Spring I/O].
+====
+
+The integration test above works well for a single test, but as you add more integration tests as the application grows, you'll notice significant duplication.
+Let's see how API clients can help reduce this maintenance burden.
+
+To avoid having to duplicate those MockMvc lines for common things you need in a lot of the integration tests, I sometimes write an API client that hides that calling of MockMvc.
+
+Imagine having 20 integration tests that all need to create an owner with a pet.
+Without an API client, you'd have the same 15-20 lines of MockMvc setup repeated across all tests.
+When you need to change the owner creation API, you'd have to update all 20 tests.
+The API client pattern solves this maintenance nightmare.
+
+I usually create a separate API client per package (feature) of the application.
+For example, for the `owner` package we can have this:
+
+[source,java]
+----
+import com.jayway.jsonpath.JsonPath;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+public class OwnerApiClient {
+  private final MockMvc mockMvc;
+
+  public OwnerApiClient(MockMvc mockMvc) {
+    this.mockMvc = mockMvc;
+  }
+
+  public OwnerIdWithPetId createOwnerWithPet() throws Exception {
+    MvcResult ownerResult = mockMvc.perform(post("/api/owners")
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content("""
+                                                             {
+                                                                "owner": {
+                                                                  "firstName": "John",
+                                                                  "lastName": "Doe",
+                                                                  "street": "123 Main Street",
+                                                                  "city": "Springfield",
+                                                                  "telephone": "123-456-7890"
+                                                                },
+                                                                "pet": {
+                                                                  "name": "Rufus",
+                                                                  "birthDate": "2020-01-01",
+                                                                  "type": "DOG",
+                                                                  "weightInGrams": 10000
+                                                                }
+                                                              }
+                                                             """))
+        .andExpect(status().isCreated())
+        .andReturn();
+
+    // Extract owner and pet id from the response
+    String ownerId = JsonPath.read(ownerResult.getResponse().getContentAsString(), "$.id");
+    String petId = JsonPath.read(ownerResult.getResponse().getContentAsString(), "$.pets[0].id");
+
+    return new OwnerIdWithPetId(ownerId, petId);
+  }
+
+  public record OwnerIdWithPetId(String ownerId, String petId) {
+  }
+}
+----
+
+I also created similar classes for `VeterinarianApiClient` and `VisitApiClient`.
+
+Next, I group everything in an application API client:
+
+[source,java]
+----
+public record PetclinicApiClient(OwnerApiClient ownerApiClient,
+                                 VeterinarianApiClient veterinarianApiClient,
+                                 VisitApiClient visitApiClient) {
+}
+----
+
+Finally, I ensure this application API client is available in the test for autowiring via a `@TestConfiguration`:
+
+[source,java]
+----
+import com.wimdeblauwe.petclinic.integration.api.OwnerApiClient;
+import com.wimdeblauwe.petclinic.integration.api.PetclinicApiClient;
+import com.wimdeblauwe.petclinic.integration.api.VeterinarianApiClient;
+import com.wimdeblauwe.petclinic.integration.api.VisitApiClient;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.test.web.servlet.MockMvc;
+
+@TestConfiguration
+public class PetclinicSpringBootTestWithApiClientTestConfiguration {
+  @Bean
+  public PetclinicApiClient petclinicApiClient(MockMvc mockMvc) {
+    return new PetclinicApiClient(
+        new OwnerApiClient(mockMvc),
+        new VeterinarianApiClient(mockMvc),
+        new VisitApiClient(mockMvc)
+    );
+  }
+}
+----
+
+Don't forget to import it into the custom annotation:
+
+[source,java]
+----
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Import({TestcontainersConfiguration.class, PetclinicSpringBootTestWithApiClientTestConfiguration.class})
+@SpringBootTest
+@AutoConfigureMockMvc
+@ExtendWith(CleanDatabaseExtension.class)
+public @interface PetclinicSpringBootTestWithApiClient {
+}
+----
+
+The integration test is now simplied to this:
+
+[source,java]
+----
+import com.wimdeblauwe.petclinic.infrastructure.test.PetclinicSpringBootTestWithApiClient;
+import com.wimdeblauwe.petclinic.integration.api.OwnerApiClient;
+import com.wimdeblauwe.petclinic.integration.api.PetclinicApiClient;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
+@PetclinicSpringBootTestWithApiClient
+public class VisitIntegrationTest {
+  @Autowired
+  private PetclinicApiClient petclinicApiClient;
+
+  @Test
+  void happyPathToPlannedVisit() throws Exception {
+    OwnerApiClient.OwnerIdWithPetId ownerWithPet = petclinicApiClient.ownerApiClient().createOwnerWithPet();
+    String veterinarianId = petclinicApiClient.veterinarianApiClient().createVeterinarian();
+    petclinicApiClient.visitApiClient().planVisit(ownerWithPet.ownerId(), ownerWithPet.petId(), veterinarianId);
+  }
+}
+----
+
+It looks a bit weird for this simple case, but you can imagine the usefulness if you have lots of integration tests.
+
+One challenge with API clients is balancing convenience with flexibility.
+In this example, `createOwnerWithPet()` uses hardcoded values, which works for most tests but might not suit specific scenarios.
+You could add parameters like `createOwnerWithPet(String firstName, String lastName)`, but this can lead to method proliferation.
+
+My approach is to start simple with sensible defaults, then add customization options only when multiple tests need them.
+For one-off scenarios, it's often better to use the raw MockMvc calls rather than overloading the API client with rarely-used parameters.
+
+This concludes the sections on testing if our code does what we want it to do.
+We will now investigate how we can be sure our code is written in a way that the team has agreed upon.
+
+[TIP]
+.Using real HTTP integration test
+====
+Using MockMvc is good most of the time.
+However, real HTTP tests catch issues that MockMvc might miss, such as actual HTTP serialization problems, Tomcat-specific configuration issues, servlet filter behavior, and multipart file handling edge cases.
+
+If you want to be even more sure that everything works fine in the real application, you can have `@SpringBootTest` start the real Tomcat (or whatever you have configured in your dependencies) and use RestAssured to interact with the API.
+
+To do this:
+
+. Add the https://github.com/rest-assured/rest-assured/wiki/GettingStarted#rest-assured[io.rest-assured:rest-assured] dependency to your project.
+. Create a new annotation `@PetclinicSpringBootRealTomcatTest` to use the `RANDOM_PORT` web environment insteaed of the default `MOCK`,
++
+[source,java]
+----
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Import(TestcontainersConfiguration.class)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@ExtendWith({CleanDatabaseExtension.class,RestAssuredSetupExtension.class})
+public @interface PetclinicSpringBootRealTomcatTest {
+}
+----
+. Create a Junit extension that will set up RestAssured to connect to the correct random port:
++
+[source,java]
+----
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.restassured.RestAssured;
+import io.restassured.config.LogConfig;
+import io.restassured.config.ObjectMapperConfig;
+import io.restassured.config.RestAssuredConfig;
+import io.restassured.filter.log.LogDetail;
+import io.restassured.internal.mapping.Jackson2Mapper;
+import org.junit.jupiter.api.extension.BeforeEachCallback;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.springframework.core.env.Environment;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+
+public class RestAssuredSetupExtension implements BeforeEachCallback {
+
+  @Override
+  public void beforeEach(ExtensionContext context) {
+    var applicationContext = SpringExtension.getApplicationContext(context);
+    Environment env = applicationContext.getEnvironment();
+    int port = Integer.parseInt(env.getProperty("local.server.port"));
+    ObjectMapper objectMapper = (ObjectMapper) applicationContext.getBean("jacksonObjectMapper");
+    RestAssured.port = port;
+    RestAssured.config = RestAssuredConfig.config()
+        .logConfig(LogConfig.logConfig().enableLoggingOfRequestAndResponseIfValidationFails(LogDetail.ALL))
+        .objectMapperConfig(new ObjectMapperConfig(new Jackson2Mapper((type, s) -> objectMapper)));
+
+  }
+}
+----
+. Use the RestAssured API to drive the HTTP interactions.
++
+[source,java]
+----
+@Test
+void happyPathToPlannedVisits() {
+  // 1. Create an owner with a pet
+      RestAssured.given()
+        .contentType(ContentType.JSON)
+        .body("""
+            {
+               "owner": {
+                 "firstName": "John",
+                 "lastName": "Doe",
+                 "street": "123 Main Street",
+                 "city": "Springfield",
+                 "telephone": "123-456-7890"
+               },
+               "pet": {
+                 "name": "Rufus",
+                 "birthDate": "2020-01-01",
+                 "type": "DOG",
+                 "weightInGrams": 10000
+               }
+             }
+            """)
+    .when()
+        .post("/api/owners")
+    .then()
+        .statusCode(HttpStatus.CREATED.value());
+
+      ...
+}
+----
+====
+
+== Architecture tests
+
+It is nice to have the architecture in your head and adhere to it.
+It is equally nice to write down how you want the architecture of your application to be.
+But to keep a big code base consistent, tools can help.
+
+As your codebase grows and team members change, it becomes harder to maintain architectural consistency through code reviews alone.
+Architecture tests act as guardrails, automatically catching violations of your intended design.
+
+By using https://www.archunit.org/[ArchUnit], you can enforce naming conventions, package structures, dependencies between classes and/or packages, etc.
+
+To use it, add this dependency to your project:
+
+[source,xml]
+----
+<dependency>
+    <groupId>com.tngtech.archunit</groupId>
+    <artifactId>archunit-junit5</artifactId>
+    <version>${archunit-junit5.version}</version>
+    <scope>test</scope>
+</dependency>
+----
+
+After that, we can write tests that validate if our application follows the architecture that we want.
+
+[source,java]
+----
+import com.tngtech.archunit.core.domain.JavaClass;
+import com.tngtech.archunit.core.domain.JavaModifier;
+import com.tngtech.archunit.junit.AnalyzeClasses;
+import com.tngtech.archunit.junit.ArchTest;
+import com.tngtech.archunit.lang.ArchCondition;
+import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.lang.ConditionEvents;
+import com.wimdeblauwe.petclinic.infrastructure.stereotype.UseCase;
+import jakarta.persistence.AttributeConverter;
+import jakarta.persistence.Converter;
+import jakarta.transaction.Transactional;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.*;
+
+import static com.tngtech.archunit.lang.ConditionEvent.createMessage;
+import static com.tngtech.archunit.lang.SimpleConditionEvent.violated;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.*;
+import static java.util.Collections.emptyList;
+import static java.util.stream.Collectors.groupingBy;
+
+@AnalyzeClasses(packages = "com.wimdeblauwe.petclinic") //<.>
+public class PetclinicArchitectureTest {
+
+  @ArchTest //<.>
+  public static final ArchRule controllersShouldBeInAWebPackage = classes()
+      .that().haveSimpleNameEndingWith("Controller")
+      .and().areTopLevelClasses()
+      .should().resideInAPackage("..web..")
+      .as("Controllers should be in a .web package");
+
+  @ArchTest
+  public static final ArchRule useCasesShouldBeInAUsecasePackage = classes()
+      .that()
+      .areAnnotatedWith(UseCase.class)
+      .should().resideInAPackage("..usecase..")
+      .as("Usecase should be in a .usecase package");
+
+  @ArchTest
+  public static final ArchRule repositoriesShouldBeInARepositoryPackage = classes()
+      .that().haveSimpleNameEndingWith("Repository")
+      .and().areNotAnnotations()
+      .and().haveSimpleNameNotEndingWith("TestRepository")
+      .should().resideInAPackage("..repository..")
+      .as("Repository classes should be in a .repository package");
+
+  @ArchTest
+  public static final ArchRule attributeConverterShouldBeInARepositoryPackage = classes()
+      .that().areAnnotatedWith(Converter.class)
+      .should().resideInAPackage("..repository..")
+      .andShould().haveSimpleNameEndingWith("Converter")
+      .andShould().implement(AttributeConverter.class)
+      .as("AttributeConverter classes annotated with @Converter should be in a .repository package");
+
+  @ArchTest
+  public static final ArchRule useCustomDataJpaTest = classes()
+      .that().areNotAnnotations()
+      .should().notBeAnnotatedWith(DataJpaTest.class)
+      .as("Use @PetclinicDataJpaTest annotation instead of @DataJpaTest");
+
+  @ArchTest
+  public static final ArchRule useCustomSpringBootTest = classes()
+      .that().areNotAnnotations()
+      .and().haveSimpleNameNotEndingWith("ManualTest")
+      .should().notBeAnnotatedWith(SpringBootTest.class)
+      .as("Use @PetclinicSpringBootTest annotation instead of @SpringBootTest");
+
+  @ArchTest
+  public static final ArchRule restControllersShouldBePackagePrivate = classes()
+      .that()
+      .areAnnotatedWith(RestController.class)
+      .should().bePackagePrivate();
+
+  @ArchTest
+  public static final ArchRule attributeConvertersShouldBePackagePrivate = classes()
+      .that()
+      .areAnnotatedWith(Converter.class).and().doNotHaveModifier(JavaModifier.ABSTRACT)
+      .should().bePackagePrivate();
+
+  @ArchTest
+  public static final ArchRule testsShouldBeInSamePackageAsCodeUnderTest = classes()
+      .should(resideInTheSamePackageAsTheirTestClasses("Test"));
+
+  @ArchTest
+  public static final ArchRule noJavaxAnnotationImports = noClasses()
+      .should()
+      .dependOnClassesThat()
+      .resideInAPackage("javax.annotation..");
+
+  @ArchTest
+  public static final ArchRule noJakartaTransactionalImport = noClasses()
+      .should()
+      .beAnnotatedWith(Transactional.class);
+
+  @ArchTest
+  public static final ArchRule findSingleMethodsInRepositoryShouldReturnOptional = methods()
+      .that()
+      .areDeclaredInClassesThat()
+      .haveSimpleNameEndingWith("Repository")
+      .and()
+      .haveNameStartingWith("find")
+      .and()
+      .haveNameNotStartingWith("findAll")
+      .should()
+      .haveRawReturnType(Optional.class)
+      .as("Find-single methods should return Optional");
+
+  private static ArchCondition<JavaClass> resideInTheSamePackageAsTheirTestClasses(String testClassSuffix) {
+    return new ArchCondition<>("reside in the same package as their test classes") {
+      private Map<String, List<JavaClass>> testClassesBySimpleClassName = new HashMap<>();
+
+      @Override
+      public void init(Collection<JavaClass> allClasses) {
+        this.testClassesBySimpleClassName = allClasses.stream()
+            .filter(clazz -> clazz.getName().endsWith(testClassSuffix))
+            .collect(groupingBy(JavaClass::getSimpleName));
+      }
+
+      @Override
+      public void check(JavaClass implementationClass,
+                        ConditionEvents events) {
+        String implementationClassName = implementationClass.getSimpleName();
+        String implementationClassPackageName = implementationClass.getPackageName();
+        String possibleTestClassName = implementationClassName + testClassSuffix;
+        List<JavaClass> possibleTestClasses = this.testClassesBySimpleClassName.getOrDefault(possibleTestClassName, emptyList());
+
+        boolean isTestClassInWrongPackage = implementationClass.isTopLevelClass()
+                                            && !possibleTestClasses.isEmpty()
+                                            && possibleTestClasses.stream()
+                                                .noneMatch(clazz -> clazz.getPackageName().equals(implementationClassPackageName));
+
+        if (isTestClassInWrongPackage) {
+          possibleTestClasses.forEach(wrongTestClass -> {
+            String message = createMessage(wrongTestClass,
+                                           String.format("does not reside in same package as implementation class <%s>", implementationClass.getName()));
+            events.add(violated(wrongTestClass, message));
+          });
+        }
+      }
+    };
+  }
+}
+----
+
+<.> Tell ArchUnit what packages to analyse.
+This is normally just those of our application.
+<.> Each field annotated with `@ArchTest` is a test that will be executed on the code base.
+
+If you want to learn more, check out the documentation on the ArchUnit website.
+
+== Conclusion
+
+This testing strategy provides comprehensive coverage while maintaining fast feedback loops and realistic test scenarios.
+The layered approach ensures that each component is thoroughly tested in isolation, while integration tests validate the complete system behavior.
+
+Key benefits of this approach:
+
+* Fast Unit Tests: Pure functions and value objects test quickly with minimal setup
+* Realistic Repository Tests: Test containers ensure database interactions work correctly
+* Focused Use Case Tests: In-memory repositories provide fast, deterministic business logic testing
+* Comprehensive Controller Tests: MockMvc validates HTTP concerns without external dependencies
+* Confidence Through Integration: End-to-end tests catch issues that unit tests miss
+* Architectural Guardrails: ArchUnit prevents architectural drift over time
+
+The testing strategy mirrors the architectural principles: clear separation of concerns, focused responsibilities, and pragmatic trade-offs.
+Just as the architecture avoids over-engineering, the testing approach avoids test code that's harder to maintain than the production code it validates.
+
+Remember: good tests should give you confidence to refactor and extend your application.
+If your tests are brittle or hard to understand, they become a maintenance burden rather than a safety net.
+
+See https://github.com/wimdeblauwe/petclinic/tree/main[wimdeblauwe/petclinic] on GitHub for the full sources of these examples.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
+
+_A big thank you to Wout Deleu and Philip Riecks for reviewing this blog post._
