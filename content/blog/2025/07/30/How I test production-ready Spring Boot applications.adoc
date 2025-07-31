@@ -1021,6 +1021,159 @@ class PetclinicApplicationTests {
 
 Using the API of our application, we simulate a complete user interaction in this integration test.
 
+The integration test above works well for a single test, but as you add more integration tests, you'll notice significant duplication.
+Let's see how API clients can help reduce this maintenance burden.
+
+As the application grows, you will have more integration tests.
+To avoid having to duplicate those MockMvc lines for common things you need in a lot of the integration tests, I sometimes write an API client that hides that calling of MockMvc.
+
+Imagine having 20 integration tests that all need to create an owner with a pet.
+Without an API client, you'd have the same 15-20 lines of MockMvc setup repeated across all tests.
+When you need to change the owner creation API, you'd have to update all 20 tests.
+The API client pattern solves this maintenance nightmare.
+
+I usually create a separate API client per package (feature) of the application.
+For example, for the `owner` package we can have this:
+
+[source,java]
+----
+import com.jayway.jsonpath.JsonPath;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+public class OwnerApiClient {
+  private final MockMvc mockMvc;
+
+  public OwnerApiClient(MockMvc mockMvc) {
+    this.mockMvc = mockMvc;
+  }
+
+  public OwnerIdWithPetId createOwnerWithPet() throws Exception {
+    MvcResult ownerResult = mockMvc.perform(post("/api/owners")
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content("""
+                                                             {
+                                                                "owner": {
+                                                                  "firstName": "John",
+                                                                  "lastName": "Doe",
+                                                                  "street": "123 Main Street",
+                                                                  "city": "Springfield",
+                                                                  "telephone": "123-456-7890"
+                                                                },
+                                                                "pet": {
+                                                                  "name": "Rufus",
+                                                                  "birthDate": "2020-01-01",
+                                                                  "type": "DOG",
+                                                                  "weightInGrams": 10000
+                                                                }
+                                                              }
+                                                             """))
+        .andExpect(status().isCreated())
+        .andReturn();
+
+    // Extract owner and pet id from the response
+    String ownerId = JsonPath.read(ownerResult.getResponse().getContentAsString(), "$.id");
+    String petId = JsonPath.read(ownerResult.getResponse().getContentAsString(), "$.pets[0].id");
+
+    return new OwnerIdWithPetId(ownerId, petId);
+  }
+
+  public record OwnerIdWithPetId(String ownerId, String petId) {
+  }
+}
+----
+
+I also created similar classes for `VeterinarianApiClient` and `VisitApiClient`.
+
+Next, I group everything in an application API client:
+
+[source,java]
+----
+public record PetclinicApiClient(OwnerApiClient ownerApiClient,
+                                 VeterinarianApiClient veterinarianApiClient,
+                                 VisitApiClient visitApiClient) {
+}
+----
+
+Finally, I ensure this application API client is available in the test for autowiring via a `@TestConfiguration`:
+
+[source,java]
+----
+import com.wimdeblauwe.petclinic.integration.api.OwnerApiClient;
+import com.wimdeblauwe.petclinic.integration.api.PetclinicApiClient;
+import com.wimdeblauwe.petclinic.integration.api.VeterinarianApiClient;
+import com.wimdeblauwe.petclinic.integration.api.VisitApiClient;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.test.web.servlet.MockMvc;
+
+@TestConfiguration
+public class PetclinicSpringBootTestWithApiClientTestConfiguration {
+  @Bean
+  public PetclinicApiClient petclinicApiClient(MockMvc mockMvc) {
+    return new PetclinicApiClient(
+        new OwnerApiClient(mockMvc),
+        new VeterinarianApiClient(mockMvc),
+        new VisitApiClient(mockMvc)
+    );
+  }
+}
+----
+
+Don't forget to import it into the custom annotation:
+
+[source,java]
+----
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Import({TestcontainersConfiguration.class, PetclinicSpringBootTestWithApiClientTestConfiguration.class})
+@SpringBootTest
+@AutoConfigureMockMvc
+@ExtendWith(CleanDatabaseExtension.class)
+public @interface PetclinicSpringBootTestWithApiClient {
+}
+----
+
+The integration test is now simplied to this:
+
+[source,java]
+----
+import com.wimdeblauwe.petclinic.infrastructure.test.PetclinicSpringBootTestWithApiClient;
+import com.wimdeblauwe.petclinic.integration.api.OwnerApiClient;
+import com.wimdeblauwe.petclinic.integration.api.PetclinicApiClient;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
+@PetclinicSpringBootTestWithApiClient
+public class VisitIntegrationTest {
+  @Autowired
+  private PetclinicApiClient petclinicApiClient;
+
+  @Test
+  void happyPathToPlannedVisit() throws Exception {
+    OwnerApiClient.OwnerIdWithPetId ownerWithPet = petclinicApiClient.ownerApiClient().createOwnerWithPet();
+    String veterinarianId = petclinicApiClient.veterinarianApiClient().createVeterinarian();
+    petclinicApiClient.visitApiClient().planVisit(ownerWithPet.ownerId(), ownerWithPet.petId(), veterinarianId);
+  }
+}
+----
+
+It looks a bit weird for this simple case, but you can imagine the usefulness if you have lots of integration tests.
+
+One challenge with API clients is balancing convenience with flexibility.
+In this example, `createOwnerWithPet()` uses hardcoded values, which works for most tests but might not suit specific scenarios.
+You could add parameters like `createOwnerWithPet(String firstName, String lastName)`, but this can lead to method proliferation.
+
+My approach is to start simple with sensible defaults, then add customization options only when multiple tests need them.
+For one-off scenarios, it's often better to use the raw MockMvc calls rather than overloading the API client with rarely-used parameters.
+
+This concludes the sections on testing if our code does what we want it to do.
+We will now investigate how we can be sure our code is written in a way that the team has agreed upon.
+
 == Architecture tests
 
 It is nice to have the architecture in your head and adhere to it.
