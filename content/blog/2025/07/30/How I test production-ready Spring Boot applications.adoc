@@ -249,7 +249,8 @@ In the example test, you see this here:
     ownerRepository.save(owner);
 ----
 
-For reability, I use static imports. Without the static imports, the code would look like this:
+For reability, I use static imports.
+Without the static imports, the code would look like this:
 
 [source,java]
 ----
@@ -502,6 +503,36 @@ You can also use constructor injection in tests if you want, but I like field in
 It gives less "noise" at the top of the test class.
 * `EntityManager` gets autowired to force a flush and a clear.
 This ensures that the changes are written to the database so we can validate using `JdbcClient` if the proper tables and columns are updated.
+* For the testing of the `save()` method, I use `JdbcClient` and SQL statements to make sure the relevant tables and columns are updated.
+For testing of the other repository methods, I only use what the repository offers and assert on the returned objects.
+
+On a final note, if you want to set default properties, you should use a Spring profile.
+
+For instance, update `@PetclinicDataJpaTest` like this:
+
+[source,java]
+----
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@DataJpaTest(includeFilters = {
+    @ComponentScan.Filter(type = FilterType.ANNOTATION, classes = Repository.class)
+})
+@Import(TestcontainersConfiguration.class)
+@ActiveProfiles("datajpatest") //<.>
+public @interface PetclinicDataJpaTest {
+}
+----
+
+<.> Make the `datajpatest` Spring profile active when the test runs.
+
+You can now create a `src/test/resources/application-datajpatest.properties` or `src/test/resources/application-datajpatest.yaml` file with some default properties that should be active when running the database tests.
+
+[CAUTION]
+====
+Never create a `src/test/resource/application.{properties|yaml}` file.
+Such a file overwrites the `application.{properties|yaml}` of the main application and you can never write a relevant integration test anymore.
+Always use a profile and a dedicated properties file for settings you want in your tests.
+====
 
 == Controller tests
 
@@ -1031,6 +1062,13 @@ class PetclinicApplicationTests {
 
 Using the API of our application, we simulate a complete user interaction in this integration test.
 
+[NOTE]
+====
+Some people will use `@DirtiesContext` for the cleanup of each integration test.
+This should really be avoided as much as possible since that throws away the test context cache and makes the test suite very, very slow.
+If you want to learn more why `@DirtiesContext` is do bad, check out https://www.youtube.com/watch?v=c-GV2PxymoY[How fixing a broken window cut down our build time by 50% by Philip Riecks @ Spring I/O].
+====
+
 The integration test above works well for a single test, but as you add more integration tests, you'll notice significant duplication.
 Let's see how API clients can help reduce this maintenance burden.
 
@@ -1477,3 +1515,5 @@ If your tests are brittle or hard to understand, they become a maintenance burde
 See https://github.com/wimdeblauwe/petclinic/tree/main[wimdeblauwe/petclinic] on GitHub for the full sources of these examples.
 
 If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
+
+_A big thank you to Wout Deleu and Philip Riecks for reviewing this blog post._
