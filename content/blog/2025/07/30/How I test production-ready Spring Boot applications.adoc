@@ -264,7 +264,7 @@ They are really great to quickly get a full usuable object for use in a test, an
 
 If you want to learn more about them, go read the excellent blog post https://jonasg.io/posts/object-mother/[Mastering the Object Mother] of Jonas Geiregat.
 
-Writing code for an Object Mother is a bit of repetitive work, but luckily, there is the https://plugins.jetbrains.com/plugin/23056-test-nurturer[Tesy Nurturer] plugin for IntelliJ IDEA that automates most of the work.
+Writing code for an Object Mother is a bit of repetitive work, but luckily, there is the https://plugins.jetbrains.com/plugin/23056-test-nurturer[Test Nurturer] plugin for IntelliJ IDEA that automates most of the work.
 
 As an example, this is how the `OwnerMother` looks like:
 
@@ -542,7 +542,7 @@ It makes no sense to have a unit test that just calls the methods of the control
 That would not test the most important part of the controller which is the mapping of the URLs, the path variables, the JSON serialization and deserialization, etc.
 
 In the example application I did not create a separate meta annotation for `@WebMvcTest`, but if I did, it would be called `@PetclinicWebMvcTest`.
-The application is so simple currently that it is not needed, but in a real application, you will have some more complex setup, so creating such an annotation would be benefical there.
+The application is so simple currently that it is not needed, but in a real application, you will have some more complex setup, so creating such an annotation would be beneficial there.
 
 This is the code of the `OwnerController`:
 
@@ -876,7 +876,7 @@ As the application grows, there might be bugs that are only reproducable in an e
 I always first try to isolate the bug and see if I can write a use case test, repository test or controller test.
 If that is not possible, I will write a `@SpringBootTest` to ensure there is no regression in the future.
 
-Just as with `@DataJpaTest`, I write a meta-annation for all the integration tests:
+Just as with `@DataJpaTest`, I write a meta-annotation for all the integration tests:
 
 [source,java]
 ----
@@ -1232,7 +1232,7 @@ If you want to be even more sure that everything works fine in the real applicat
 To do this:
 
 . Add the https://github.com/rest-assured/rest-assured/wiki/GettingStarted#rest-assured[io.rest-assured:rest-assured] dependency to your project.
-. Create a new annotation `@PetclinicSpringBootRealTomcatTest` to use the `RANDOM_PORT` web environment insteaed of the default `MOCK`,
+. Create a new annotation `@PetclinicSpringBootRealTomcatTest` to use the `RANDOM_PORT` web environment instead of the default `MOCK`,
 +
 [source,java]
 ----
@@ -1244,7 +1244,7 @@ To do this:
 public @interface PetclinicSpringBootRealTomcatTest {
 }
 ----
-. Create a Junit extension that will set up RestAssured to connect to the correct random port:
+. Create a JUnit extension that will set up RestAssured to connect to the correct random port:
 +
 [source,java]
 ----
