@@ -1,0 +1,120 @@
+---
+title: "How I document production-ready Spring Boot applications"
+date: 2025-08-06
+draft: false
+tags: ["spring-boot", "architecture"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+This blog post explains how I like to document a Spring Boot application I am writing.
+It is the third and last post in my series on writing production-ready Spring Boot applications.
+See https://www.wimdeblauwe.com/blog/2025/06/24/how-i-write-production-ready-spring-boot-applications/[How I write production-ready Spring Boot applications] and https://www.wimdeblauwe.com/blog/2025/07/30/how-i-test-production-ready-spring-boot-applications/[How I test production-ready Spring Boot applications] for the other posts in the serie.
+
+<!--more-->
+
+== Documentation in the code
+
+There are many ways to write documentation.
+You can have a shared drive with Word or Pages files.
+You can use online systems like Google Drive, Confluence or Notion.
+There are probably many options as well.
+
+The problem with all those is that the documentation is "somewhere else".
+It is not part of the code base.
+Some of those systems use a proprietary format that you can't read unless you have a license for the software.
+
+I write my documentation in https://asciidoc.org/[Asciidoc], which is a text based format similar to Markdown.
+It is more powerful than Markdown and it can be nicely integrated into the Maven build to generate HTML and PDF output.
+
+Because it is just text, we can easily store it in version control along with our source code.
+When we change the application, we can also update the documentation and review it in the same pull request.
+
+== README file
+
+A project should always have a `README.adoc` or `README.md` file.
+I know I said I use Asciidoc, but for the readme, I sometimes make an exception because GitHub renders the Markdown better than the Asciidoc.
+
+What is part of the README?
+
+* How to build the application: Explains what Maven or Gradle commands to run to build the application.
+* How to run the application locally: Explains any steps you need to take to get started with running the application locally.
+Maybe you need to copy some file, fill in some secrets, ...
+* How to release the application: Hopefully, you can just state here that you can run a simple action on your CI system.
+But usually, there are some extra steps involved like updating release notes somewhere, informing the right people, ...
+* Anything special you need to know to run on certain environments (e.g. you need to something special on Windows, Linux or Mac)
+* How to configure your development environment: Maybe you need to have some IDE plugins, or configure the code style.
+If you have company-wide code style, just refer to the official docs you hopefully have somewhere.
+* The branching strategy used on the project.
+* The style of commit messages.
+
+The goal should always be to have as little documentation as possible, but no less.
+If you can refer to an authoritative source outside your project, please do.
+
+To know what the application actually does, and how it has been architected, is not part of the readme.
+
+For that, we have our architecture documentation.
+
+== Architecture documentation
+
+The architecture documentation provides a high-level overview of the architecture of the application.
+To ensure we don't need to update the document too often, or that it just goes stale fast, we need to keep it high-level.
+
+My rule of thumb is: What would I explain to a new member joining the team about this application?
+It would not be the nitty-gritty details, but the parts that make up the application and the domain model.
+
+If we look at the table of contents of the petclinic example, we see these parts:
+
+image::{imagesdir}/2025/08/arch-docs-toc.png[]
+
+Introduction::
+Provides a very high-level overview of what the application is and the goal it serves.
+This is usually one or two paragraphs.
+
+Architecture diagrams::
+This section contains the https://c4model.com/diagrams/system-context[C4 System Context] diagram and the https://c4model.com/diagrams/container[C4 Container] diagram.
+This is an example of a container diagram:
++
+image::{imagesdir}/2025/08/petclinic-context-diagram.png[]
++
+I find that this kind of diagram brings a lot of clarity.
+It is also high-level enough that you don't need to update it that often.
++
+In line with the _documentation as code_ guideline, the diagrams are generated from https://plantuml.com/[PlantUML] input which is also committed to version control.
+See https://github.com/wimdeblauwe/petclinic/blob/main/src/docs/asciidoc/diagrams/c4-context-diagram.puml[c4-context-diagram.puml] for the code that generates the above diagram.
++
+[NOTE]
+====
+If you prefer https://mermaid.js.org/[Mermaid], that is also certainly a valid option.
+====
+
+Domain model::
+An important part of understanding an application is understanding the domain you are working in.
+Each domain has its specific terminology and terms you need to become familiar with.
+This is the section to explain that.
+
+Architecture Decision Records::
+The final part of the architecture documentation are the https://www.wimdeblauwe.com/blog/2020/12/26/architecture-decision-records/[Architecture Decision Records].
+These document all the critical architecture decisions that have been made in this project.
+Each ADR is a separate Asciidoc document that gets included in the architecture master document, so the generated HTML and PDF have all the info.
+
+Any project that has this kind of document would be a project where new people can get onboarded quickly.
+Either by reading it on their own, or for being a guideline for the person that needs to do the explaining.
+
+== REST API documentation
+
+
+
+== Serving the documentation from the application
+
+== Conclusion
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
