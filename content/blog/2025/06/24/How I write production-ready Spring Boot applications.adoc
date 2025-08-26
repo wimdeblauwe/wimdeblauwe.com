@@ -203,7 +203,7 @@ public class Owner extends AbstractEntity<OwnerId> {
 
   private String name;
 
-  @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
+  @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, orphanRemoval = true)
   private Set<Pet> pets = new HashSet<>();
 
   protected Owner() {}
