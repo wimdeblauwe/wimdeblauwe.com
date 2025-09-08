@@ -1511,6 +1511,8 @@ Just as the architecture avoids over-engineering, the testing approach avoids te
 Remember: good tests should give you confidence to refactor and extend your application.
 If your tests are brittle or hard to understand, they become a maintenance burden rather than a safety net.
 
+Continue reading with the third and last part of the series: https://www.wimdeblauwe.com/blog/2025/09/08/how-i-document-production-ready-spring-boot-applications/[How I document production-ready Spring Boot applications]
+
 See https://github.com/wimdeblauwe/petclinic/tree/main[wimdeblauwe/petclinic] on GitHub for the full sources of these examples.
 
 If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
