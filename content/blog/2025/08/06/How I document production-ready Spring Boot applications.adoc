@@ -1,6 +1,6 @@
 ---
 title: "How I document production-ready Spring Boot applications"
-date: 2025-08-06
+date: 2025-09-08
 draft: false
 tags: ["spring-boot", "architecture"]
 keywords: []
@@ -73,7 +73,7 @@ It would not be the nitty-gritty details, but the parts that make up the applica
 
 If we look at the table of contents of the petclinic example, we see these parts:
 
-image::{imagesdir}/2025/08/arch-docs-toc.png[]
+image::{imagesdir}/2025/09/arch-docs-toc.png[]
 
 _Introduction_::
 Provides a very high-level overview of what the application is and the goal it serves.
@@ -83,7 +83,7 @@ _Architecture diagrams_::
 This section contains the https://c4model.com/diagrams/system-context[C4 System Context] diagram and the https://c4model.com/diagrams/container[C4 Container] diagram.
 This is an example of a container diagram:
 +
-image::{imagesdir}/2025/08/petclinic-context-diagram.png[]
+image::{imagesdir}/2025/09/petclinic-context-diagram.png[]
 +
 I find that this kind of diagram brings a lot of clarity.
 It is also high-level enough that you don't need to update it that often.
@@ -200,7 +200,7 @@ Response field descriptions:
 
 This Asciidoc rendered to PDF finally looks like this:
 
-image::{imagesdir}/2025/08/spring-rest-docs-export.png[]
+image::{imagesdir}/2025/09/spring-rest-docs-export.png[]
 
 Once we have architecture and REST docs, we need an easy way for people to access them, which we will explore next.
 
@@ -294,7 +294,7 @@ This basic version is usually enough for the needs, but you could obviously add 
 
 Rendered in the browser, it looks like this:
 
-image::{imagesdir}/2025/08/docs-page.png[]
+image::{imagesdir}/2025/09/docs-page.png[]
 
 [NOTE]
 ====
