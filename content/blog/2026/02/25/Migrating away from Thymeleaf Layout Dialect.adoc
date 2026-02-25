@@ -1,0 +1,289 @@
+---
+title: "Migrating away from Thymeleaf Layout Dialect"
+date: 2026-02-25
+draft: false
+tags: ["thymeleaf", "spring-boot"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+This blog post explains what the Thymeleaf Layout Dialect is, why you might want to stop using it, and how to migrate to a pure Thymeleaf solution using `th:replace`.
+
+<!--more-->
+
+== What is Thymeleaf Layout Dialect?
+
+The https://ultraq.github.io/thymeleaf-layout-dialect/[Thymeleaf Layout Dialect] is a third-party extension for Thymeleaf that adds a decorator-based layout system to your templates.
+The idea is that you define a single layout template (the "decorator") that contains the common HTML structure of your pages: the `<head>`, a navigation bar, a footer, etc.
+Individual page templates then declare which layout they want to use and only provide the content that fills in the variable parts.
+
+This is a pattern you will recognize if you have ever used something like Apache Tiles or Sitemesh.
+
+To use it, you add the Maven dependency:
+
+[source,xml]
+----
+<dependency>
+    <groupId>nz.net.ultraq.thymeleaf</groupId>
+    <artifactId>thymeleaf-layout-dialect</artifactId>
+</dependency>
+----
+
+Spring Boot's auto-configuration picks it up automatically, so no further wiring is needed.
+
+A layout template at `src/main/resources/templates/layout/main.html` might look like this:
+
+[source,html]
+.layout/main.html
+----
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
+<head>
+    <meta charset="UTF-8">
+    <title layout:title-pattern="$CONTENT_TITLE - My App">My App</title> <!--.-->
+    <link rel="stylesheet" th:href="@{/css/application.css}">
+</head>
+<body>
+<header>
+    <nav>...</nav>
+</header>
+<main layout:fragment="content"> <!--.-->
+    <!-- Page-specific content is injected here -->
+</main>
+<footer>...</footer>
+</body>
+</html>
+----
+
+<.> The `layout:title-pattern` attribute automatically merges the title from the content page with the layout's own title.
+<.> `layout:fragment="content"` marks the region that each page can override.
+
+A page template at `src/main/resources/templates/home.html` then looks like this:
+
+[source,html]
+.home.html
+----
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}"> <!--.-->
+<head>
+    <title>Home</title>
+</head>
+<body>
+<main layout:fragment="content"> <!--.-->
+    <h1>Welcome!</h1>
+    <p>This is the home page.</p>
+</main>
+</body>
+</html>
+----
+
+<.> `layout:decorate` tells the dialect which layout template to use.
+<.> `layout:fragment="content"` provides the content that will replace the matching fragment in the layout.
+
+The result is that Thymeleaf renders a full HTML page with the layout's structure and the page's content injected into it.
+It is quite convenient and I have used it in my https://www.wimdeblauwe.com/books/taming-thymeleaf/[Taming Thymeleaf] book as the primary way to handle page layouts.
+
+== Why migrate away from it?
+
+Despite its convenience, there are a few reasons to consider replacing the Layout Dialect.
+
+=== Written in Groovy
+
+The dialect is implemented in https://groovy-lang.org/[Groovy].
+This is not a problem in itself — Groovy runs on the JVM just like Java — but it does bring along the full Groovy runtime as a transitive dependency.
+This makes startup a little slower and adds quite a bit of weight to your application without any real benefit if you are not otherwise using Groovy in your project.
+
+=== Incompatible with GraalVM Native Image
+
+If you want to compile your Spring Boot application to a https://www.graalvm.org/[GraalVM] native image for faster startup and lower memory usage, the Layout Dialect is a blocker.
+The Groovy runtime relies heavily on dynamic class loading and reflection, which are fundamentally at odds with how native images work.
+You would need to switch to a pure Java layout solution anyway before you can build a native image.
+
+=== Dependency breakage
+
+Recently, https://github.com/ultraq/thymeleaf-layout-dialect/issues/251[issue #251] was filed against the dialect.
+Upgrading to a version of Spring Boot that pulled in Groovy 5.0.4 caused a `NullPointerException` deep inside Groovy's `MetaClassImpl`, completely breaking template rendering.
+The root cause was a change in a Groovy internal that introduced a regression — something entirely outside the control of the dialect's maintainer or its users.
+
+The fix was a patch in Groovy 5.0.5, but it is a good reminder that depending on the Groovy runtime for a layout library adds a whole extra layer of things that can go wrong.
+
+== Migrating to pure Thymeleaf
+
+Thymeleaf has built-in support for parameterized fragments that can be used to build a layout system without any additional library.
+The key is the `th:fragment` attribute combined with fragment expressions and `th:replace`.
+
+=== The new layout template
+
+Update your layout template to declare itself as a parameterized fragment.
+It accepts the page title and the page content as parameters:
+
+[source,html]
+.layout/main.html
+----
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:fragment="layout(title, content)"> <!--.-->
+<head>
+    <meta charset="UTF-8">
+    <th:block th:replace="${title}"/> <!--.-->
+    <link rel="stylesheet" th:href="@{/css/application.css}">
+</head>
+<body>
+<header>
+    <nav>...</nav>
+</header>
+<th:block th:replace="${content}"/> <!--.-->
+<footer>...</footer>
+</body>
+</html>
+----
+
+<.> The entire `<html>` element becomes a named fragment that accepts two parameters: `title` and `content`.
+<.> The `title` parameter is a fragment expression — it will be replaced in full by whatever the calling page passes as its `<title>` element.
+<.> Same for `content` — the calling page's `<main>` element is placed here.
+
+=== The updated page templates
+
+Each page template now uses `th:replace` on the root element to invoke the layout fragment, passing in its own `<title>` and `<main>` elements as fragment expressions:
+
+[source,html]
+.home.html
+----
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main :: layout(~{::title}, ~{::main})}"> <!--.-->
+<head>
+    <title>Home - My App</title> <!--.-->
+</head>
+<body>
+<main> <!--.-->
+    <h1>Welcome!</h1>
+    <p>This is the home page.</p>
+</main>
+</body>
+</html>
+----
+
+<.> `th:replace` on the `<html>` element means: replace the entire page with the result of calling the `layout` fragment in `layout/main.html`, passing the page's `<title>` and `<main>` elements as arguments.
+<.> Write the full title directly in the `<title>` element.
+<.> The `<main>` element holds all the page-specific content.
+
+That is all there is to it.
+No extra dependency, no Groovy runtime, and no dialect-specific attributes in your templates.
+
+=== Optional sections
+
+With the Layout Dialect you can define a fragment that is optional — if a page does not provide a matching `layout:fragment`, the block in the layout renders empty.
+A common use case is a `page-scripts` section just before `</body>` where individual pages can inject their own `<script>` tags.
+
+The equivalent in pure Thymeleaf uses **named fragment parameters**.
+Because Thymeleaf resolves an unset context variable as `null`, a page can simply omit the parameter entirely when it has nothing to contribute.
+Start by adding a third parameter to the layout's fragment signature and guarding it with `th:if`:
+
+[source,html]
+.layout/main.html
+----
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:fragment="layout(title, content, scripts)"> <!--.-->
+<head>
+    <meta charset="UTF-8">
+    <th:block th:replace="${title}"/>
+    <link rel="stylesheet" th:href="@{/css/application.css}">
+</head>
+<body>
+<header>
+    <nav>...</nav>
+</header>
+<th:block th:replace="${content}"/>
+<footer>...</footer>
+<th:block th:if="${scripts != null}"> <!--.-->
+    <th:block th:replace="${scripts}"/>
+</th:block>
+</body>
+</html>
+----
+
+<.> A third parameter `scripts` is added to the fragment signature.
+<.> The guard must be a wrapping `th:block` rather than `th:if` and `th:replace` on the same element, because `th:replace` has a higher attribute-processing priority than `th:if` in Thymeleaf.
+
+Pages that do not need extra scripts simply omit the `scripts` parameter.
+Using named parameters makes it clear what is being passed:
+
+[source,html]
+.about.html
+----
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main :: layout(title=~{::title}, content=~{::main})}"> <!--.-->
+<head>
+    <title>About - My App</title>
+</head>
+<body>
+<main>
+    <h1>About</h1>
+</main>
+</body>
+</html>
+----
+
+<.> `scripts` is not passed at all — it resolves to `null` in the layout, so the guard suppresses it.
+
+Pages that do need extra scripts pass a fragment expression selecting their script element(s):
+
+[source,html]
+.home.html
+----
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main :: layout(title=~{::title}, content=~{::main}, scripts=~{::script})}"> <!--.-->
+<head>
+    <title>Home - My App</title>
+</head>
+<body>
+<main>
+    <h1>Welcome!</h1>
+    <p>This is the home page.</p>
+</main>
+<script th:src="@{/js/home.js}"></script> <!--.-->
+</body>
+</html>
+----
+
+<.> `~{::script}` selects the `<script>` element(s) from this page and passes them to the layout.
+<.> The `<script>` tag is written in the page template; the layout places it just before `</body>`.
+
+=== Removing the dependency
+
+Once all your templates are updated, remove the Layout Dialect dependency from your `pom.xml`:
+
+[source,xml]
+----
+<dependency>
+    <groupId>nz.net.ultraq.thymeleaf</groupId>
+    <artifactId>thymeleaf-layout-dialect</artifactId>
+</dependency>
+----
+
+Also remove the `xmlns:layout` namespace declaration from any template files that still have it.
+
+== Conclusion
+
+The Thymeleaf Layout Dialect is a convenient library that has served many projects well — including the examples in https://www.wimdeblauwe.com/books/taming-thymeleaf/[Taming Thymeleaf].
+However, its dependency on the Groovy runtime makes it slower than necessary, blocks GraalVM native image compilation, and introduces a category of dependency breakage that is hard to predict or control.
+
+Thymeleaf's built-in parameterized fragment support provides the same layout capabilities with zero extra dependencies.
+The migration is straightforward: convert your layout template to a parameterized fragment, and update each page template to use `th:replace` to invoke it.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
