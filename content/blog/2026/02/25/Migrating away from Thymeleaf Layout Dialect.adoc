@@ -187,16 +187,17 @@ No extra dependency, no Groovy runtime, and no dialect-specific attributes in yo
 With the Layout Dialect you can define a fragment that is optional — if a page does not provide a matching `layout:fragment`, the block in the layout renders empty.
 A common use case is a `page-scripts` section just before `</body>` where individual pages can inject their own `<script>` tags.
 
-The equivalent in pure Thymeleaf uses **named fragment parameters**.
-Because Thymeleaf resolves an unset context variable as `null`, a page can simply omit the parameter entirely when it has nothing to contribute.
-Start by adding a third parameter to the layout's fragment signature and guarding it with `th:if`:
+The equivalent in pure Thymeleaf uses **named fragment parameters** combined with `th:with`.
+The key is to _not_ declare the optional parameter in the fragment signature, but instead use `th:with` with the Elvis operator to pick it up from the calling context when present and default to `null` when absent.
+Add a `th:with` to the layout's `<html>` element and guard the optional block with `th:if`:
 
 [source,html]
 .layout/main.html
 ----
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
-      th:fragment="layout(title, content, scripts)"> <!--.-->
+      th:fragment="layout(title, content)"
+      th:with="scripts=${scripts?:null}"> <!--.-->
 <head>
     <meta charset="UTF-8">
     <th:block th:replace="${title}"/>
@@ -215,7 +216,8 @@ Start by adding a third parameter to the layout's fragment signature and guardin
 </html>
 ----
 
-<.> A third parameter `scripts` is added to the fragment signature.
+<.> The `scripts` parameter is intentionally _not_ declared in the fragment signature.
+Instead, `th:with="scripts=${scripts?:null}"` picks it up from the calling context if it was passed as a named parameter, and safely defaults to `null` otherwise.
 <.> The guard must be a wrapping `th:block` rather than `th:if` and `th:replace` on the same element, because `th:replace` has a higher attribute-processing priority than `th:if` in Thymeleaf.
 
 Pages that do not need extra scripts simply omit the `scripts` parameter.
@@ -263,6 +265,9 @@ Pages that do need extra scripts pass a fragment expression selecting their scri
 
 <.> `~{::script}` selects the `<script>` element(s) from this page and passes them to the layout.
 <.> The `<script>` tag is written in the page template; the layout places it just before `</body>`.
+
+TIP: For **required** parameters (those declared in the fragment signature, like `title` and `content`), you can always pass the empty fragment expression `~{}` if you genuinely have nothing to contribute.
+For example, `layout(title=~{}, content=~{::main})` would render an empty `<title>` element.
 
 === Removing the dependency
 
