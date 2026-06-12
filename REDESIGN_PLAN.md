@@ -1,6 +1,6 @@
 # wimdeblauwe.com redesign — implement v5-craft on Hugo
 
-> Status: Phases 1–2 done (2026-06-12); Phase 3 next.
+> Status: Phases 1–3 done (2026-06-12); Phase 4 (Pagefind search) next.
 > Design spec: `design-mockups/v5-craft/index.html` and `design-mockups/v5-craft/blog-post.html` (open in a browser).
 > Other mockup folders (v1–v4) are earlier iterations, kept for reference only.
 
@@ -79,17 +79,27 @@ Notes from implementation (2026-06-12):
   HTML of all 123 posts byte-identical; ad conditions hit the same 26/11/40 posts; alias redirects and
   `/blog/index.xml` intact; `featureNewBook = true` renders the feature card correctly (flag still unset).
 
-## Phase 3 — Asciidoctor output styling + anchors
+## Phase 3 — Asciidoctor output styling + anchors ✅ DONE (2026-06-12)
 
-- Style Asciidoctor's real HTML inside the article scope: `.listingblock` + Rouge `.highlight` (listing `.title` → the navy code-block bar; plain navy top border when untitled), inline code, admonitions, tables, `.imageblock`, `#toc`, blockquotes, footnotes. Rouge colors are inline (`:rouge-css: style`) so only container styling is needed. Ensure `pre code` carries no inline-code background (per-line pill bug found during mockup review).
-- **Section anchors** without touching the 123 posts — in `config.toml`:
-
-  ```toml
-  [markup.asciidocExt.attributes]
-  sectanchors = ""
-  ```
-
-  Asciidoctor then emits `<a class="anchor" href="#id">` before each heading; style `.anchor` as the copper diamond (suppress its default `§` glyph via CSS).
+- ✅ Section anchors via `[markup.asciidocExt.attributes] sectanchors = ""` in `config.toml`; the emitted
+  `<a class="anchor">` is empty (no `§` in markup — that glyph comes from Asciidoctor's own stylesheet,
+  which we don't load). Styled as the copper diamond (`article.prose a.anchor`), replacing the mockup's
+  unused `.h-anchor` rules; h4 made flex too (5 posts have `====` sections), with 8px/7px diamonds on h3/h4.
+- ✅ Phase 1's asciidoc CSS verified against real posts (titled/untitled listings, callouts+colist,
+  admonitions incl. nested code, tables, imageblocks, literalblocks, quoteblock, inline code).
+  `pre code` confirmed transparent (no per-line pill bug). Fixes made during verification:
+  - Untitled listing/literal blocks get a 3px navy `border-top` (plan's "plain navy top border");
+    it blends into the navy title bar on titled blocks so one rule covers both.
+  - Wide tables overflowed the article column to the viewport edge (Outbox post) →
+    `table.tableblock { display: block; overflow-x: auto; }` (no inline width in the emitted HTML).
+  - At 390px, admonitions with nested code listings blew the page width (672px overflow on the
+    Laravel-port post) → `.admonitionblock > table { table-layout: fixed; }`; nested `pre` scrolls.
+- Notes: `toc::[]` does **not** render (Hugo strips it by default, `preserveTOC` unset) — same as the
+  live site, so not a regression; only 1 post uses it; `#toc` CSS kept in case it's ever enabled.
+  No posts use footnotes.
+- Verified: URL set byte-identical (279 files); diff of all built HTML/XML between builds with/without
+  the config block shows the **only** content change is the anchor insertion in headings (70 files incl.
+  RSS feeds, where it appears HTML-escaped).
 
 ## Phase 4 — Search (Pagefind)
 

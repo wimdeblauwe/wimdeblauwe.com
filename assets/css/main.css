@@ -448,7 +448,6 @@ article.prose h3 {
   color: var(--navy);
   margin-top: 2rem;
   scroll-margin-top: 5rem;
-  display: flex; align-items: center; gap: .6rem;
 }
 article.prose h4 {
   font-family: var(--display); font-weight: 700;
@@ -456,19 +455,24 @@ article.prose h4 {
   margin-top: 1.6rem;
   scroll-margin-top: 5rem;
 }
-/* the diamond is the section anchor — click to link to this title */
-.h-anchor {
+/* The diamond is the section anchor — click to link to this title.
+   Asciidoctor (sectanchors) emits <a class="anchor" href="#id"> before the
+   heading text; render it as the copper diamond from the mockup.
+   Only top-level (h2) sections get the diamond; deeper anchors are hidden. */
+article.prose h2 a.anchor {
   width: 10px; height: 10px; flex-shrink: 0; display: block;
   background: var(--copper); border-radius: 2px;
   transform: rotate(45deg);
   transition: transform .15s ease, background .15s ease, box-shadow .15s ease;
+  font-size: 0; text-decoration: none;
 }
-h3 .h-anchor { width: 8px; height: 8px; }
-.h-anchor:hover {
+article.prose h2 a.anchor:hover {
   background: var(--copper-bright);
   transform: rotate(45deg) scale(1.4);
   box-shadow: 0 0 0 4px var(--copper-soft);
 }
+article.prose h3 a.anchor, article.prose h4 a.anchor,
+article.prose h5 a.anchor, article.prose h6 a.anchor { display: none; }
 article.prose code {
   font-family: var(--mono); font-size: .84em;
   background: var(--paper-soft); border: 1px solid var(--hairline);
@@ -501,6 +505,8 @@ article.prose #preamble > .sectionbody > .paragraph:first-of-type p {
   background: #fdfdfb;
   box-shadow: 0 14px 34px -28px rgba(19,32,47,.4);
   overflow: hidden;
+  /* Navy accent for untitled blocks; blends into the navy title bar when titled */
+  border-top: 3px solid var(--navy);
 }
 /* The navy title bar is a heavy edge; give the card a bit more air than the
    default 1.35rem block rhythm when it follows other content. */
@@ -573,6 +579,9 @@ article.prose blockquote, .quoteblock blockquote {
 
 .admonitionblock > table {
   border-collapse: separate; border: 0; background: none; width: 100%;
+  /* fixed layout keeps nested code listings from blowing the table past the
+     article column; the pre scrolls instead */
+  table-layout: fixed;
 }
 .admonitionblock {
   background: var(--card);
@@ -613,7 +622,9 @@ article.prose blockquote, .quoteblock blockquote {
 table { border-collapse: collapse; border-spacing: 0; }
 .colist table td, .admonitionblock table td { border: 0; }
 p.tableblock { margin-block-start: 0; margin-block-end: 0; }
-table.tableblock { width: 100%; font-size: .95rem; }
+/* display:block lets wide tables scroll inside the article column instead of
+   overflowing the page; narrow tables keep their natural width */
+table.tableblock { width: 100%; font-size: .95rem; display: block; overflow-x: auto; }
 table.tableblock th, table.tableblock td {
   border: 1px solid var(--hairline);
   padding: .5rem .8rem;

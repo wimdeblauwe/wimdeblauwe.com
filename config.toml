@@ -57,6 +57,11 @@ url = "https://twitter.com/wimdeblauwe"
 [taxonomies]
 tag = "tags"
 
+# Emit <a class="anchor" href="#id"> before each section heading (styled as a
+# copper diamond in CSS) without touching the per-post .adoc attributes.
+[markup.asciidocExt.attributes]
+sectanchors = ""
+
 [privacy.youtube]
 privacyEnhanced = true
 
