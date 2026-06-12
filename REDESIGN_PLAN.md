@@ -1,6 +1,6 @@
 # wimdeblauwe.com redesign — implement v5-craft on Hugo
 
-> Status: plan approved in concept, implementation not started.
+> Status: Phase 1 done (2026-06-12); Phase 2 next.
 > Design spec: `design-mockups/v5-craft/index.html` and `design-mockups/v5-craft/blog-post.html` (open in a browser).
 > Other mockup folders (v1–v4) are earlier iterations, kept for reference only.
 
@@ -34,12 +34,21 @@ typography, terminal-style search prompt, restyled tag-driven book ads with a "F
 - `config.toml`: no `[markup]` section, no `mainSections`; `netlify.toml`: `HUGO_VERSION=0.110.0` (stale — local Hugo is newer; recent commits fixed e.g. `Site.Author` removal), command `hugo`, publish `public`.
 - Disqus logic in `blog/single.html` is dead code (no `disqusShortname` configured) — drop it.
 
-## Phase 1 — Foundation: baseof + CSS + fonts
+## Phase 1 — Foundation: baseof + CSS + fonts ✅ DONE (2026-06-12)
 
-1. **Fonts**: download woff2 (latin subsets) of Sora (400/600/700/800), Hanken Grotesk (400/500/600 + italic), Geist Mono (400/500) into `static/fonts/`; `@font-face` in the new CSS. Removes Google Fonts CDN (GDPR-friendly).
-2. **`layouts/_default/baseof.html`** — single HTML skeleton with blocks (`title`, `main`): meta/canonical/RSS link, existing `partials/opengraph/*` unchanged, GA internal template (production only), favicon, CSS via Hugo Pipes, masthead partial, footer partial. All page templates become `{{ define "main" }}` blocks.
-3. **`assets/css/main.css`** — port the v5 mockup CSS, organized by component (tokens / header / hero / search / feature-card / book-cards / post-list / article / asciidoc-output / ads / newsletter / pagination / footer / static pages). Load with `resources.Get | minify | fingerprint`. Drop: theme CSS, `wimdeblauwe.css`, Font Awesome CDN, Mailchimp CDN CSS, feather-icons. Port from `wimdeblauwe.css` only what non-blog pages need (book grid, testimonials, screenshot-with-gif/lightbox figures), restyled to v5 tokens.
-4. **`assets/js/main.js`** (Pipes, deferred): reading progress bar + search wiring (Phase 4).
+1. ✅ **Fonts**: 10 woff2 latin subsets in `static/fonts/` (Sora 400/600/700/800, Hanken Grotesk 400/500/600 + 400-italic, Geist Mono 400/500, ~135 KB total); `@font-face` in the new CSS. Removes Google Fonts CDN (GDPR-friendly).
+2. ✅ **`layouts/_default/baseof.html`** — single HTML skeleton with blocks (`title`, `main`): meta/canonical/RSS link, existing `partials/opengraph/*` unchanged, GA internal template (production only), favicon, CSS+JS via Hugo Pipes (`minify | fingerprint`, integrity attr), masthead partial, footer partial. Gotcha hit: a `block "title"` may only be defined once in baseof — the home/inner-page title logic lives *inside* the single block.
+3. ✅ **`assets/css/main.css`** — v5 mockup CSS ported and organized by component, including a first pass of the asciidoc-output styling (Phase 3 will verify against real posts) and the `wimdeblauwe.css` ports for non-blog pages, restyled to v5 tokens. CDN drops happen when templates switch over (Phase 2).
+4. ✅ **`assets/js/main.js`** (Pipes, deferred): reading progress bar only — search wiring is Phase 4, section anchors are Phase 3 (server-side `sectanchors`, NOT JS).
+
+Done early from later phases: new `404.html` (Phase 2 item) — built on baseof to verify the foundation end-to-end; `partials/site-header.html` + `partials/site-footer.html` (baseof needs them). Old `header.html`/`header-blog.html`/`head.html`/`footer.html` partials still exist until Phase 2 rewrites the page templates.
+
+Fixes discovered during Phase 1 (pre-existing, local Hugo 0.163 vs stale netlify 0.110):
+
+- `config.toml` got `security.allowContent = ['.*']` — newer Hugo denies `text/html` content files by default, which broke the build of all non-blog pages.
+- Local builds need `bundle install` once (asciidoctor/rouge gems for the current Ruby; plain `asciidoctor` on PATH failed via rvm wrapper).
+- Mockup CSS bug (all 5 mockups): `padding: X 0 Y` shorthands on `.hero`/`.top-inner`/`.footer-inner`/etc. wiped the horizontal `1.6rem` padding of `.frame` on the same element — invisible on desktop, content touched the screen edge on mobile. Ported CSS uses `padding-block`. **Check mobile viewport (~390px) whenever porting more mockup CSS.**
+- Sticky footer added (`body` flex column + `main { flex: 1 }`) — mockups never had short pages, 404 does.
 
 ## Phase 2 — Templates (root `layouts/` only)
 
@@ -49,7 +58,7 @@ All rewritten as `define "main"` blocks, following the mockups:
 - `index.html` — hero (eyebrow "Java · Spring · Thymeleaf · Htmx"), search box, `{{ if .Site.Params.featureNewBook }}` feature card, two book cards, recent posts list, paginator.
 - `blog/single.html` — breadcrumb (`❯ blog / YYYY / MM / DD`), title, date + tag chips, ad partials, content, prev/next cards, newsletter. Remove dead Disqus block.
 - `_default/single.html` — generic v5 page wrapper for the `.html` content pages.
-- `_default/list.html`, `taxonomy/tag.html`, **new** `_default/terms.html` (the `/tags/` page), **new** `404.html`, **new** `partials/paginator.html` (both currently theme-provided).
+- `_default/list.html`, `taxonomy/tag.html`, **new** `_default/terms.html` (the `/tags/` page), **new** `partials/paginator.html` (currently theme-provided). (~~404.html~~ done in Phase 1.)
 - Restyle ad partials (`taming-thymeleaf-ad`, `modern-frontends-with-htmx-ad`, `testing-spring-boot-masterclass-ad`) — same conditions, mockup book-ad markup ("From the author" badge, navy panel).
 - Restyle `newsletter-signup-form` partial + shortcode (same Mailchimp POST URL, no Mailchimp CSS).
 - New `partials/new-book-feature.html`; copy `design-mockups/v5-craft/crafting-spring-boot-starters-cover.png` to `static/images/` as placeholder.

@@ -1,0 +1,17 @@
+<header class="top">
+    <div class="frame top-inner">
+        <a class="wordmark" href="/">{{ .Site.Title }}</a>
+        <nav class="primary">
+            {{- $cur := . }}
+            {{- range .Site.Menus.main }}
+            {{- $active := false }}
+            {{- if eq .URL "/" }}
+            {{- $active = or $cur.IsHome (eq $cur.Section "blog") (eq $cur.Section "tags") }}
+            {{- else }}
+            {{- $active = hasPrefix $cur.RelPermalink .URL }}
+            {{- end }}
+            <a {{ if $active }}class="active" {{ end }}href="{{ .URL }}">{{ .Name }}</a>
+            {{- end }}
+        </nav>
+    </div>
+</header>

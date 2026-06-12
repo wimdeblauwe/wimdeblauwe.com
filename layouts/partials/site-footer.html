@@ -1,0 +1,11 @@
+<footer class="site-footer">
+    <div class="frame footer-inner">
+        <div class="sig">{{ .Site.Title }}<span>.</span> © {{ now.Year }}</div>
+        <div class="links">
+            {{- range .Site.Params.social }}
+            <a href="{{ .url }}">{{ .icon }}</a>
+            {{- end }}
+            <a href="/tags/">tags</a>
+        </div>
+    </div>
+</footer>

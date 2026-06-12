@@ -67,6 +67,8 @@ useSessionStorage = true
 
 [security]
 enableInlineShortcodes = false
+# Non-blog pages are text/html content files; newer Hugo versions deny those by default.
+allowContent = ['.*']
 
 [security.exec]
 allow = ['^dart-sass-embedded$', '^go$', '^npx$', '^postcss$', 'asciidoctor']

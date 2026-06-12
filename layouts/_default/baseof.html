@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ block "title" . }}{{ if .IsHome }}{{ .Site.Title }}{{ else }}{{ .Title }} - {{ .Site.Title }}{{ end }}{{ end }}</title>
+    <link rel="canonical" href="{{ .Permalink }}">
+    {{- with .Site.Params.favicon }}
+    <link rel="icon" href="{{ . | absURL }}">
+    {{- end }}
+    {{- with .OutputFormats.Get "rss" }}
+    <link rel="{{ .Rel }}" type="{{ .MediaType.Type }}" href="{{ .Permalink }}" title="{{ $.Site.Title }}">
+    {{- end }}
+    {{- with union (.Params.tags | default slice) (.Params.keywords | default slice) }}
+    <meta name="keywords" content="{{ delimit . ", " }}">
+    {{- end }}
+    {{ partial "opengraph/opengraph.html" . }}
+    {{ partial "opengraph/twitter_cards.html" . }}
+    {{- if eq (getenv "HUGO_ENV") "production" }}
+    {{ template "_internal/google_analytics.html" . }}
+    {{- end }}
+    {{- $css := resources.Get "css/main.css" | minify | fingerprint }}
+    <link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}">
+    {{- $js := resources.Get "js/main.js" | minify | fingerprint }}
+    <script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}" defer></script>
+</head>
+<body>
+{{ partial "site-header.html" . }}
+<main>
+{{ block "main" . }}{{ end }}
+</main>
+{{ partial "site-footer.html" . }}
+</body>
+</html>
