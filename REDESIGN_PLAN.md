@@ -101,6 +101,22 @@ Notes from implementation (2026-06-12):
   the config block shows the **only** content change is the anchor insertion in headings (70 files incl.
   RSS feeds, where it appears HTML-escaped).
 
+## Review fixes after Phase 3 (2026-06-12) ✅ DONE
+
+From Wim's review (alternatives shown in `design-mockups/fix-proposals.html`, decisions: A1 + B3c):
+
+- Removed the `<kbd>/</kbd>` hint from the homepage search box (type-anywhere makes it redundant).
+- Book pages: subtitle overlapped the title — stale `margin-top: -2rem` on `.book-tagline` ported from
+  the old CSS; now a proper subtitle. **Watch for more stale negative margins from `wimdeblauwe.css`.**
+- Breadcrumb on posts: "blog" now links to `/`.
+- Admonitions restyled to tinted panels (A1): per-type background tint, no left accent bar; icon column
+  widened 70→92px (WARNING pill was touching the divider). At ≤480px the chip/content stack vertically —
+  the two-column layout overflowed the viewport (the `> tbody > tr` must also become `display:block`,
+  otherwise the anonymous table box shrink-wraps and nested listings blow out the page).
+- Projects page rebuilt (B3c): hanging soft-copper badge with inline GitHub SVG (`<symbol>`/`<use>`,
+  feather-icons CDN was dropped in Phase 2 so `data-feather` icons rendered as nothing), mono repo link,
+  proper spacing. Flex children need `min-width: 0` + `overflow-wrap: anywhere` on long links (390px).
+
 ## Phase 4 — Search (Pagefind)
 
 - `netlify.toml` build command: `hugo && npx -y pagefind --site public` (apply to production, deploy-preview and branch-deploy contexts, keeping the `-D -F -b $DEPLOY_PRIME_URL/` flags where present).

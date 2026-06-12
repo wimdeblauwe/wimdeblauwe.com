@@ -2,7 +2,7 @@
 <div class="progress" id="progress"></div>
 
 <div class="article-head prose-frame">
-    <div class="breadcrumb"><span class="chevron">❯</span> blog / {{ .Date.Format "2006" }} / {{ .Date.Format "01" }} / {{ .Date.Format "02" }}</div>
+    <div class="breadcrumb"><span class="chevron">❯</span> <a href="/">blog</a> / {{ .Date.Format "2006" }} / {{ .Date.Format "01" }} / {{ .Date.Format "02" }}</div>
     <h1>{{ .Title }}</h1>
     <div class="meta-row">
         <span class="date">{{ dateFormat "January 2, 2006" .Date }} · {{ .ReadingTime }} min read{{ if .Draft }} · DRAFT{{ end }}</span>

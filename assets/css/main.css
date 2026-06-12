@@ -223,11 +223,6 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
   caret-color: var(--copper);
 }
 .search-box input::placeholder { color: #b3aca0; }
-.search-box kbd {
-  font-family: var(--mono); font-size: .68rem; color: var(--ink-soft);
-  border: 1px solid var(--hairline); border-bottom-width: 2px; border-radius: 6px;
-  padding: .15rem .5rem; background: var(--paper-soft);
-}
 .search-hint {
   margin-top: .6rem; font-family: var(--mono); font-size: .7rem; color: var(--ink-soft);
   padding-left: .4rem; min-height: 1.2em;
@@ -353,6 +348,8 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
 .article-head { padding-block: 3.8rem 0; }
 .breadcrumb { font-family: var(--mono); font-size: .72rem; color: var(--ink-soft); animation: fadeUp .5s ease both; }
 .breadcrumb .chevron { color: var(--copper); }
+.breadcrumb a { color: inherit; text-decoration: none; }
+.breadcrumb a:hover { color: var(--copper); text-decoration: underline; text-underline-offset: 3px; }
 .article-head h1 {
   margin-top: 1.1rem;
   font-family: var(--display); font-weight: 800;
@@ -583,17 +580,16 @@ article.prose blockquote, .quoteblock blockquote {
      article column; the pre scrolls instead */
   table-layout: fixed;
 }
+/* tinted panel per type ("A1" from the fix-proposals review) */
 .admonitionblock {
-  background: var(--card);
-  border: 1px solid var(--hairline);
-  border-left: 3px solid var(--navy);
-  border-radius: 0 12px 12px 0;
+  background: #eef1f5;
+  border-radius: 12px;
   padding: .9rem 1.1rem;
 }
-.admonitionblock.tip { border-left-color: var(--copper); }
-.admonitionblock.warning, .admonitionblock.caution { border-left-color: #b3261e; }
-.admonitionblock.important { border-left-color: #b3261e; }
-.admonitionblock > table td.icon { text-align: center; width: 70px; vertical-align: top; padding-top: .2rem; }
+.admonitionblock.tip { background: var(--copper-soft); }
+.admonitionblock.warning, .admonitionblock.caution,
+.admonitionblock.important { background: #f9ebe9; }
+.admonitionblock > table td.icon { text-align: left; width: 92px; vertical-align: top; padding-top: .2rem; }
 .admonitionblock > table td.icon img { max-width: none; }
 /* No icon font: render the admonition name as a mono chip */
 .admonitionblock > table td.icon i { font-style: normal; }
@@ -610,11 +606,25 @@ article.prose blockquote, .quoteblock blockquote {
 .admonitionblock.important > table td.icon i::after { background: #b3261e; }
 .admonitionblock > table td.content {
   padding-left: 1.1em; padding-right: .5em;
-  border-left: 1px solid var(--hairline);
+  border-left: 1px solid rgba(19,32,47,.12);
   color: var(--ink-soft);
   font-size: .95rem;
 }
+.admonitionblock.tip > table td.content { border-left-color: rgba(194,112,46,.25); color: #5d564c; }
+.admonitionblock.warning > table td.content,
+.admonitionblock.caution > table td.content,
+.admonitionblock.important > table td.content { border-left-color: rgba(179,38,30,.18); }
 .admonitionblock > table td.content > :last-child > :last-child { margin-bottom: 0; }
+/* stack the chip above the content on narrow screens; the two-column layout
+   (92px icon cell) overflows the viewport when admonitions contain tables/code */
+@media (max-width: 480px) {
+  .admonitionblock > table,
+  .admonitionblock > table > tbody,
+  .admonitionblock > table > tbody > tr,
+  .admonitionblock > table td.icon,
+  .admonitionblock > table td.content { display: block; width: 100%; }
+  .admonitionblock > table td.content { border-left: 0; padding-left: 0; padding-right: 0; margin-top: .6rem; }
+}
 
 /* --------------------------------------------------------------------------
    Tables, images, block titles, TOC (Asciidoctor)
@@ -808,7 +818,7 @@ img.book-cover { max-height: 400px; display: inline; }
   #rest-api-book-image-parent { flex-direction: column; }
 }
 #rest-api-book-image-parent > img { margin: 10px 1em 10px 1em; width: 306px; }
-.book-tagline { font-style: italic; margin-top: -2rem; }
+.book-tagline { font-style: italic; margin-top: .4rem; font-size: 1.1rem; color: var(--ink-soft); }
 .buy-book-links { display: flex; column-gap: 1em; }
 .small-note { font-size: .7em; margin-top: 5px; font-style: italic; }
 
@@ -882,10 +892,24 @@ a.book-read-more-link:hover { background: var(--copper-bright); transform: trans
   .testimonial-image > img { width: 100px; height: 100px; }
 }
 
-/* Projects page */
-.github-url { font-size: .85rem; display: flex; align-items: center; margin-top: -1rem; font-family: var(--mono); }
-.github-url > svg { margin-right: .5rem; width: 1rem; height: 1rem; }
-.project-description { margin-top: 1rem; }
+/* Projects page ("B3c" from the fix-proposals review) */
+.project { display: flex; gap: 1.1rem; margin-top: 2.2rem; }
+.project > div { min-width: 0; }
+.project .project-description a { overflow-wrap: anywhere; }
+.project-badge {
+  width: 2.5rem; height: 2.5rem; border-radius: 12px; flex-shrink: 0;
+  background: var(--copper-soft); color: var(--copper);
+  display: grid; place-items: center; margin-top: .2rem;
+}
+.project-badge svg { width: 1.25rem; height: 1.25rem; }
+.page-content .project h2 { margin-top: 0; font-size: 1.2rem; }
+.page-content .project a.repo {
+  display: inline-block; font-family: var(--mono); font-size: .75rem; color: var(--ink-soft);
+  font-weight: 400; text-decoration: none; margin-top: .3rem;
+  overflow-wrap: anywhere;
+}
+.page-content .project a.repo:hover { color: var(--copper); }
+.project .project-description { margin-top: .55rem; }
 h3.summary { margin-top: .4rem; margin-bottom: .8rem; }
 h3.summary a { color: var(--navy); text-decoration: none; }
 h3.summary a:hover { color: var(--copper); }
