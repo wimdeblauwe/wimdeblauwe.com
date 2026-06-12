@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Migrating away from Thymeleaf Layout Dialect — Wim Deblauwe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,600;9..144,700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #faf6ee;
+  --paper-deep: #f3ecdd;
+  --ink: #211c15;
+  --ink-soft: #5d5546;
+  --accent: #8a2d1f;
+  --accent-soft: #b8553f;
+  --hairline: #ddd2bc;
+  --code-bg: #211c15;
+  --code-ink: #ece4d2;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { font-size: 17px; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Newsreader", Georgia, serif;
+  line-height: 1.7;
+  background-image: radial-gradient(circle at 50% -10%, #fffdf7 0%, var(--paper) 60%);
+}
+a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; text-decoration-color: var(--accent-soft); transition: color .2s ease; }
+a:hover { color: var(--accent); }
+.frame { max-width: 880px; margin: 0 auto; padding: 0 2rem; }
+.prose-frame { max-width: 720px; margin: 0 auto; padding: 0 2rem; }
+
+header.masthead { padding: 2.5rem 0 1.8rem; border-bottom: 1px solid var(--hairline); }
+.masthead-inner { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+.wordmark { font-family: "Fraunces", serif; font-weight: 700; font-size: 1.55rem; text-decoration: none; }
+.wordmark .amp { color: var(--accent); }
+nav.primary ul { list-style: none; display: flex; gap: 1.6rem; }
+nav.primary a {
+  font-family: "IBM Plex Mono", monospace; font-size: .72rem;
+  letter-spacing: .14em; text-transform: uppercase;
+  text-decoration: none; color: var(--ink-soft);
+}
+nav.primary a:hover, nav.primary a.active { color: var(--accent); }
+
+/* Article header */
+.article-head { padding: 4rem 0 2.6rem; text-align: center; }
+.article-head .date {
+  font-family: "IBM Plex Mono", monospace; font-size: .72rem;
+  letter-spacing: .22em; text-transform: uppercase; color: var(--accent);
+  animation: fadeUp .6s ease both;
+}
+.article-head h1 {
+  font-family: "Fraunces", serif; font-weight: 300;
+  font-size: clamp(2rem, 4.6vw, 3.1rem); line-height: 1.16; letter-spacing: -0.015em;
+  max-width: 22ch; margin: 1.2rem auto 0;
+  animation: fadeUp .6s .1s ease both;
+}
+.article-head .tags { margin-top: 1.6rem; display: flex; gap: .7rem; justify-content: center; animation: fadeUp .6s .2s ease both; }
+.article-head .tags a {
+  font-family: "IBM Plex Mono", monospace; font-size: .68rem;
+  letter-spacing: .12em; text-transform: uppercase;
+  text-decoration: none; color: var(--ink-soft);
+  border: 1px solid var(--hairline); border-radius: 99px;
+  padding: .3rem .85rem;
+  transition: all .2s ease;
+}
+.article-head .tags a:hover { border-color: var(--accent); color: var(--accent); }
+.ornament { display: flex; justify-content: center; gap: .6rem; margin-top: 2.4rem; color: var(--accent); font-size: .8rem; animation: fadeUp .6s .3s ease both; }
+
+/* Book ad — "colophon aside" */
+.book-ad {
+  margin: 2.6rem auto 0; max-width: 600px;
+  border: 1px solid var(--hairline);
+  background: var(--paper-deep);
+  padding: 1.4rem 1.6rem;
+  display: flex; gap: 1.4rem; align-items: center;
+  text-align: left;
+  position: relative;
+  animation: fadeUp .6s .35s ease both;
+}
+.book-ad::before {
+  content: "From the author";
+  position: absolute; top: -0.7rem; left: 1.2rem;
+  background: var(--paper); padding: 0 .6rem;
+  font-family: "IBM Plex Mono", monospace; font-size: .64rem;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--accent);
+}
+.book-ad img { width: 86px; flex-shrink: 0; filter: drop-shadow(0 8px 14px rgba(33,28,21,.25)); transition: transform .3s ease; }
+.book-ad:hover img { transform: translateY(-4px) rotate(-1.5deg); }
+.book-ad p { font-size: .95rem; color: var(--ink-soft); }
+.book-ad p strong { font-family: "Fraunces", serif; color: var(--ink); }
+
+/* Article body */
+article.prose { padding: 3rem 0 1rem; font-size: 1.06rem; }
+article.prose > * + * { margin-top: 1.35rem; }
+article.prose p:first-of-type::first-letter {
+  font-family: "Fraunces", serif; font-weight: 600;
+  font-size: 3.4em; line-height: .82;
+  float: left; padding: .08em .12em 0 0;
+  color: var(--accent);
+}
+article.prose h2 {
+  font-family: "Fraunces", serif; font-weight: 600;
+  font-size: 1.65rem; line-height: 1.25;
+  margin-top: 2.8rem;
+  padding-top: 2.2rem;
+  border-top: 1px solid var(--hairline);
+}
+article.prose code {
+  font-family: "IBM Plex Mono", monospace; font-size: .82em;
+  background: var(--paper-deep); border: 1px solid var(--hairline);
+  border-radius: 4px; padding: .1em .35em;
+}
+article.prose pre {
+  background: var(--code-bg); color: var(--code-ink);
+  border-radius: 6px; padding: 1.4rem 1.6rem;
+  overflow-x: auto;
+  font-family: "IBM Plex Mono", monospace; font-size: .82rem; line-height: 1.6;
+  box-shadow: 0 12px 30px -18px rgba(33,28,21,.5);
+}
+article.prose pre code { background: none; border: none; padding: 0; font-size: 1em; }
+.tok-tag { color: #e6a23c; }
+.tok-attr { color: #8fc7ff; }
+.tok-str { color: #a8d08d; }
+.tok-comment { color: #8a8170; font-style: italic; }
+article.prose blockquote {
+  border-left: 2px solid var(--accent);
+  padding: .2rem 0 .2rem 1.4rem;
+  font-style: italic; color: var(--ink-soft); font-size: 1.1rem;
+}
+.code-caption {
+  font-family: "IBM Plex Mono", monospace; font-size: .68rem;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft);
+  margin-top: .6rem !important;
+}
+
+/* Prev / next */
+.pagination {
+  margin-top: 4rem; border-top: 1px solid var(--hairline);
+  display: grid; grid-template-columns: 1fr 1fr;
+}
+.pagination a {
+  padding: 1.6rem 1rem; text-decoration: none;
+  display: flex; flex-direction: column; gap: .4rem;
+}
+.pagination a + a { border-left: 1px solid var(--hairline); text-align: right; }
+.pagination .dir {
+  font-family: "IBM Plex Mono", monospace; font-size: .66rem;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--ink-soft);
+}
+.pagination .title { font-family: "Fraunces", serif; font-weight: 600; font-size: 1.02rem; line-height: 1.35; }
+.pagination a:hover .title { color: var(--accent); font-style: italic; }
+
+/* Newsletter */
+.newsletter {
+  margin: 3.5rem 0 4rem;
+  border: 1px solid var(--hairline); background: var(--paper-deep);
+  padding: 2.2rem; text-align: center; position: relative;
+}
+.newsletter::before {
+  content: "✦"; position: absolute; top: -0.85rem; left: 50%; transform: translateX(-50%);
+  background: var(--paper); color: var(--accent); padding: 0 .8rem; font-size: 1rem;
+}
+.newsletter h3 { font-family: "Fraunces", serif; font-weight: 600; font-size: 1.4rem; }
+.newsletter p { margin-top: .5rem; color: var(--ink-soft); font-size: .95rem; }
+.newsletter form { margin-top: 1.4rem; display: flex; gap: .6rem; justify-content: center; flex-wrap: wrap; }
+.newsletter input {
+  font-family: "IBM Plex Mono", monospace; font-size: .85rem;
+  padding: .7rem 1rem; border: 1px solid var(--hairline);
+  background: var(--paper); color: var(--ink); width: min(280px, 100%);
+}
+.newsletter input:focus { outline: none; border-color: var(--accent); }
+.newsletter button {
+  font-family: "IBM Plex Mono", monospace; font-size: .75rem;
+  letter-spacing: .14em; text-transform: uppercase;
+  background: var(--accent); color: var(--paper);
+  border: none; padding: .7rem 1.5rem; cursor: pointer;
+  transition: background .2s ease;
+}
+.newsletter button:hover { background: var(--ink); }
+
+footer {
+  border-top: 1px solid var(--hairline); background: var(--paper-deep);
+  padding: 2.4rem 0 3rem;
+}
+.footer-inner { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1.4rem; font-size: .9rem; color: var(--ink-soft); }
+.footer-inner .links { display: flex; gap: 1.4rem; font-family: "IBM Plex Mono", monospace; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; }
+.footer-inner .links a { text-decoration: none; }
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@media (max-width: 640px) {
+  .pagination { grid-template-columns: 1fr; }
+  .pagination a + a { border-left: none; border-top: 1px solid var(--hairline); text-align: left; }
+  .book-ad { flex-direction: column; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="frame masthead-inner">
+    <a class="wordmark" href="index.html">Wim Deblauwe<span class="amp">.</span></a>
+    <nav class="primary">
+      <ul>
+        <li><a class="active" href="index.html">Blog</a></li>
+        <li><a href="#">Projects</a></li>
+        <li><a href="#">Books</a></li>
+        <li><a href="#">Conferences</a></li>
+        <li><a href="#">About</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<div class="article-head prose-frame">
+  <div class="date">February 25, 2026</div>
+  <h1>Migrating away from Thymeleaf Layout Dialect</h1>
+  <div class="tags">
+    <a href="#">thymeleaf</a>
+    <a href="#">spring-boot</a>
+  </div>
+
+  <aside class="book-ad">
+    <a href="#"><img src="../../static/images/taming-thymeleaf-cover-3D-transparent.png" alt="Taming Thymeleaf cover"></a>
+    <p>Interested in learning more about Thymeleaf? My book <strong><a href="#">Taming Thymeleaf</a></strong> combines
+      all of my Thymeleaf knowledge into an easy-to-follow, step-by-step guide.</p>
+  </aside>
+
+  <div class="ornament">✦ ✦ ✦</div>
+</div>
+
+<article class="prose prose-frame">
+  <p>This blog post explains what the Thymeleaf Layout Dialect is, why you might want to stop using it,
+    and how to migrate to a pure Thymeleaf solution using <code>th:replace</code>.</p>
+
+  <h2>What is Thymeleaf Layout Dialect?</h2>
+  <p>The <a href="#">Thymeleaf Layout Dialect</a> is a third-party extension for Thymeleaf that adds a
+    decorator-based layout system to your templates. The idea is that you define a single layout template
+    (the "decorator") that contains the common HTML structure of your pages: the <code>&lt;head&gt;</code>,
+    a navigation bar, a footer, and so on.</p>
+  <p>Each content page then declares which layout it wants to be decorated with:</p>
+
+<pre><code><span class="tok-comment">&lt;!-- src/main/resources/templates/index.html --&gt;</span>
+<span class="tok-tag">&lt;html</span> <span class="tok-attr">xmlns:layout</span>=<span class="tok-str">"https://www.ultraq.net.nz/thymeleaf/layout"</span>
+      <span class="tok-attr">layout:decorate</span>=<span class="tok-str">"~{layout/main}"</span><span class="tok-tag">&gt;</span>
+<span class="tok-tag">&lt;body&gt;</span>
+  <span class="tok-tag">&lt;div</span> <span class="tok-attr">layout:fragment</span>=<span class="tok-str">"content"</span><span class="tok-tag">&gt;</span>
+    <span class="tok-tag">&lt;h1&gt;</span>Welcome<span class="tok-tag">&lt;/h1&gt;</span>
+  <span class="tok-tag">&lt;/div&gt;</span>
+<span class="tok-tag">&lt;/body&gt;</span>
+<span class="tok-tag">&lt;/html&gt;</span></code></pre>
+  <p class="code-caption">Listing 1 — A page using the layout dialect decorator</p>
+
+  <h2>Why move away from it?</h2>
+  <p>The layout dialect has served the community well for over a decade. But there are good reasons to
+    reconsider it for new projects:</p>
+  <blockquote>Every dependency you add is a dependency you must understand, upgrade, and one day migrate
+    away from.</blockquote>
+  <p>Pure Thymeleaf can express the same layouts using fragment expressions with parameters. Since
+    Thymeleaf 3, <code>th:replace</code> accepts fragment expressions that pass markup as arguments,
+    which covers the decorator use case without any third-party dependency.</p>
+
+  <h2>Migrating to th:replace</h2>
+  <p>Instead of decorating pages, you invert the relationship: the page <em>calls</em> the layout and
+    hands it the content as a fragment parameter.</p>
+
+<pre><code><span class="tok-comment">&lt;!-- src/main/resources/templates/index.html --&gt;</span>
+<span class="tok-tag">&lt;html</span> <span class="tok-attr">xmlns:th</span>=<span class="tok-str">"http://www.thymeleaf.org"</span>
+      <span class="tok-attr">th:replace</span>=<span class="tok-str">"~{layout/main :: layout(~{::title}, ~{::main})}"</span><span class="tok-tag">&gt;</span>
+<span class="tok-tag">&lt;head&gt;</span>
+  <span class="tok-tag">&lt;title&gt;</span>Home<span class="tok-tag">&lt;/title&gt;</span>
+<span class="tok-tag">&lt;/head&gt;</span>
+<span class="tok-tag">&lt;body&gt;</span>
+  <span class="tok-tag">&lt;main&gt;</span>
+    <span class="tok-tag">&lt;h1&gt;</span>Welcome<span class="tok-tag">&lt;/h1&gt;</span>
+  <span class="tok-tag">&lt;/main&gt;</span>
+<span class="tok-tag">&lt;/body&gt;</span>
+<span class="tok-tag">&lt;/html&gt;</span></code></pre>
+  <p class="code-caption">Listing 2 — The same page with pure Thymeleaf fragment expressions</p>
+
+  <p>The result is one less dependency, faster startup, and templates that any Thymeleaf user can read
+    without knowing the dialect's conventions.</p>
+</article>
+
+<div class="prose-frame">
+  <nav class="pagination">
+    <a href="#">
+      <span class="dir">← Previous essay</span>
+      <span class="title">Fix for Site.Author.email in recent Hugo versions</span>
+    </a>
+    <a href="#">
+      <span class="dir">Next essay →</span>
+      <span class="title">How I document production-ready Spring Boot applications</span>
+    </a>
+  </nav>
+
+  <section class="newsletter">
+    <h3>Get the next essay in your inbox</h3>
+    <p>Long-form writing on Java, Spring Boot and the JVM. No spam, unsubscribe anytime.</p>
+    <form onsubmit="return false;">
+      <input type="email" placeholder="you@example.com" aria-label="Email address">
+      <button type="submit">Subscribe</button>
+    </form>
+  </section>
+</div>
+
+<footer>
+  <div class="frame footer-inner">
+    <div>© 2026 Wim Deblauwe — Java, Spring &amp; JVM tooling.</div>
+    <div class="links">
+      <a href="#">RSS</a>
+      <a href="#">GitHub</a>
+      <a href="#">Twitter</a>
+      <a href="#">Tags</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

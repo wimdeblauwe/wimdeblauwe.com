@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Migrating away from Thymeleaf Layout Dialect — Wim Deblauwe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream: #f5f2ea;
+  --ink: #16190f;
+  --lime: #c8f04b;
+  --leaf: #3a7d44;
+  --tangerine: #ff6b35;
+  --border: 2px solid var(--ink);
+  --shadow: 5px 5px 0 var(--ink);
+  --display: "Bricolage Grotesque", sans-serif;
+  --body: "Atkinson Hyperlegible", sans-serif;
+  --mono: "Spline Sans Mono", monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { font-size: 17px; }
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--body);
+  line-height: 1.65;
+  background-image: radial-gradient(rgba(22,25,15,.07) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+a { color: inherit; }
+.frame { max-width: 1040px; margin: 0 auto; padding: 0 1.5rem; }
+.prose-frame { max-width: 760px; margin: 0 auto; padding: 0 1.5rem; }
+
+header.top { border-bottom: var(--border); background: var(--cream); position: sticky; top: 0; z-index: 20; }
+.top-inner { display: flex; align-items: center; justify-content: space-between; padding: 1rem 0; gap: 1rem; flex-wrap: wrap; }
+.logo { font-family: var(--display); font-weight: 800; font-size: 1.3rem; text-decoration: none; letter-spacing: -0.02em; display: flex; align-items: center; gap: .6rem; }
+.logo .dot { width: 14px; height: 14px; background: var(--lime); border: var(--border); border-radius: 50%; display: inline-block; }
+nav.primary { display: flex; gap: .4rem; flex-wrap: wrap; }
+nav.primary a { font-family: var(--display); font-weight: 600; font-size: .85rem; text-decoration: none; padding: .45rem 1rem; border: 2px solid transparent; border-radius: 99px; transition: all .15s ease; }
+nav.primary a:hover { border-color: var(--ink); background: #fff; }
+nav.primary a.active { background: var(--ink); color: var(--lime); }
+
+/* Article header */
+.article-head { padding: 3.5rem 0 2.5rem; }
+.date-chip {
+  display: inline-block;
+  font-family: var(--mono); font-size: .72rem; letter-spacing: .1em; text-transform: uppercase;
+  background: #fff; border: var(--border); border-radius: 99px;
+  padding: .35rem 1rem; box-shadow: 3px 3px 0 var(--ink);
+  animation: popIn .5s ease both;
+}
+.article-head h1 {
+  margin-top: 1.4rem;
+  font-family: var(--display); font-weight: 800;
+  font-size: clamp(2.2rem, 5.6vw, 3.6rem);
+  line-height: 1.04; letter-spacing: -0.03em;
+  max-width: 20ch;
+  animation: fadeUp .6s .1s ease both;
+}
+.article-head h1 .hl { position: relative; white-space: nowrap; }
+.article-head h1 .hl::after {
+  content: ""; position: absolute; left: -2px; right: -2px; bottom: .05em; height: .3em;
+  background: var(--lime); z-index: -1; transform: rotate(-1deg);
+}
+.tag-row { margin-top: 1.4rem; display: flex; gap: .5rem; flex-wrap: wrap; animation: fadeUp .6s .2s ease both; }
+.tag-row a {
+  font-family: var(--mono); font-size: .72rem;
+  text-decoration: none;
+  border: 2px solid var(--ink); border-radius: 99px;
+  padding: .25rem .85rem; background: #fff;
+  transition: all .15s ease;
+}
+.tag-row a:hover { background: var(--lime); transform: translateY(-2px); }
+
+/* Book ad */
+.book-ad {
+  margin: 2.4rem 0 0;
+  background: var(--lime);
+  border: var(--border); border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 1.5rem 1.8rem;
+  display: flex; gap: 1.6rem; align-items: center;
+  position: relative;
+  animation: fadeUp .6s .3s ease both;
+}
+.book-ad .badge {
+  position: absolute; top: -1rem; right: 1.6rem;
+  background: var(--tangerine); color: #fff;
+  font-family: var(--display); font-weight: 800; font-size: .72rem;
+  letter-spacing: .06em; text-transform: uppercase;
+  border: var(--border); border-radius: 99px;
+  padding: .3rem .9rem; transform: rotate(2deg);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.book-ad img {
+  width: 96px; flex-shrink: 0;
+  filter: drop-shadow(5px 5px 0 rgba(22,25,15,.8));
+  transition: transform .2s ease;
+}
+.book-ad:hover img { transform: rotate(-3deg) scale(1.05); }
+.book-ad .copy h3 { font-family: var(--display); font-weight: 800; font-size: 1.3rem; }
+.book-ad .copy p { margin-top: .3rem; font-size: .95rem; max-width: 48ch; }
+.book-ad .copy a.cta {
+  display: inline-block; margin-top: .8rem;
+  font-family: var(--display); font-weight: 600; font-size: .85rem;
+  text-decoration: none;
+  background: var(--ink); color: var(--lime);
+  border-radius: 10px; padding: .5rem 1.1rem;
+  transition: transform .12s ease;
+}
+.book-ad .copy a.cta:hover { transform: translate(1px, 1px); }
+
+/* Article body */
+article.prose { padding: 2.8rem 0 1rem; font-size: 1.04rem; }
+article.prose > * + * { margin-top: 1.35rem; }
+article.prose p a { text-decoration-thickness: 2px; text-decoration-color: var(--leaf); text-underline-offset: 3px; }
+article.prose p a:hover { color: var(--leaf); }
+article.prose h2 {
+  font-family: var(--display); font-weight: 800;
+  font-size: 1.7rem; letter-spacing: -0.02em; line-height: 1.15;
+  margin-top: 2.6rem;
+  display: flex; align-items: center; gap: .8rem;
+}
+article.prose h2::before {
+  content: ""; width: 14px; height: 14px; flex-shrink: 0;
+  background: var(--lime); border: var(--border); border-radius: 50%;
+}
+article.prose code {
+  font-family: var(--mono); font-size: .84em;
+  background: #fff; border: 1.5px solid var(--ink);
+  border-radius: 6px; padding: .08em .4em;
+}
+.codeblock {
+  border: var(--border); border-radius: 14px;
+  background: var(--ink); color: var(--cream);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.codeblock-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  background: var(--lime); color: var(--ink);
+  border-bottom: var(--border);
+  padding: .45rem 1.1rem;
+  font-family: var(--mono); font-size: .7rem;
+}
+.codeblock pre { padding: 1.3rem 1.4rem; overflow-x: auto; font-family: var(--mono); font-size: .82rem; line-height: 1.65; }
+.tok-tag { color: #8fd3ff; }
+.tok-attr { color: #c8f04b; }
+.tok-str { color: #ffb454; }
+.tok-comment { color: #7d8b70; font-style: italic; }
+article.prose blockquote {
+  background: #fff; border: var(--border); border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 1.2rem 1.5rem;
+  font-family: var(--display); font-weight: 600; font-size: 1.15rem; line-height: 1.4;
+  position: relative;
+}
+article.prose blockquote::before {
+  content: "“"; position: absolute; top: -1.6rem; left: 1rem;
+  font-family: var(--display); font-weight: 800; font-size: 3.4rem; color: var(--tangerine);
+}
+
+/* Prev / next */
+.pagination { margin-top: 3.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+.pagination a {
+  background: #fff; border: var(--border); border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 1.2rem 1.4rem; text-decoration: none;
+  display: flex; flex-direction: column; gap: .4rem;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.pagination a:hover { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 var(--ink); }
+.pagination a.next { text-align: right; }
+.pagination .dir { font-family: var(--mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .1em; color: var(--leaf); }
+.pagination .title { font-family: var(--display); font-weight: 800; font-size: 1.02rem; line-height: 1.25; }
+
+/* Newsletter */
+.newsletter {
+  margin: 3rem 0 4rem;
+  background: var(--ink); color: var(--cream);
+  border: var(--border); border-radius: 18px;
+  box-shadow: var(--shadow);
+  padding: 2.4rem; text-align: center;
+  position: relative; overflow: hidden;
+}
+.newsletter::before, .newsletter::after {
+  content: "★"; position: absolute; color: var(--lime); font-size: 1.4rem;
+}
+.newsletter::before { top: 1.2rem; left: 1.6rem; }
+.newsletter::after { bottom: 1.2rem; right: 1.6rem; }
+.newsletter h3 { font-family: var(--display); font-weight: 800; font-size: 1.7rem; letter-spacing: -0.02em; }
+.newsletter h3 span { color: var(--lime); }
+.newsletter p { margin-top: .6rem; opacity: .8; font-size: .95rem; }
+.newsletter form { margin-top: 1.5rem; display: flex; gap: .7rem; justify-content: center; flex-wrap: wrap; }
+.newsletter input {
+  font-family: var(--mono); font-size: .9rem;
+  border: var(--border); border-radius: 10px;
+  padding: .75rem 1.1rem; width: min(300px, 100%);
+  background: var(--cream); color: var(--ink);
+}
+.newsletter input:focus { outline: 3px solid var(--lime); outline-offset: 2px; }
+.newsletter button {
+  font-family: var(--display); font-weight: 800; font-size: .95rem;
+  background: var(--lime); color: var(--ink);
+  border: var(--border); border-radius: 10px;
+  padding: .75rem 1.6rem; cursor: pointer;
+  box-shadow: 3px 3px 0 rgba(200,240,75,.35);
+  transition: transform .12s ease;
+}
+.newsletter button:hover { transform: translate(1px, 1px); }
+
+footer { border-top: var(--border); background: var(--ink); color: var(--cream); }
+.footer-inner { padding: 2.5rem 0; display: flex; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; align-items: center; }
+.footer-inner .sig { font-family: var(--display); font-weight: 800; font-size: 1.2rem; }
+.footer-inner .sig span { color: var(--lime); }
+.footer-links { display: flex; gap: 1rem; flex-wrap: wrap; }
+.footer-links a {
+  font-family: var(--mono); font-size: .75rem; text-transform: uppercase; letter-spacing: .08em;
+  text-decoration: none; border: 2px solid #3a4030; border-radius: 99px;
+  padding: .4rem 1rem; transition: all .15s ease;
+}
+.footer-links a:hover { border-color: var(--lime); color: var(--lime); }
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes popIn { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
+@media (max-width: 680px) {
+  .pagination { grid-template-columns: 1fr; }
+  .pagination a.next { text-align: left; }
+  .book-ad { flex-direction: column; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="frame top-inner">
+    <a class="logo" href="index.html"><span class="dot"></span>Wim Deblauwe</a>
+    <nav class="primary">
+      <a class="active" href="index.html">Blog</a>
+      <a href="#">Projects</a>
+      <a href="#">Books</a>
+      <a href="#">Conferences</a>
+      <a href="#">About</a>
+    </nav>
+  </div>
+</header>
+
+<div class="article-head prose-frame">
+  <span class="date-chip">Feb 25, 2026 · 7 min read</span>
+  <h1>Migrating away from <span class="hl">Thymeleaf</span> Layout Dialect</h1>
+  <div class="tag-row">
+    <a href="#">thymeleaf</a>
+    <a href="#">spring-boot</a>
+  </div>
+
+  <aside class="book-ad">
+    <span class="badge">From the author</span>
+    <a href="#"><img src="../../static/images/taming-thymeleaf-cover-3D-transparent.png" alt="Taming Thymeleaf cover"></a>
+    <div class="copy">
+      <h3>Taming Thymeleaf</h3>
+      <p>All of my Thymeleaf knowledge combined into an easy-to-follow, step-by-step guide for building
+        real Spring Boot applications.</p>
+      <a class="cta" href="#">Get the book →</a>
+    </div>
+  </aside>
+</div>
+
+<article class="prose prose-frame">
+  <p>This blog post explains what the Thymeleaf Layout Dialect is, why you might want to stop using it,
+    and how to migrate to a pure Thymeleaf solution using <code>th:replace</code>.</p>
+
+  <h2>What is Thymeleaf Layout Dialect?</h2>
+  <p>The <a href="#">Thymeleaf Layout Dialect</a> is a third-party extension for Thymeleaf that adds a
+    decorator-based layout system to your templates. The idea is that you define a single layout template
+    (the "decorator") that contains the common HTML structure of your pages: the <code>&lt;head&gt;</code>,
+    a navigation bar, a footer, and so on.</p>
+  <p>Each content page then declares which layout it wants to be decorated with:</p>
+
+  <div class="codeblock">
+    <div class="codeblock-bar">
+      <span>index.html</span>
+      <span>html</span>
+    </div>
+<pre><code><span class="tok-tag">&lt;html</span> <span class="tok-attr">xmlns:layout</span>=<span class="tok-str">"https://www.ultraq.net.nz/thymeleaf/layout"</span>
+      <span class="tok-attr">layout:decorate</span>=<span class="tok-str">"~{layout/main}"</span><span class="tok-tag">&gt;</span>
+<span class="tok-tag">&lt;body&gt;</span>
+  <span class="tok-tag">&lt;div</span> <span class="tok-attr">layout:fragment</span>=<span class="tok-str">"content"</span><span class="tok-tag">&gt;</span>
+    <span class="tok-tag">&lt;h1&gt;</span>Welcome<span class="tok-tag">&lt;/h1&gt;</span>
+  <span class="tok-tag">&lt;/div&gt;</span>
+<span class="tok-tag">&lt;/body&gt;</span>
+<span class="tok-tag">&lt;/html&gt;</span></code></pre>
+  </div>
+
+  <h2>Why move away from it?</h2>
+  <p>The layout dialect has served the community well for over a decade. But there are good reasons to
+    reconsider it for new projects:</p>
+  <blockquote>Every dependency you add is a dependency you must understand, upgrade, and one day
+    migrate away from.</blockquote>
+  <p>Pure Thymeleaf can express the same layouts using fragment expressions with parameters. Since
+    Thymeleaf 3, <code>th:replace</code> accepts fragment expressions that pass markup as arguments,
+    which covers the decorator use case without any third-party dependency.</p>
+
+  <h2>Migrating to th:replace</h2>
+  <p>Instead of decorating pages, you invert the relationship: the page <em>calls</em> the layout and
+    hands it the content as a fragment parameter.</p>
+
+  <div class="codeblock">
+    <div class="codeblock-bar">
+      <span>index.html</span>
+      <span>html</span>
+    </div>
+<pre><code><span class="tok-tag">&lt;html</span> <span class="tok-attr">xmlns:th</span>=<span class="tok-str">"http://www.thymeleaf.org"</span>
+      <span class="tok-attr">th:replace</span>=<span class="tok-str">"~{layout/main :: layout(~{::title}, ~{::main})}"</span><span class="tok-tag">&gt;</span>
+<span class="tok-tag">&lt;head&gt;</span>
+  <span class="tok-tag">&lt;title&gt;</span>Home<span class="tok-tag">&lt;/title&gt;</span>
+<span class="tok-tag">&lt;/head&gt;</span>
+<span class="tok-tag">&lt;body&gt;</span>
+  <span class="tok-tag">&lt;main&gt;</span>
+    <span class="tok-tag">&lt;h1&gt;</span>Welcome<span class="tok-tag">&lt;/h1&gt;</span>
+  <span class="tok-tag">&lt;/main&gt;</span>
+<span class="tok-tag">&lt;/body&gt;</span>
+<span class="tok-tag">&lt;/html&gt;</span></code></pre>
+  </div>
+
+  <p>The result is one less dependency, faster startup, and templates that any Thymeleaf user can read
+    without knowing the dialect's conventions.</p>
+</article>
+
+<div class="prose-frame">
+  <nav class="pagination">
+    <a href="#" class="prev">
+      <span class="dir">← Previous</span>
+      <span class="title">Fix for Site.Author.email in recent Hugo versions</span>
+    </a>
+    <a href="#" class="next">
+      <span class="dir">Next →</span>
+      <span class="title">How I document production-ready Spring Boot applications</span>
+    </a>
+  </nav>
+
+  <section class="newsletter">
+    <h3>Never miss a <span>post</span>.</h3>
+    <p>Practical articles on Java, Spring Boot and the JVM — straight to your inbox.</p>
+    <form onsubmit="return false;">
+      <input type="email" placeholder="you@example.com" aria-label="Email address">
+      <button type="submit">Subscribe</button>
+    </form>
+  </section>
+</div>
+
+<footer>
+  <div class="frame footer-inner">
+    <div class="sig">Wim Deblauwe<span>.</span> © 2026</div>
+    <div class="footer-links">
+      <a href="#">RSS</a>
+      <a href="#">GitHub</a>
+      <a href="#">Twitter</a>
+      <a href="#">Newsletter</a>
+      <a href="#">Tags</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

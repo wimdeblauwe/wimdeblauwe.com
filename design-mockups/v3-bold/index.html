@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wim Deblauwe — Variation 3 · Bold</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream: #f5f2ea;
+  --ink: #16190f;
+  --lime: #c8f04b;
+  --leaf: #3a7d44;
+  --tangerine: #ff6b35;
+  --border: 2px solid var(--ink);
+  --shadow: 5px 5px 0 var(--ink);
+  --display: "Bricolage Grotesque", sans-serif;
+  --body: "Atkinson Hyperlegible", sans-serif;
+  --mono: "Spline Sans Mono", monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { font-size: 17px; }
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--body);
+  line-height: 1.6;
+  background-image: radial-gradient(rgba(22,25,15,.07) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+a { color: inherit; }
+.frame { max-width: 1040px; margin: 0 auto; padding: 0 1.5rem; }
+
+/* Header */
+header.top {
+  border-bottom: var(--border);
+  background: var(--cream);
+  position: sticky; top: 0; z-index: 20;
+}
+.top-inner { display: flex; align-items: center; justify-content: space-between; padding: 1rem 0; gap: 1rem; flex-wrap: wrap; }
+.logo {
+  font-family: var(--display); font-weight: 800; font-size: 1.3rem;
+  text-decoration: none; letter-spacing: -0.02em;
+  display: flex; align-items: center; gap: .6rem;
+}
+.logo .dot {
+  width: 14px; height: 14px; background: var(--lime);
+  border: var(--border); border-radius: 50%;
+  display: inline-block;
+}
+nav.primary { display: flex; gap: .4rem; flex-wrap: wrap; }
+nav.primary a {
+  font-family: var(--display); font-weight: 600; font-size: .85rem;
+  text-decoration: none;
+  padding: .45rem 1rem;
+  border: 2px solid transparent; border-radius: 99px;
+  transition: all .15s ease;
+}
+nav.primary a:hover { border-color: var(--ink); background: #fff; }
+nav.primary a.active { background: var(--ink); color: var(--lime); }
+
+/* Hero */
+.hero { padding: 4.5rem 0 3.5rem; position: relative; overflow: hidden; }
+.hero-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 3rem; align-items: center; }
+.kicker {
+  display: inline-block;
+  font-family: var(--mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
+  background: var(--lime); border: var(--border); border-radius: 99px;
+  padding: .35rem 1rem; box-shadow: 3px 3px 0 var(--ink);
+  animation: popIn .5s ease both;
+}
+.hero h1 {
+  margin-top: 1.4rem;
+  font-family: var(--display); font-weight: 800;
+  font-size: clamp(2.6rem, 6.5vw, 4.4rem);
+  line-height: 1.02; letter-spacing: -0.03em;
+  animation: fadeUp .6s .1s ease both;
+}
+.hero h1 .hl {
+  position: relative; white-space: nowrap;
+}
+.hero h1 .hl::after {
+  content: ""; position: absolute; left: -2px; right: -2px; bottom: .04em; height: .32em;
+  background: var(--lime); z-index: -1; transform: rotate(-1deg);
+}
+.hero p.sub { margin-top: 1.5rem; font-size: 1.12rem; max-width: 46ch; animation: fadeUp .6s .2s ease both; }
+.hero p.sub a { text-decoration-thickness: 2px; text-decoration-color: var(--leaf); text-underline-offset: 3px; }
+.hero p.sub a:hover { color: var(--leaf); }
+.hero-cta { margin-top: 2rem; display: flex; gap: .9rem; flex-wrap: wrap; animation: fadeUp .6s .3s ease both; }
+.btn {
+  font-family: var(--display); font-weight: 600; font-size: .95rem;
+  text-decoration: none;
+  border: var(--border); border-radius: 12px;
+  padding: .75rem 1.5rem;
+  background: #fff; box-shadow: var(--shadow);
+  transition: transform .12s ease, box-shadow .12s ease;
+  display: inline-block;
+}
+.btn:hover { transform: translate(2px, 2px); box-shadow: 3px 3px 0 var(--ink); }
+.btn.primary { background: var(--ink); color: var(--lime); }
+.btn.lime { background: var(--lime); }
+
+/* Hero book stack */
+.hero-books { position: relative; min-height: 320px; animation: fadeUp .6s .35s ease both; }
+.hero-books a { position: absolute; display: block; }
+.hero-books img {
+  width: 100%; display: block;
+  border-radius: 6px;
+  transition: transform .25s ease;
+}
+.hero-books .b1 { width: 62%; top: 0; left: 0; transform: rotate(-4deg); z-index: 2; filter: drop-shadow(8px 8px 0 rgba(22,25,15,.85)); }
+.hero-books .b2 { width: 48%; bottom: 0; right: 4%; transform: rotate(5deg); z-index: 1; }
+.hero-books .b2 img { border: var(--border); box-shadow: var(--shadow); }
+.hero-books a:hover img { transform: scale(1.04); }
+.hero-books .sticker {
+  position: absolute; z-index: 3; top: 52%; right: 22%;
+  background: var(--tangerine); color: #fff;
+  font-family: var(--display); font-weight: 800; font-size: .8rem;
+  border: var(--border); border-radius: 50%;
+  width: 86px; height: 86px;
+  display: grid; place-items: center; text-align: center;
+  transform: rotate(10deg);
+  box-shadow: 3px 3px 0 var(--ink);
+  animation: wiggle 5s ease-in-out infinite;
+}
+
+/* Marquee */
+.marquee {
+  border-top: var(--border); border-bottom: var(--border);
+  background: var(--ink); color: var(--cream);
+  overflow: hidden; white-space: nowrap;
+  padding: .6rem 0;
+}
+.marquee-track {
+  display: inline-block;
+  font-family: var(--mono); font-size: .8rem; letter-spacing: .1em; text-transform: uppercase;
+  animation: scroll 28s linear infinite;
+}
+.marquee-track .lime { color: var(--lime); }
+
+/* Posts */
+.posts-section { padding: 3.5rem 0 4.5rem; }
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; }
+.section-head h2 {
+  font-family: var(--display); font-weight: 800; font-size: 2.2rem; letter-spacing: -0.02em;
+}
+.section-head a { font-family: var(--mono); font-size: .8rem; text-underline-offset: 3px; }
+.post-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.4rem; }
+.post-card {
+  background: #fff; border: var(--border); border-radius: 14px;
+  padding: 1.4rem; text-decoration: none;
+  display: flex; flex-direction: column; gap: .8rem;
+  box-shadow: var(--shadow);
+  transition: transform .15s ease, box-shadow .15s ease;
+  position: relative;
+}
+.post-card:hover { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 var(--ink); }
+.post-card.featured { grid-column: span 2; background: var(--lime); }
+.post-card .meta { font-family: var(--mono); font-size: .72rem; display: flex; justify-content: space-between; gap: 1rem; }
+.post-card h3 {
+  font-family: var(--display); font-weight: 800;
+  font-size: 1.35rem; line-height: 1.15; letter-spacing: -0.015em;
+}
+.post-card.featured h3 { font-size: 1.9rem; }
+.post-card p { font-size: .92rem; flex: 1; }
+.post-card .tags { display: flex; gap: .45rem; flex-wrap: wrap; }
+.post-card .tags span {
+  font-family: var(--mono); font-size: .68rem;
+  border: 2px solid var(--ink); border-radius: 99px;
+  padding: .12rem .6rem; background: var(--cream);
+}
+.post-card.featured .tags span { background: #fff; }
+.post-card .arrow {
+  position: absolute; top: 1.1rem; right: 1.2rem;
+  font-family: var(--display); font-weight: 800; font-size: 1.1rem;
+  transition: transform .15s ease;
+}
+.post-card:hover .arrow { transform: translate(3px, -3px); }
+
+/* Footer */
+footer { border-top: var(--border); background: var(--ink); color: var(--cream); }
+.footer-inner { padding: 2.5rem 0; display: flex; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; align-items: center; }
+.footer-inner .sig { font-family: var(--display); font-weight: 800; font-size: 1.2rem; }
+.footer-inner .sig span { color: var(--lime); }
+.footer-links { display: flex; gap: 1rem; flex-wrap: wrap; }
+.footer-links a {
+  font-family: var(--mono); font-size: .75rem; text-transform: uppercase; letter-spacing: .08em;
+  text-decoration: none; border: 2px solid #3a4030; border-radius: 99px;
+  padding: .4rem 1rem; transition: all .15s ease;
+}
+.footer-links a:hover { border-color: var(--lime); color: var(--lime); }
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes popIn { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
+@keyframes scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes wiggle { 0%,100% { transform: rotate(10deg); } 50% { transform: rotate(2deg); } }
+
+@media (max-width: 880px) {
+  .hero-grid { grid-template-columns: 1fr; }
+  .hero-books { max-width: 420px; }
+  .post-grid { grid-template-columns: 1fr; }
+  .post-card.featured { grid-column: span 1; }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="frame top-inner">
+    <a class="logo" href="index.html"><span class="dot"></span>Wim Deblauwe</a>
+    <nav class="primary">
+      <a class="active" href="index.html">Blog</a>
+      <a href="#">Projects</a>
+      <a href="#">Books</a>
+      <a href="#">Conferences</a>
+      <a href="#">About</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="frame hero-grid">
+    <div>
+      <span class="kicker">Java · Spring Boot · JVM tooling</span>
+      <h1>Build <span class="hl">production-ready</span> Spring Boot apps.</h1>
+      <p class="sub">
+        I'm Wim Deblauwe — developer, author and open-source maintainer.
+        I write practical, battle-tested articles about <a href="#">Spring Boot</a>,
+        <a href="#">Thymeleaf</a> and <a href="#">htmx</a>, and turn the deep dives into books.
+      </p>
+      <div class="hero-cta">
+        <a class="btn primary" href="#">Read the blog</a>
+        <a class="btn lime" href="#">Get the books</a>
+        <a class="btn" href="#">RSS feed</a>
+      </div>
+    </div>
+    <div class="hero-books">
+      <a class="b1" href="#"><img src="../../static/images/taming-thymeleaf-cover-3D-transparent.png" alt="Taming Thymeleaf cover"></a>
+      <a class="b2" href="#"><img src="../../static/images/modern-frontends-with-htmx/cover-small.jpg" alt="Modern frontends with htmx cover"></a>
+      <span class="sticker">2 books<br>&amp; counting</span>
+    </div>
+  </div>
+</section>
+
+<div class="marquee" aria-hidden="true">
+  <div class="marquee-track">
+    <span class="lime">★</span> Spring Boot &nbsp; <span class="lime">★</span> Thymeleaf &nbsp; <span class="lime">★</span> htmx &nbsp; <span class="lime">★</span> Testcontainers &nbsp; <span class="lime">★</span> Asciidoctor &nbsp; <span class="lime">★</span> TailwindCSS &nbsp; <span class="lime">★</span> 123 articles since 2010 &nbsp;
+    <span class="lime">★</span> Spring Boot &nbsp; <span class="lime">★</span> Thymeleaf &nbsp; <span class="lime">★</span> htmx &nbsp; <span class="lime">★</span> Testcontainers &nbsp; <span class="lime">★</span> Asciidoctor &nbsp; <span class="lime">★</span> TailwindCSS &nbsp; <span class="lime">★</span> 123 articles since 2010 &nbsp;
+  </div>
+</div>
+
+<section class="posts-section">
+  <div class="frame">
+    <div class="section-head">
+      <h2>Recent posts</h2>
+      <a href="#">Browse all 123 →</a>
+    </div>
+    <div class="post-grid">
+      <a class="post-card featured" href="blog-post.html">
+        <span class="arrow">↗</span>
+        <div class="meta"><span>Feb 25, 2026</span><span>7 min read</span></div>
+        <h3>Migrating away from Thymeleaf Layout Dialect</h3>
+        <p>Why the decorator pattern served us well, why you might want to leave it behind, and how to migrate to pure Thymeleaf with th:replace.</p>
+        <div class="tags"><span>thymeleaf</span><span>spring-boot</span></div>
+      </a>
+      <a class="post-card" href="#">
+        <span class="arrow">↗</span>
+        <div class="meta"><span>Sep 8, 2025</span></div>
+        <h3>How I document production-ready Spring Boot applications</h3>
+        <p>Living documentation with Asciidoctor, Spring REST Docs and ADRs.</p>
+        <div class="tags"><span>spring-boot</span></div>
+      </a>
+      <a class="post-card" href="#">
+        <span class="arrow">↗</span>
+        <div class="meta"><span>Jul 30, 2025</span></div>
+        <h3>How I test production-ready Spring Boot applications</h3>
+        <p>Unit tests where they pay off, slice tests for the edges, Testcontainers for the truth.</p>
+        <div class="tags"><span>spring-boot</span><span>testing</span></div>
+      </a>
+      <a class="post-card" href="#">
+        <span class="arrow">↗</span>
+        <div class="meta"><span>Jun 24, 2025</span></div>
+        <h3>How I write production-ready Spring Boot applications</h3>
+        <p>Project structure, package-by-feature and decisions that compound over years.</p>
+        <div class="tags"><span>spring-boot</span></div>
+      </a>
+      <a class="post-card" href="#">
+        <span class="arrow">↗</span>
+        <div class="meta"><span>May 14, 2025</span></div>
+        <h3>Combine Testcontainers and Spring Boot with multiple containers</h3>
+        <p>PostgreSQL, Keycloak and RabbitMQ in integration tests — without losing startup time.</p>
+        <div class="tags"><span>testcontainers</span></div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="frame footer-inner">
+    <div class="sig">Wim Deblauwe<span>.</span> © 2026</div>
+    <div class="footer-links">
+      <a href="#">RSS</a>
+      <a href="#">GitHub</a>
+      <a href="#">Twitter</a>
+      <a href="#">Newsletter</a>
+      <a href="#">Tags</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wim Deblauwe — Variation 5 · Craft</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Hanken+Grotesk:ital,wght@0,400;0,500;0,600;1,400&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #faf9f5;
+  --paper-soft: #f1efe8;
+  --card: #ffffff;
+  --navy: #13202f;
+  --navy-soft: #1c2d40;
+  --ink: #1b2531;
+  --ink-soft: #5d6673;
+  --copper: #c2702e;
+  --copper-bright: #e08a4e;
+  --copper-soft: #f6e8da;
+  --hairline: #e6e2d9;
+  --display: "Sora", sans-serif;
+  --body: "Hanken Grotesk", sans-serif;
+  --mono: "Geist Mono", monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { font-size: 17px; scroll-behavior: smooth; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  line-height: 1.65;
+  background-image: radial-gradient(circle at 50% -20%, #fffefc 0%, var(--paper) 55%);
+}
+a { color: inherit; }
+.frame { max-width: 960px; margin: 0 auto; padding: 0 1.6rem; }
+/* while searching, collapse the book banners so results sit next to the search box */
+body.searching .feature, body.searching .books-strip { display: none; }
+
+/* Header */
+header.top {
+  position: sticky; top: 0; z-index: 20;
+  background: rgba(250,247,241,.9); backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--hairline);
+}
+.top-inner { display: flex; align-items: center; justify-content: space-between; padding: 1.05rem 0; gap: 1rem; flex-wrap: wrap; }
+.wordmark {
+  font-family: var(--display); font-weight: 700; font-size: 1.12rem; letter-spacing: -0.02em;
+  text-decoration: none; display: flex; align-items: center; gap: .6rem;
+}
+.wordmark::before {
+  content: ""; width: 12px; height: 12px;
+  background: var(--copper); border-radius: 3px;
+  transform: rotate(45deg);
+}
+nav.primary { display: flex; gap: 1.5rem; }
+nav.primary a {
+  font-weight: 500; font-size: .9rem; color: var(--ink-soft); text-decoration: none;
+  padding-bottom: 2px; border-bottom: 2px solid transparent;
+  transition: color .15s ease, border-color .15s ease;
+}
+nav.primary a:hover { color: var(--ink); }
+nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
+
+/* Hero */
+.hero { padding: 4.2rem 0 2.6rem; }
+.hero .kicker {
+  font-family: var(--mono); font-size: .72rem; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--copper);
+  animation: fadeUp .6s ease both;
+}
+.hero h1 {
+  margin-top: 1.1rem;
+  font-family: var(--display); font-weight: 800;
+  font-size: clamp(2.2rem, 5.2vw, 3.4rem);
+  line-height: 1.08; letter-spacing: -0.035em;
+  color: var(--navy);
+  max-width: 19ch;
+  animation: fadeUp .6s .1s ease both;
+}
+.hero h1 em { font-style: normal; color: var(--copper); }
+.hero p.standfirst {
+  margin-top: 1.4rem; max-width: 54ch;
+  font-size: 1.08rem; color: var(--ink-soft);
+  animation: fadeUp .6s .2s ease both;
+}
+.hero p.standfirst a {
+  color: var(--ink); font-weight: 500;
+  text-decoration-color: var(--copper); text-decoration-thickness: 1.5px; text-underline-offset: 3px;
+}
+.hero p.standfirst a:hover { color: var(--copper); }
+/* Search prompt */
+.search-wrap { padding: 0 0 .6rem; animation: fadeUp .6s .4s ease both; }
+.search-box {
+  display: flex; align-items: center; gap: .65rem;
+  background: var(--card);
+  border: 1px solid var(--hairline); border-radius: 14px;
+  padding: 1rem 1.3rem;
+  box-shadow: 0 1px 2px rgba(19,32,47,.04), 0 8px 24px -18px rgba(19,32,47,.25);
+  transition: border-color .15s ease, box-shadow .15s ease;
+  cursor: text;
+}
+.search-box:focus-within {
+  border-color: var(--copper);
+  box-shadow: 0 0 0 3px var(--copper-soft), 0 8px 24px -18px rgba(19,32,47,.25);
+}
+.search-box .chevron { font-family: var(--mono); color: var(--copper); font-weight: 500; font-size: 1rem; }
+/* terminal-style block cursor: sits right after the prompt, where typing starts */
+.search-box .block-cursor {
+  width: .58em; height: 1.2em; flex-shrink: 0;
+  background: var(--copper);
+  animation: blink 1.1s steps(1) infinite;
+}
+.search-box:focus-within .block-cursor, .search-box.has-value .block-cursor { display: none; }
+.search-box input {
+  flex: 1; border: none; background: none; outline: none;
+  font-family: var(--mono); font-size: .95rem; color: var(--ink);
+  caret-color: var(--copper);
+}
+.search-box input::placeholder { color: #b3aca0; }
+.search-box kbd {
+  font-family: var(--mono); font-size: .68rem; color: var(--ink-soft);
+  border: 1px solid var(--hairline); border-bottom-width: 2px; border-radius: 6px;
+  padding: .15rem .5rem; background: var(--paper-soft);
+}
+.search-hint {
+  margin-top: .6rem; font-family: var(--mono); font-size: .7rem; color: var(--ink-soft);
+  padding-left: .4rem; min-height: 1.2em;
+}
+.search-hint b { color: var(--copper); font-weight: 500; }
+
+/* New book feature — echoes the cover */
+.feature { padding: 2.2rem 0; }
+.feature-card {
+  position: relative;
+  display: grid; grid-template-columns: 1fr auto; gap: 2.5rem; align-items: center;
+  background: linear-gradient(115deg, var(--navy) 0%, var(--navy-soft) 70%, #27405a 100%);
+  color: #f0ece5;
+  border-radius: 20px;
+  padding: 2.4rem 2.8rem;
+  overflow: hidden;
+  box-shadow: 0 24px 50px -30px rgba(19,32,47,.6);
+}
+.feature-card::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 70% 110% at 85% 10%, rgba(224,138,78,.18), transparent 60%);
+}
+.feature-card .badge {
+  position: absolute; top: 1.4rem; left: 2.8rem;
+  font-family: var(--mono); font-size: .64rem; letter-spacing: .16em; text-transform: uppercase;
+  background: var(--copper); color: #fff;
+  border-radius: 99px; padding: .3rem .9rem;
+  transform: rotate(-1.5deg);
+}
+.feature-card h2 {
+  margin-top: 1.6rem;
+  font-family: var(--display); font-weight: 800;
+  font-size: clamp(1.5rem, 3.4vw, 2.2rem);
+  line-height: 1.12; letter-spacing: -0.025em;
+  max-width: 16ch;
+}
+.feature-card p.sub { margin-top: .8rem; font-size: .98rem; color: #b8c2cd; max-width: 46ch; }
+.feature-card p.sub b { color: var(--copper-bright); font-weight: 600; }
+.feature-card .cta-row { margin-top: 1.5rem; display: flex; gap: .8rem; flex-wrap: wrap; }
+.feature-card .cta {
+  font-family: var(--display); font-weight: 700; font-size: .88rem;
+  text-decoration: none;
+  background: var(--copper); color: #fff;
+  border-radius: 10px; padding: .65rem 1.4rem;
+  transition: all .15s ease;
+}
+.feature-card .cta:hover { background: var(--copper-bright); transform: translateY(-2px); }
+.feature-card .cta.ghost {
+  background: transparent; color: #d8dee5;
+  border: 1px solid rgba(216,222,229,.35);
+}
+.feature-card .cta.ghost:hover { border-color: var(--copper-bright); color: var(--copper-bright); background: transparent; }
+.feature-card .cover { position: relative; z-index: 1; }
+.feature-card .cover img {
+  width: 190px; display: block; border-radius: 8px;
+  box-shadow: 0 20px 40px -16px rgba(0,0,0,.7);
+  transform: rotate(2deg);
+  transition: transform .25s ease;
+}
+.feature-card .cover:hover img { transform: rotate(0deg) scale(1.03); }
+
+/* Previous books */
+.books-strip { padding: .4rem 0 1.6rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1.3rem; }
+.book-card {
+  display: flex; gap: 1.2rem; align-items: center;
+  background: var(--card);
+  border: 1px solid var(--hairline); border-radius: 14px;
+  padding: 1.2rem 1.4rem;
+  text-decoration: none;
+  transition: all .18s ease;
+}
+.book-card:hover { border-color: var(--copper); transform: translateY(-3px); box-shadow: 0 14px 30px -20px rgba(194,112,46,.5); }
+.book-card img { width: 66px; flex-shrink: 0; filter: drop-shadow(0 6px 12px rgba(19,32,47,.2)); }
+.book-card h3 { font-family: var(--display); font-weight: 700; font-size: 1rem; letter-spacing: -0.01em; color: var(--navy); }
+.book-card p { font-size: .85rem; color: var(--ink-soft); margin-top: .25rem; }
+
+/* Post list */
+.posts { padding: 1.6rem 0 4.5rem; }
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1.2rem; }
+.section-head h2 { font-family: var(--display); font-weight: 800; font-size: 1.55rem; letter-spacing: -0.025em; color: var(--navy); }
+.section-head .count { font-family: var(--mono); font-size: .74rem; color: var(--ink-soft); }
+.post-list { list-style: none; }
+.post-list li { border-bottom: 1px solid var(--hairline); }
+.post-list li.hidden { display: none; }
+.post-list a {
+  display: grid; grid-template-columns: 7.2rem 1fr auto; gap: 1.4rem; align-items: baseline;
+  padding: 1.45rem .6rem;
+  text-decoration: none; border-radius: 12px;
+  transition: background .15s ease;
+}
+.post-list a:hover { background: var(--card); }
+.post-list .date { font-family: var(--mono); font-size: .74rem; color: var(--ink-soft); white-space: nowrap; }
+.post-list .title {
+  font-family: var(--display); font-weight: 700; font-size: 1.15rem;
+  line-height: 1.3; letter-spacing: -0.02em; color: var(--navy);
+  transition: color .15s ease;
+}
+.post-list a:hover .title { color: var(--copper); }
+.post-list .summary { grid-column: 2; color: var(--ink-soft); font-size: .94rem; max-width: 62ch; margin-top: .15rem; }
+.post-list .tags { display: flex; gap: .4rem; }
+.post-list .tags span {
+  font-family: var(--mono); font-size: .66rem;
+  color: var(--ink-soft); background: var(--paper-soft);
+  border-radius: 99px; padding: .14rem .6rem;
+  white-space: nowrap;
+}
+.post-list a:hover .tags span { background: var(--copper-soft); color: var(--copper); }
+.no-results { display: none; padding: 2.5rem .6rem; font-family: var(--mono); font-size: .85rem; color: var(--ink-soft); }
+.no-results b { color: var(--copper); font-weight: 500; }
+.all-posts { margin-top: 1.8rem; }
+.all-posts a { font-family: var(--mono); font-size: .78rem; color: var(--copper); text-decoration: none; }
+.all-posts a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Footer — navy like the cover */
+footer { background: var(--navy); color: #aeb9c5; }
+.footer-inner {
+  padding: 2.4rem 0 2.8rem;
+  display: flex; justify-content: space-between; gap: 1.4rem; flex-wrap: wrap; align-items: center;
+  font-size: .88rem;
+}
+.footer-inner .sig { font-family: var(--display); font-weight: 700; color: #f0ece5; }
+.footer-inner .sig span { color: var(--copper-bright); }
+.footer-inner .links { display: flex; gap: 1.3rem; font-family: var(--mono); font-size: .72rem; }
+.footer-inner .links a { text-decoration: none; }
+.footer-inner .links a:hover { color: var(--copper-bright); }
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes blink { 50% { opacity: 0; } }
+@media (max-width: 800px) {
+  .feature-card { grid-template-columns: 1fr; padding: 2.2rem 1.8rem; }
+  .feature-card .badge { left: 1.8rem; }
+  .feature-card .cover { justify-self: center; }
+  .books-strip { grid-template-columns: 1fr; }
+  .post-list a { grid-template-columns: 1fr; gap: .3rem; }
+  .post-list .summary { grid-column: 1; }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="frame top-inner">
+    <a class="wordmark" href="index.html">Wim Deblauwe</a>
+    <nav class="primary">
+      <a class="active" href="index.html">Blog</a>
+      <a href="#">Projects</a>
+      <a href="#">Books</a>
+      <a href="#">Conferences</a>
+      <a href="#">About</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero frame">
+  <div class="kicker">Java · Spring · Thymeleaf · Htmx</div>
+  <h1>Production-ready Spring Boot, <em>crafted</em> carefully.</h1>
+  <p class="standfirst">
+    I'm Wim Deblauwe, a software developer specialized in Java and Spring. I write books,
+    maintain open-source projects like <a href="#">error-handling-spring-boot-starter</a>,
+    and publish practical, battle-tested articles here.
+  </p>
+</section>
+
+<div class="frame search-wrap">
+  <label class="search-box" for="search">
+    <span class="chevron">❯</span>
+    <span class="block-cursor"></span>
+    <input id="search" type="search" placeholder="search 123 articles…" autocomplete="off">
+    <kbd>/</kbd>
+  </label>
+  <div class="search-hint" id="search-hint">just start typing — try <b>thymeleaf</b>, <b>testcontainers</b> or <b>htmx</b></div>
+</div>
+
+<div class="frame feature">
+  <div class="feature-card">
+    <span class="badge">New book — coming soon</span>
+    <div>
+      <h2>Crafting Spring Boot Starters</h2>
+      <p class="sub">Design, build, test, and publish <b>auto-configuration</b> libraries on <b>Spring Boot 4</b>.
+        The craft of building libraries that other developers adopt for years.</p>
+      <div class="cta-row">
+        <a class="cta" href="#">Get notified at launch</a>
+        <a class="cta ghost" href="#">Read the outline →</a>
+      </div>
+    </div>
+    <a class="cover" href="#">
+      <img src="crafting-spring-boot-starters-cover.png" alt="Crafting Spring Boot Starters cover">
+    </a>
+  </div>
+</div>
+
+<div class="frame books-strip">
+  <a class="book-card" href="#">
+    <img src="../../static/images/taming-thymeleaf-cover-3D-transparent.png" alt="Taming Thymeleaf cover">
+    <div>
+      <h3>Taming Thymeleaf</h3>
+      <p>Server-side rendering with Spring Boot, step by step.</p>
+    </div>
+  </a>
+  <a class="book-card" href="#">
+    <img src="../../static/images/modern-frontends-with-htmx/cover-small.jpg" alt="Modern frontends with htmx cover">
+    <div>
+      <h3>Modern frontends with htmx</h3>
+      <p>Hypermedia-driven UIs with Spring Boot &amp; Thymeleaf.</p>
+    </div>
+  </a>
+</div>
+
+<section class="posts frame">
+  <div class="section-head">
+    <h2>Recent posts</h2>
+    <span class="count" id="post-count">showing 6 of 123</span>
+  </div>
+  <ul class="post-list" id="post-list">
+    <li>
+      <a href="blog-post.html">
+        <span class="date">Feb 25, 2026</span>
+        <span class="title">Migrating away from Thymeleaf Layout Dialect</span>
+        <span class="tags"><span>thymeleaf</span><span>spring-boot</span></span>
+        <span class="summary">Why the decorator pattern served us well, why you might want to leave it behind, and how to migrate to pure Thymeleaf with th:replace.</span>
+      </a>
+    </li>
+    <li>
+      <a href="#">
+        <span class="date">Sep 8, 2025</span>
+        <span class="title">How I document production-ready Spring Boot applications</span>
+        <span class="tags"><span>spring-boot</span><span>asciidoctor</span></span>
+        <span class="summary">Living documentation with Asciidoctor, Spring REST Docs and architecture decision records that stay up to date.</span>
+      </a>
+    </li>
+    <li>
+      <a href="#">
+        <span class="date">Jul 30, 2025</span>
+        <span class="title">How I test production-ready Spring Boot applications</span>
+        <span class="tags"><span>spring-boot</span><span>testing</span></span>
+        <span class="summary">A layered testing strategy: unit tests where they pay off, slice tests for the edges, Testcontainers for the truth.</span>
+      </a>
+    </li>
+    <li>
+      <a href="#">
+        <span class="date">Jun 24, 2025</span>
+        <span class="title">How I write production-ready Spring Boot applications</span>
+        <span class="tags"><span>spring-boot</span></span>
+        <span class="summary">Project structure, package-by-feature, explicit configuration and the small decisions that compound over years.</span>
+      </a>
+    </li>
+    <li>
+      <a href="#">
+        <span class="date">May 14, 2025</span>
+        <span class="title">Combine Testcontainers and Spring Boot with multiple containers</span>
+        <span class="tags"><span>spring-boot</span><span>testcontainers</span></span>
+        <span class="summary">Wiring PostgreSQL, Keycloak and RabbitMQ together in integration tests without losing your mind, or startup time.</span>
+      </a>
+    </li>
+    <li>
+      <a href="#">
+        <span class="date">Jan 29, 2025</span>
+        <span class="title">Thymeleaf and TailwindCSS 4.0 updates</span>
+        <span class="tags"><span>thymeleaf</span><span>tailwindcss</span></span>
+        <span class="summary">What the new Tailwind engine changes for server-side rendered Spring Boot applications.</span>
+      </a>
+    </li>
+  </ul>
+  <div class="no-results" id="no-results">no matches for "<b></b>" in recent posts — <a href="#">search the full archive →</a></div>
+  <p class="all-posts"><a href="#">Browse the full archive — 123 articles →</a></p>
+</section>
+
+<footer>
+  <div class="frame footer-inner">
+    <div class="sig">Wim Deblauwe<span>.</span> © 2026</div>
+    <div class="links">
+      <a href="#">rss</a>
+      <a href="#">github</a>
+      <a href="#">twitter</a>
+      <a href="#">tags</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const input = document.getElementById('search');
+const box = document.querySelector('.search-box');
+const list = document.getElementById('post-list');
+const items = Array.from(list.querySelectorAll('li'));
+const count = document.getElementById('post-count');
+const noResults = document.getElementById('no-results');
+
+document.addEventListener('keydown', (e) => {
+  const typingElsewhere = ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
+  if (e.key === '/' && document.activeElement !== input) {
+    e.preventDefault();
+    input.focus();
+  }
+  // terminal behavior: just start typing anywhere and the prompt receives it
+  if (e.key.length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey && !typingElsewhere) {
+    input.focus();
+  }
+  if (e.key === 'Escape' && document.activeElement === input) {
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
+    input.blur();
+  }
+});
+
+input.addEventListener('input', () => {
+  const q = input.value.trim().toLowerCase();
+  box.classList.toggle('has-value', q.length > 0);
+  document.body.classList.toggle('searching', q.length > 0);
+  let visible = 0;
+  items.forEach(li => {
+    const match = li.textContent.toLowerCase().includes(q);
+    li.classList.toggle('hidden', !match);
+    if (match) visible++;
+  });
+  count.textContent = q ? `${visible} match${visible === 1 ? '' : 'es'} for "${q}"` : 'showing 6 of 123';
+  noResults.style.display = visible === 0 ? 'block' : 'none';
+  if (visible === 0) noResults.querySelector('b').textContent = q;
+});
+</script>
+
+</body>
+</html>

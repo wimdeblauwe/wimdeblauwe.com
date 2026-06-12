@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wim Deblauwe — Variation 1 · Editorial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,600;9..144,700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #faf6ee;
+  --paper-deep: #f3ecdd;
+  --ink: #211c15;
+  --ink-soft: #5d5546;
+  --accent: #8a2d1f;
+  --accent-soft: #b8553f;
+  --hairline: #ddd2bc;
+  --measure: 64ch;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { font-size: 17px; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Newsreader", Georgia, serif;
+  line-height: 1.65;
+  background-image: radial-gradient(circle at 50% -10%, #fffdf7 0%, var(--paper) 60%);
+}
+a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; text-decoration-color: var(--accent-soft); transition: color .2s ease; }
+a:hover { color: var(--accent); }
+
+.frame { max-width: 880px; margin: 0 auto; padding: 0 2rem; }
+
+/* Masthead */
+header.masthead {
+  padding: 2.5rem 0 1.8rem;
+  border-bottom: 1px solid var(--hairline);
+  animation: fadeDown .7s ease both;
+}
+.masthead-inner { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+.wordmark {
+  font-family: "Fraunces", serif;
+  font-weight: 700;
+  font-size: 1.55rem;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+.wordmark .amp { color: var(--accent); }
+nav.primary ul { list-style: none; display: flex; gap: 1.6rem; }
+nav.primary a {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .72rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--ink-soft);
+}
+nav.primary a:hover, nav.primary a.active { color: var(--accent); }
+
+/* Hero */
+.hero { padding: 4.5rem 0 3.5rem; border-bottom: 1px solid var(--hairline); }
+.hero-kicker {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .72rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 1.4rem;
+  animation: fadeUp .7s .1s ease both;
+}
+.hero h1 {
+  font-family: "Fraunces", serif;
+  font-weight: 300;
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  max-width: 21ch;
+  animation: fadeUp .7s .2s ease both;
+}
+.hero h1 em { font-style: italic; font-weight: 400; color: var(--accent); }
+.hero p.standfirst {
+  margin-top: 1.6rem;
+  max-width: 52ch;
+  font-size: 1.08rem;
+  color: var(--ink-soft);
+  animation: fadeUp .7s .3s ease both;
+}
+.hero p.standfirst a { color: var(--ink); }
+.hero-meta {
+  margin-top: 2rem;
+  display: flex; gap: 2rem; flex-wrap: wrap;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .72rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-soft);
+  animation: fadeUp .7s .4s ease both;
+}
+.hero-meta a { text-decoration: none; border-bottom: 1px solid var(--hairline); padding-bottom: 2px; }
+
+/* Books strip */
+.books-strip {
+  padding: 2.6rem 0;
+  border-bottom: 1px solid var(--hairline);
+  display: grid; grid-template-columns: auto 1fr 1fr; gap: 2.2rem; align-items: center;
+}
+.books-strip .label {
+  writing-mode: vertical-rl; transform: rotate(180deg);
+  font-family: "IBM Plex Mono", monospace; font-size: .68rem;
+  letter-spacing: .3em; text-transform: uppercase; color: var(--accent);
+}
+.book-card { display: flex; gap: 1.2rem; align-items: center; text-decoration: none; }
+.book-card img {
+  width: 74px; height: auto; flex-shrink: 0;
+  filter: drop-shadow(0 8px 14px rgba(33,28,21,.22));
+  transition: transform .3s ease;
+}
+.book-card:hover img { transform: translateY(-4px) rotate(-1.5deg); }
+.book-card h3 { font-family: "Fraunces", serif; font-weight: 600; font-size: 1.05rem; line-height: 1.3; }
+.book-card span { display: block; margin-top: .3rem; font-size: .85rem; color: var(--ink-soft); }
+
+/* Post index */
+.post-index { padding: 3.2rem 0 4rem; }
+.section-title {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .72rem; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--ink-soft); margin-bottom: 2.2rem;
+  display: flex; align-items: center; gap: 1rem;
+}
+.section-title::after { content: ""; flex: 1; height: 1px; background: var(--hairline); }
+ol.toc { list-style: none; counter-reset: post; }
+ol.toc li {
+  counter-increment: post;
+  border-bottom: 1px solid var(--hairline);
+}
+ol.toc li a {
+  display: grid;
+  grid-template-columns: 3.2rem 1fr auto;
+  gap: 1.4rem; align-items: baseline;
+  padding: 1.35rem 0;
+  text-decoration: none;
+}
+ol.toc li a::before {
+  content: counter(post, decimal-leading-zero);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .8rem; color: var(--accent);
+}
+ol.toc .post-title {
+  font-family: "Fraunces", serif;
+  font-weight: 600; font-size: 1.28rem; line-height: 1.3;
+  transition: color .2s ease;
+}
+ol.toc li a:hover .post-title { color: var(--accent); font-style: italic; }
+ol.toc .post-date {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .72rem; letter-spacing: .08em; color: var(--ink-soft); white-space: nowrap;
+}
+ol.toc .post-summary {
+  grid-column: 2 / 4;
+  color: var(--ink-soft); font-size: .98rem; max-width: 60ch;
+  margin-top: -.5rem; padding-bottom: .2rem;
+}
+.all-posts { margin-top: 2rem; font-family: "IBM Plex Mono", monospace; font-size: .78rem; letter-spacing: .1em; text-transform: uppercase; }
+
+/* Footer */
+footer {
+  border-top: 1px solid var(--hairline);
+  background: var(--paper-deep);
+  padding: 2.4rem 0 3rem;
+}
+.footer-inner { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1.4rem; font-size: .9rem; color: var(--ink-soft); }
+.footer-inner .links { display: flex; gap: 1.4rem; font-family: "IBM Plex Mono", monospace; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; }
+.footer-inner .links a { text-decoration: none; }
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes fadeDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 720px) {
+  .books-strip { grid-template-columns: 1fr; }
+  .books-strip .label { writing-mode: horizontal-tb; transform: none; }
+  ol.toc li a { grid-template-columns: 2.4rem 1fr; }
+  ol.toc .post-date { grid-column: 2; }
+  ol.toc .post-summary { grid-column: 2; }
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="frame masthead-inner">
+    <a class="wordmark" href="index.html">Wim Deblauwe<span class="amp">.</span></a>
+    <nav class="primary">
+      <ul>
+        <li><a class="active" href="index.html">Blog</a></li>
+        <li><a href="#">Projects</a></li>
+        <li><a href="#">Books</a></li>
+        <li><a href="#">Conferences</a></li>
+        <li><a href="#">About</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="frame">
+    <div class="hero-kicker">Essays on Java &amp; Spring — since 2010</div>
+    <h1>Production-ready Spring Boot, explained <em>carefully</em>.</h1>
+    <p class="standfirst">
+      I'm Wim Deblauwe, a software developer specialized in Java, Spring and JVM tooling.
+      I write books — <a href="#">Taming Thymeleaf</a> and <a href="#">Modern frontends with htmx</a> —
+      maintain <a href="#">open-source projects</a>, and publish long-form, practical writing here.
+    </p>
+    <div class="hero-meta">
+      <a href="#">RSS feed</a>
+      <a href="#">GitHub</a>
+      <a href="#">Twitter</a>
+      <a href="#">Newsletter</a>
+    </div>
+  </div>
+</section>
+
+<div class="frame">
+  <section class="books-strip">
+    <div class="label">The Books</div>
+    <a class="book-card" href="#">
+      <img src="../../static/images/taming-thymeleaf-cover-3D-transparent.png" alt="Taming Thymeleaf cover">
+      <div>
+        <h3>Taming Thymeleaf</h3>
+        <span>Server-side rendering with Spring Boot, step by step.</span>
+      </div>
+    </a>
+    <a class="book-card" href="#">
+      <img src="../../static/images/modern-frontends-with-htmx/cover-small.jpg" alt="Modern frontends with htmx cover">
+      <div>
+        <h3>Modern frontends with htmx</h3>
+        <span>Hypermedia-driven UIs with Spring Boot &amp; Thymeleaf.</span>
+      </div>
+    </a>
+  </section>
+
+  <section class="post-index">
+    <div class="section-title">Recent writing</div>
+    <ol class="toc">
+      <li>
+        <a href="blog-post.html">
+          <span class="post-title">Migrating away from Thymeleaf Layout Dialect</span>
+          <span class="post-date">Feb 25, 2026</span>
+          <span class="post-summary">Why the decorator pattern served us well, why you might want to leave it behind, and how to migrate to pure Thymeleaf with th:replace.</span>
+        </a>
+      </li>
+      <li>
+        <a href="#">
+          <span class="post-title">How I document production-ready Spring Boot applications</span>
+          <span class="post-date">Sep 8, 2025</span>
+          <span class="post-summary">Living documentation with Asciidoctor, Spring REST Docs and architecture decision records that actually stay up to date.</span>
+        </a>
+      </li>
+      <li>
+        <a href="#">
+          <span class="post-title">How I test production-ready Spring Boot applications</span>
+          <span class="post-date">Jul 30, 2025</span>
+          <span class="post-summary">A layered testing strategy: unit tests where they pay off, slice tests for the edges, Testcontainers for the truth.</span>
+        </a>
+      </li>
+      <li>
+        <a href="#">
+          <span class="post-title">How I write production-ready Spring Boot applications</span>
+          <span class="post-date">Jun 24, 2025</span>
+          <span class="post-summary">Project structure, package-by-feature, explicit configuration and the small decisions that compound over years.</span>
+        </a>
+      </li>
+      <li>
+        <a href="#">
+          <span class="post-title">Combine Testcontainers and Spring Boot with multiple containers</span>
+          <span class="post-date">May 14, 2025</span>
+          <span class="post-summary">Wiring PostgreSQL, Keycloak and RabbitMQ together in integration tests without losing your mind, or startup time.</span>
+        </a>
+      </li>
+      <li>
+        <a href="#">
+          <span class="post-title">Thymeleaf and TailwindCSS 4.0 updates</span>
+          <span class="post-date">Jan 29, 2025</span>
+          <span class="post-summary">What the new Tailwind engine changes for server-side rendered Spring Boot applications.</span>
+        </a>
+      </li>
+    </ol>
+    <p class="all-posts"><a href="#">Browse the full archive — 123 essays →</a></p>
+  </section>
+</div>
+
+<footer>
+  <div class="frame footer-inner">
+    <div>© 2026 Wim Deblauwe — Java, Spring &amp; JVM tooling.</div>
+    <div class="links">
+      <a href="#">RSS</a>
+      <a href="#">GitHub</a>
+      <a href="#">Twitter</a>
+      <a href="#">Tags</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
