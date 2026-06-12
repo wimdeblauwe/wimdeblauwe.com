@@ -1,77 +1,49 @@
-<!DOCTYPE html>
-<html lang="en">
-{{ partial "header-blog.html" . }}
-<body>
-	<div class="container wrapper post">
-		{{ partial "head.html" . }}
+{{ define "main" }}
+<div class="progress" id="progress"></div>
 
-		<div class="post-header">
-			<h1 class="title">{{ .Title }}</h1>
-			<div class="meta-container">
-				<div class="meta">Posted at &mdash; {{ dateFormat "Jan 2, 2006" .Date }}{{ if .Draft }} <span class="draft-label">DRAFT</span> {{ end }}</div>
-				<div class="post-tags">
-					{{ if ne .Type "page" }}
-						{{ if gt .Params.tags 0 }}
-							<nav class="nav tags">
-									<ul class="flat">
-										{{ range .Params.tags }}
-										<li><a href="{{ "/tags/" | relLangURL }}{{ . | urlize }}">{{ . }}</a></li>
-										{{ end }}
-									</ul>
-							</nav>
-						{{ end }}
-					{{ end }}
-				</div>
-			</div>
-			{{ partial "taming-thymeleaf-ad.html" . }}
-			{{ partial "modern-frontends-with-htmx-ad.html" . }}
-			{{ partial "testing-spring-boot-masterclass-ad.html" . }}
-		</div>
+<div class="article-head prose-frame">
+    <div class="breadcrumb"><span class="chevron">❯</span> blog / {{ .Date.Format "2006" }} / {{ .Date.Format "01" }} / {{ .Date.Format "02" }}</div>
+    <h1>{{ .Title }}</h1>
+    <div class="meta-row">
+        <span class="date">{{ dateFormat "January 2, 2006" .Date }} · {{ .ReadingTime }} min read{{ if .Draft }} · DRAFT{{ end }}</span>
+        {{- with .Params.tags }}
+        <span class="tags">
+            {{- range . }}
+            <a href="{{ "/tags/" | relLangURL }}{{ . | urlize }}/">{{ . }}</a>
+            {{- end }}
+        </span>
+        {{- end }}
+    </div>
 
+    {{ partial "taming-thymeleaf-ad.html" . }}
+    {{ partial "modern-frontends-with-htmx-ad.html" . }}
+    {{ partial "testing-spring-boot-masterclass-ad.html" . }}
+</div>
 
-		<div class="markdown">
-			{{ .Content }}
-		</div>
+<article class="prose prose-frame">
+    {{ .Content }}
+</article>
 
-		<div class="next-and-previous-links">
-			<div class="previous-post">
-				{{ if .Prev }}
-				<a class="link-reverse" href="{{ .Prev.Permalink }}?ref=footer"><i data-feather="arrow-left-circle"></i>Previous: {{ .Prev.Title | truncate 50 "..."}}</a>
-				{{ end }}
-			</div>
+<div class="prose-frame">
+    {{- if or .Prev .Next }}
+    <nav class="pagination">
+        {{- if .Prev }}
+        <a href="{{ .Prev.Permalink }}?ref=footer" class="prev">
+            <span class="dir">← Previous</span>
+            <span class="title">{{ .Prev.Title }}</span>
+        </a>
+        {{- else }}
+        <span></span>
+        {{- end }}
+        {{- if .Next }}
+        <a href="{{ .Next.Permalink }}?ref=footer" class="next">
+            <span class="dir">Next →</span>
+            <span class="title">{{ .Next.Title }}</span>
+        </a>
+        {{- end }}
+    </nav>
+    {{- end }}
 
-			<div class="next-post">
-				{{ if .Next }}
-				<a class="link-reverse" href="{{ .Next.Permalink }}?ref=footer">Next: {{ .Next.Title | truncate 50 "..." }}<i data-feather="arrow-right-circle"></i></a>
-
-				{{ end }}
-			</div>
-		</div>
-
-		{{ partial "newsletter-signup-form.html" . }}
-		{{- $.Scratch.Set "isDisqus" true -}}
-
-		<!-- Disable if content type is excluded in config -->
-		{{- if and (isset .Params "type") (in .Site.Params.disableDisqusTypes .Params.type) -}}
-		{{- $.Scratch.Set "isDisqus" false -}}
-		{{- end -}}
-
-		<!-- Check if content has flag to enable/disable disqus explicitly -->
-		{{- if and (isset .Params "disqus") (eq .Params.disqus false) -}}
-		{{- $.Scratch.Set "isDisqus" false -}}
-		{{- else if and (isset .Params "disqus") (eq .Params.disqus true) -}}
-		{{- $.Scratch.Set "isDisqus" true -}}
-		{{- end -}}
-
-		<!-- Check if disqus short name is given -->
-		{{ if not .Site.Config.Services.Disqus.Shortname }}
-		{{- $.Scratch.Set "isDisqus" false -}}
-		{{ end }}
-
-		{{- if eq ($.Scratch.Get "isDisqus") true -}}
-		{{- partial "disqus.html" . -}}
-		{{- end -}}
-	</div>
-	{{ partial "footer.html" . }}
-</body>
-</html>
+    {{ partial "newsletter-signup-form.html" . }}
+</div>
+{{ end }}

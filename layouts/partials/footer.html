@@ -1,9 +1,3 @@
-<div class="footer wrapper">
-	<nav class="nav">
-		<div>{{ with .Site.Copyright }} {{ . }} | {{ end }} <a href="https://github.com/vividvilla/ezhil">Ezhil theme</a> | Built with <a href="https://gohugo.io">Hugo</a></div>
-	</nav>
-</div>
-<script src="/js/fslightbox.js"></script>
-{{- with .Site.Params.Social -}}
-<script>feather.replace()</script>
-{{- end -}}
+{{/* Unused. Shadows themes/ezhil/partials/footer.html, which references the
+     removed _internal/google_analytics_async.html template and breaks the build.
+     Delete together with the theme in Phase 5. */}}

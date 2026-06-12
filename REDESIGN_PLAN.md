@@ -1,6 +1,6 @@
 # wimdeblauwe.com redesign — implement v5-craft on Hugo
 
-> Status: Phase 1 done (2026-06-12); Phase 2 next.
+> Status: Phases 1–2 done (2026-06-12); Phase 3 next.
 > Design spec: `design-mockups/v5-craft/index.html` and `design-mockups/v5-craft/blog-post.html` (open in a browser).
 > Other mockup folders (v1–v4) are earlier iterations, kept for reference only.
 
@@ -50,7 +50,7 @@ Fixes discovered during Phase 1 (pre-existing, local Hugo 0.163 vs stale netlify
 - Mockup CSS bug (all 5 mockups): `padding: X 0 Y` shorthands on `.hero`/`.top-inner`/`.footer-inner`/etc. wiped the horizontal `1.6rem` padding of `.frame` on the same element — invisible on desktop, content touched the screen edge on mobile. Ported CSS uses `padding-block`. **Check mobile viewport (~390px) whenever porting more mockup CSS.**
 - Sticky footer added (`body` flex column + `main { flex: 1 }`) — mockups never had short pages, 404 does.
 
-## Phase 2 — Templates (root `layouts/` only)
+## Phase 2 — Templates (root `layouts/` only) ✅ DONE (2026-06-12)
 
 All rewritten as `define "main"` blocks, following the mockups:
 
@@ -63,6 +63,21 @@ All rewritten as `define "main"` blocks, following the mockups:
 - Restyle `newsletter-signup-form` partial + shortcode (same Mailchimp POST URL, no Mailchimp CSS).
 - New `partials/new-book-feature.html`; copy `design-mockups/v5-craft/crafting-spring-boot-starters-cover.png` to `static/images/` as placeholder.
 - Keep unchanged: `blog/rss.xml`, `partials/opengraph/*`, `shortcodes/screenshot-with-gif*` (re-verify lightbox styling).
+
+Notes from implementation (2026-06-12):
+
+- `partials/footer.html` kept as an **empty stub**: deleting it un-shadows the theme's footer, which
+  references the removed `_internal/google_analytics_async.html` and breaks the build. Delete the stub
+  together with the theme in Phase 5.
+- `fslightbox.js` now loads from baseof (deferred, all pages, as before); lightbox verified working on
+  the htmx book page. Newsletter shortcode now just delegates to the partial.
+- Masterclass ad uses `book-ad course-ad` + white backdrop CSS (dark rieckpil logo was invisible on navy);
+  badge says "Recommended course" since it isn't Wim's own product.
+- Mobile fix: long inline code overflowed the 390px viewport → `overflow-wrap: anywhere` on
+  `article.prose code` (harmless for `pre code`, which never wraps).
+- Verified: URL set of `public/` byte-identical to pre-phase-2 build (279 HTML/XML files); article-body
+  HTML of all 123 posts byte-identical; ad conditions hit the same 26/11/40 posts; alias redirects and
+  `/blog/index.xml` intact; `featureNewBook = true` renders the feature card correctly (flag still unset).
 
 ## Phase 3 — Asciidoctor output styling + anchors
 

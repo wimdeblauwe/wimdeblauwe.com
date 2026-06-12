@@ -1,35 +1,30 @@
-<!DOCTYPE html>
-<html>
-{{ partial "header.html" . }}
-
-<body>
-	<div class="container wrapper list">
-		{{ partial "head.html" . }}
-
-			{{ if isset .Data "Term" }}
-				<h1>Entries tagged - "{{ .Data.Term }}"</h1>
-			{{ else }}
-				{{ if ne .Type "page" }}
-					<h1 class="page-title">All articles</h1>
-				{{ end }}
-			{{ end }}
-
-		{{ .Content }}
-
-		<ul class="posts">
-				{{- range .Data.Pages -}}
-				{{- if (in (.Site.Params.excludedTypes | default (slice "page")) .Type) -}}
-				{{- else -}}
-				<li class="post">
-					<a href="{{ .RelPermalink }}">{{.Title}}</a> <span class="meta">{{ dateFormat "Jan 2, 2006" .Date }}{{ if .Draft }} <span class="draft-label">DRAFT</span> {{ end }}</span>
-				</li>
-				{{- end -}}
-				{{- end -}}
-			</ul>
-
-	</div>
-
-	{{ partial "footer.html" . }}
-</body>
-
-</html>
+{{ define "main" }}
+{{- if eq .Type "page" }}
+<div class="page-content frame">
+    <h1>{{ .Title }}</h1>
+    {{ .Content }}
+</div>
+{{- else }}
+{{- $posts := where .Data.Pages "Type" "not in" (.Site.Params.excludedTypes | default (slice "page")) }}
+<section class="posts frame">
+    <div class="section-head">
+        <h1>All articles</h1>
+        <span class="count">{{ len $posts }} articles</span>
+    </div>
+    {{ .Content }}
+    <ul class="post-list">
+        {{- range $posts }}
+        <li>
+            <a href="{{ .RelPermalink }}">
+                <span class="date">{{ dateFormat "Jan 2, 2006" .Date }}{{ if .Draft }} · DRAFT{{ end }}</span>
+                <span class="title">{{ .Title }}</span>
+                {{- with .Params.tags }}
+                <span class="tags">{{ range . }}<span>{{ . }}</span>{{ end }}</span>
+                {{- end }}
+            </a>
+        </li>
+        {{- end }}
+    </ul>
+</section>
+{{- end }}
+{{ end }}

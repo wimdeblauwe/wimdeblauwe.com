@@ -315,7 +315,7 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
    -------------------------------------------------------------------------- */
 .posts { padding-block: 1.6rem 4.5rem; }
 .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1.2rem; }
-.section-head h2 { font-family: var(--display); font-weight: 800; font-size: 1.55rem; letter-spacing: -0.025em; color: var(--navy); }
+.section-head h1, .section-head h2 { font-family: var(--display); font-weight: 800; font-size: 1.55rem; letter-spacing: -0.025em; color: var(--navy); }
 .section-head .count { font-family: var(--mono); font-size: .74rem; color: var(--ink-soft); }
 .post-list { list-style: none; }
 .post-list li { border-bottom: 1px solid var(--hairline); }
@@ -408,6 +408,8 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
   position: relative; z-index: 1;
 }
 .book-ad:hover img { transform: translateY(-4px) rotate(-2deg); }
+/* External course logo is dark; give it a light backdrop on the navy panel */
+.book-ad.course-ad img { background: #fff; padding: .5rem; }
 .book-ad .copy { position: relative; z-index: 1; }
 .book-ad .copy h3 { font-family: var(--display); font-weight: 700; font-size: 1.12rem; letter-spacing: -0.01em; color: #fff; }
 .book-ad .copy p { margin-top: .3rem; font-size: .9rem; color: #b8c2cd; max-width: 52ch; }
@@ -471,6 +473,7 @@ article.prose code {
   font-family: var(--mono); font-size: .84em;
   background: var(--paper-soft); border: 1px solid var(--hairline);
   border-radius: 6px; padding: .08em .35em;
+  overflow-wrap: anywhere;
   color: #9a5a24;
 }
 article.prose ul, article.prose ol { padding-left: 1.4rem; }
@@ -479,6 +482,8 @@ article.prose li + li { margin-top: .4rem; }
 /* Asciidoctor structural blocks: space out direct children of section bodies */
 article.prose .sectionbody > * + *,
 article.prose #preamble > .sectionbody > * + *,
+/* sect2 and deeper have no .sectionbody wrapper; their blocks are direct children */
+article.prose .sect2 > * + *, article.prose .sect3 > * + *, article.prose .sect4 > * + *,
 article.prose .content > * + * { margin-top: 1.35rem; }
 article.prose .sect1 + .sect1, article.prose .sect2 + .sect2 { margin-top: 0; }
 
@@ -497,11 +502,18 @@ article.prose #preamble > .sectionbody > .paragraph:first-of-type p {
   box-shadow: 0 14px 34px -28px rgba(19,32,47,.4);
   overflow: hidden;
 }
+/* The navy title bar is a heavy edge; give the card a bit more air than the
+   default 1.35rem block rhythm when it follows other content. */
+article.prose .sectionbody > * + .listingblock, article.prose .content > * + .listingblock,
+article.prose .sectionbody > * + .literalblock, article.prose .content > * + .literalblock,
+article.prose .sect2 > * + .listingblock, article.prose .sect3 > * + .listingblock, article.prose .sect4 > * + .listingblock,
+article.prose .sect2 > * + .literalblock, article.prose .sect3 > * + .literalblock, article.prose .sect4 > * + .literalblock,
+article.prose > * + .listingblock, article.prose > * + .literalblock { margin-top: 1.5rem; }
 .listingblock > .title {
   display: flex; justify-content: space-between; align-items: center;
-  background: var(--navy);
+  background: var(--navy-soft);
   padding: .55rem 1.2rem;
-  font-family: var(--mono); font-size: .68rem; color: #9aa6b2;
+  font-family: var(--mono); font-size: .68rem; color: #c9d2dc;
   font-style: normal;
 }
 .listingblock pre, .literalblock pre {
@@ -667,7 +679,7 @@ img.align-left, .imageblock.text-left > div > img { margin: 10px auto 10px 10px;
 
 /* List pagination (older/newer pages) */
 .paginator {
-  margin: 2.5rem 0 0; display: flex; justify-content: center; gap: .5rem;
+  margin: 2.5rem 0 0; display: flex; justify-content: center; gap: .5rem; flex-wrap: wrap;
   font-family: var(--mono); font-size: .8rem;
 }
 .paginator a, .paginator span {
@@ -677,6 +689,18 @@ img.align-left, .imageblock.text-left > div > img { margin: 10px auto 10px 10px;
 }
 .paginator a:hover { border-color: var(--copper); color: var(--copper); }
 .paginator .current { background: var(--copper); border-color: var(--copper); color: #fff; }
+
+/* Tag cloud (/tags/) */
+.tag-cloud { display: flex; flex-wrap: wrap; gap: .6rem; padding-block: .4rem 2rem; }
+.tag-cloud a {
+  font-family: var(--mono); font-size: .78rem; text-decoration: none;
+  color: var(--ink-soft); background: var(--card);
+  border: 1px solid var(--hairline); border-radius: 99px;
+  padding: .3rem .9rem;
+  transition: all .15s ease;
+}
+.tag-cloud a:hover { border-color: var(--copper); color: var(--copper); background: var(--copper-soft); }
+.tag-cloud a .count { color: var(--copper); margin-left: .45rem; }
 
 /* --------------------------------------------------------------------------
    Newsletter

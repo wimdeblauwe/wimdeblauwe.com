@@ -1,0 +1,14 @@
+{{ define "main" }}
+<section class="posts frame">
+    <div class="section-head">
+        <h1>{{ .Title }}</h1>
+        <span class="count">{{ len .Data.Terms }} tags</span>
+    </div>
+    {{ .Content }}
+    <div class="tag-cloud">
+        {{- range .Data.Terms.ByCount }}
+        <a href="/tags/{{ .Name | urlize }}/">{{ .Name }}<span class="count">{{ .Count }}</span></a>
+        {{- end }}
+    </div>
+</section>
+{{ end }}
