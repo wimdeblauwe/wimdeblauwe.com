@@ -1,6 +1,6 @@
 # wimdeblauwe.com redesign — implement v5-craft on Hugo
 
-> Status: Phases 1–4 done (2026-06-13); Phase 5 (config + decommission theme) next.
+> Status: Phases 1–5 done (2026-06-13). Redesign complete.
 > Design spec: `design-mockups/v5-craft/index.html` and `design-mockups/v5-craft/blog-post.html` (open in a browser).
 > Other mockup folders (v1–v4) are earlier iterations, kept for reference only.
 
@@ -125,7 +125,7 @@ From Wim's review (alternatives shown in `design-mockups/fix-proposals.html`, de
 - ✅ `assets/css/main.css`: `#search-results mark` styled as copper-tinted highlight badge.
 - Local dev with search: `hugo && npx pagefind --site public && hugo server --renderStaticToDisk`.
 
-## Phase 5 — Config + decommission theme
+## Phase 5 — Config + decommission theme ✅ DONE (2026-06-13)
 
 - `config.toml`: remove `theme = "ezhil"`, `customCSS`, `featherIconsCDN`, social params (links move into footer markup); add `mainSections = ["blog"]`, `featureNewBook = false`, the `[markup.asciidocExt.attributes]` block.
 - `netlify.toml`: bump `HUGO_VERSION` to match local (`hugo version` first), add Pagefind to commands.

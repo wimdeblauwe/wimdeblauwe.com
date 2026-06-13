@@ -3,7 +3,7 @@
     command = "hugo && npx -y pagefind --site public"
 
 [build.environment]
-    HUGO_VERSION = "0.110.0"
+    HUGO_VERSION = "0.163.0"
 
 [context.production.environment]
     HUGO_ENV = "production"

@@ -2,9 +2,12 @@
     <div class="frame footer-inner">
         <div class="sig">{{ .Site.Title }}<span>.</span> © {{ now.Year }}</div>
         <div class="links">
-            {{- range .Site.Params.social }}
-            <a href="{{ .url }}">{{ .icon }}</a>
-            {{- end }}
+            <a href="/blog/index.xml">rss</a>
+            <a href="https://github.com/wimdeblauwe">github</a>
+            <a href="https://bsky.app/profile/wimdeblauwe.com">bluesky</a>
+            <a href="https://mastodon.social/@wimdeblauwe">mastodon</a>
+            <a href="https://www.linkedin.com/in/wimdeblauwe/">linkedin</a>
+            <a href="https://twitter.com/wimdeblauwe">twitter</a>
             <a href="/tags/">tags</a>
         </div>
     </div>

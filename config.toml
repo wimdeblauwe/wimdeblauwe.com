@@ -1,17 +1,14 @@
 baseURL = "https://www.wimdeblauwe.com/"
-languageCode = "en-us"
+locale = "en-us"
 title = "Wim Deblauwe"
-theme = "ezhil"
 copyright = "© 2022 Wim Deblauwe"
-# disqusShortname = ""
 googleAnalytics = "G-VJZ8LM94JG"
+mainSections = ["blog"]
 
 [params]
-    # If social media links are enabled then enable this to fetch icons from CDN instead of hosted on your site
-    featherIconsCDN = true
-    customCSS = "css/wimdeblauwe.css"
     images = ['images/wim-deblauwe.jpg']
     favicon = 'favicon.svg'
+    featureNewBook = false
 
 [[menu.main]]
 name = "Blog"
@@ -37,21 +34,6 @@ weight = 4
 name = "About"
 url = "/about"
 weight = 5
-
-[[params.social]]
-name = "RSS FEED"
-icon = "rss"
-url = "/blog/index.xml"
-
-[[params.social]]
-name = "GitHub"
-icon = "github"
-url = "https://github.com/wimdeblauwe"
-
-[[params.social]]
-name = "Twitter"
-icon = "twitter"
-url = "https://twitter.com/wimdeblauwe"
 
 # Enable tags.
 [taxonomies]
