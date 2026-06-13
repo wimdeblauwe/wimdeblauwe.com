@@ -44,7 +44,7 @@
 <section class="posts frame">
     {{- $paginator := .Paginate $posts }}
     <div class="section-head">
-        <h2>Recent posts</h2>
+        <h2 id="section-title">Recent posts</h2>
         <span class="count" id="post-count">showing {{ len $paginator.Pages }} of {{ len $posts }}</span>
     </div>
     <ul class="post-list" id="post-list">

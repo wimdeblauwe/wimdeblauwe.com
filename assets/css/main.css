@@ -230,6 +230,7 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
 .search-hint b { color: var(--copper); font-weight: 500; }
 .no-results { display: none; padding: 2.5rem .6rem; font-family: var(--mono); font-size: .85rem; color: var(--ink-soft); }
 .no-results b { color: var(--copper); font-weight: 500; }
+#search-results mark { background: var(--copper-soft); color: var(--copper); font-weight: 500; border-radius: 2px; padding: 0 1px; }
 
 /* --------------------------------------------------------------------------
    New book feature card (behind featureNewBook flag)

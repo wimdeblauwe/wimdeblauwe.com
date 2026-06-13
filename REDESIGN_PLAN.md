@@ -1,6 +1,6 @@
 # wimdeblauwe.com redesign — implement v5-craft on Hugo
 
-> Status: Phases 1–3 done (2026-06-12); Phase 4 (Pagefind search) next.
+> Status: Phases 1–4 done (2026-06-13); Phase 5 (config + decommission theme) next.
 > Design spec: `design-mockups/v5-craft/index.html` and `design-mockups/v5-craft/blog-post.html` (open in a browser).
 > Other mockup folders (v1–v4) are earlier iterations, kept for reference only.
 
@@ -117,11 +117,13 @@ From Wim's review (alternatives shown in `design-mockups/fix-proposals.html`, de
   feather-icons CDN was dropped in Phase 2 so `data-feather` icons rendered as nothing), mono repo link,
   proper spacing. Flex children need `min-width: 0` + `overflow-wrap: anywhere` on long links (390px).
 
-## Phase 4 — Search (Pagefind)
+## Phase 4 — Search (Pagefind) ✅ DONE (2026-06-13)
 
-- `netlify.toml` build command: `hugo && npx -y pagefind --site public` (apply to production, deploy-preview and branch-deploy contexts, keeping the `-D -F -b $DEPLOY_PRIME_URL/` flags where present).
-- Homepage JS: lazy-load `/pagefind/pagefind.js` on first keystroke; terminal UX from the mockup (type-anywhere focus, `/`, Esc, `body.searching` hides feature card + book cards); render results (title/date/excerpt) in place of the recent-posts list; graceful "search index not built" no-op under plain `hugo server`.
-- Local dev with search: `hugo && npx pagefind --site public && hugo server --renderStaticToDisk` (or accept search-disabled during normal dev).
+- ✅ `netlify.toml`: all three contexts (`[build]`, `deploy-preview`, `branch-deploy`) now run `hugo && npx -y pagefind --site public` (preview/branch-deploy keep the `-D -F -b $DEPLOY_PRIME_URL/` flags).
+- ✅ `layouts/blog/single.html`: `data-pagefind-body` on `<article>` → Pagefind indexes exactly 123 blog posts and ignores all other pages.
+- ✅ `assets/js/main.js`: lazy-loads `/pagefind/pagefind.js` on first `focus` of the search input; type-anywhere (`/` shortcut, Esc clears+blurs); `body.searching` collapses book cards; Pagefind results rendered with date (parsed from URL), title (site suffix stripped), and `<mark>`-highlighted excerpt in place of the server list; paginator + "browse all" link hidden while searching; graceful no-op if index not built.
+- ✅ `assets/css/main.css`: `#search-results mark` styled as copper-tinted highlight badge.
+- Local dev with search: `hugo && npx pagefind --site public && hugo server --renderStaticToDisk`.
 
 ## Phase 5 — Config + decommission theme
 
