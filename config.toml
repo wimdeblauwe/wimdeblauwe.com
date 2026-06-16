@@ -8,7 +8,7 @@ mainSections = ["blog"]
 [params]
     images = ['images/wim-deblauwe.jpg']
     favicon = 'favicon.svg'
-    featureNewBook = false
+    featureNewBook = true
 
 [[menu.main]]
 name = "Blog"
