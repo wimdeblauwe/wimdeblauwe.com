@@ -11,137 +11,136 @@ type: "page"
     <symbol id="icon-code" viewBox="0 0 24 24">
         <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M16 18l6-6-6-6M8 6l-6 6 6 6"/>
     </symbol>
+    <symbol id="icon-chrome" viewBox="0 0 24 24">
+        <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v6"/>
+            <path d="M20.66 17l-5.2-3"/>
+            <path d="M3.34 17l5.2-3"/>
+        </g>
+    </symbol>
 </svg>
 
 <p>This is an overview of my various open-source projects.</p>
 
-<div class="project">
-    <span class="project-badge" aria-hidden="true"><svg><use href="#icon-github"/></svg></span>
-    <div>
-        <h2>Taming Thymeleaf CLI</h2>
-        <a class="repo" href="https://github.com/wimdeblauwe/ttcli">github.com/wimdeblauwe/ttcli</a>
-        <p class="project-description">
-            A command line tool to generate a Spring Boot with Thymeleaf application. It has various options
-            to customize the generated project with live reload, webjars support, ...
-        </p>
-    </div>
-</div>
+<h2 class="projects-section-head">Featured</h2>
 
-<div class="project">
-    <span class="project-badge" aria-hidden="true"><svg><use href="#icon-github"/></svg></span>
-    <div>
-        <h2>Spring Boot and Thymeleaf library for htmx</h2>
-        <a class="repo" href="https://github.com/wimdeblauwe/htmx-spring-boot">github.com/wimdeblauwe/htmx-spring-boot</a>
+<div class="featured-projects">
+
+    <article class="featured-project">
+        <span class="featured-flag">Battle-tested</span>
+        <h3>Error Handling Spring Boot Starter</h3>
         <p class="project-description">
-            This library provides helper classes and a <a href="https://www.thymeleaf.org/">Thymeleaf</a> dialect to make it easy to work with
+            Makes it easy to have proper, consistent error responses for REST APIs built with Spring Boot.
+            See <a href="https://www.wimdeblauwe.com/blog/2020/07/20/error-handling-library-spring-boot/">the introduction post</a>
+            for what it improves on top of the default Spring Boot support.
+        </p>
+        <a class="repo" href="https://github.com/wimdeblauwe/error-handling-spring-boot-starter">
+            <svg aria-hidden="true"><use href="#icon-github"/></svg>
+            github.com/wimdeblauwe/error-handling-spring-boot-starter
+        </a>
+    </article>
+
+    <article class="featured-project">
+        <span class="featured-flag">Server-side rendering</span>
+        <h3>Spring Boot and Thymeleaf library for htmx</h3>
+        <p class="project-description">
+            Helper classes and a <a href="https://www.thymeleaf.org/">Thymeleaf</a> dialect that make it easy to work with
             <a href="https://htmx.org/">htmx</a> in a <a href="https://spring.io/projects/spring-boot">Spring Boot</a> application.
         </p>
-    </div>
+        <a class="repo" href="https://github.com/wimdeblauwe/htmx-spring-boot">
+            <svg aria-hidden="true"><use href="#icon-github"/></svg>
+            github.com/wimdeblauwe/htmx-spring-boot
+        </a>
+    </article>
+
+    <article class="featured-project">
+        <span class="featured-flag">CLI tool</span>
+        <h3>Taming Thymeleaf CLI (ttcli)</h3>
+        <p class="project-description">
+            A command line tool to generate a Spring Boot with Thymeleaf application,
+            with options for live reload, webjars support, and more.
+        </p>
+        <a class="repo" href="https://github.com/wimdeblauwe/ttcli">
+            <svg aria-hidden="true"><use href="#icon-github"/></svg>
+            github.com/wimdeblauwe/ttcli
+        </a>
+    </article>
+
 </div>
 
-<div class="project">
-    <span class="project-badge" aria-hidden="true"><svg><use href="#icon-github"/></svg></span>
-    <div>
-        <h2>Vite Spring Boot</h2>
+<h2 class="projects-section-head">More projects</h2>
+
+<div class="projects-grid">
+
+    <article class="project-compact">
+        <span class="project-badge" aria-hidden="true"><svg><use href="#icon-github"/></svg></span>
+        <h3>Vite Spring Boot</h3>
+        <p class="project-description">
+            A Spring Boot library that integrates with <a href="https://vitejs.dev/">Vite</a> to enable
+            Hot Module Replacement during development.
+        </p>
         <a class="repo" href="https://github.com/wimdeblauwe/vite-spring-boot">github.com/wimdeblauwe/vite-spring-boot</a>
-        <p class="project-description">
-            A <a href="https://spring.io/projects/spring-boot">Spring Boot</a> library that integrates with <a href="https://vitejs.dev/">Vite</a> to enable
-            Hot Module Replacement for the frontend during development, while producing an optimized build for production.
-        </p>
-    </div>
-</div>
+    </article>
 
-<div class="project">
-    <span class="project-badge" aria-hidden="true"><svg><use href="#icon-github"/></svg></span>
-    <div>
-        <h2>Vite plugin for Spring Boot</h2>
+    <article class="project-compact">
+        <span class="project-badge" aria-hidden="true"><svg><use href="#icon-github"/></svg></span>
+        <h3>Vite plugin for Spring Boot</h3>
+        <p class="project-description">
+            Companion <a href="https://vitejs.dev/guide/api-plugin">Vite plugin</a> that syncs HTML templates and
+            exposes the Dev Server location so HMR works end-to-end.
+        </p>
         <a class="repo" href="https://github.com/wimdeblauwe/vite-plugin-spring-boot">github.com/wimdeblauwe/vite-plugin-spring-boot</a>
-        <p class="project-description">
-            The companion <a href="https://vitejs.dev/guide/api-plugin">Vite plugin</a> for the
-            <a href="https://github.com/wimdeblauwe/vite-spring-boot">Vite Spring Boot</a> library.
-            It syncs HTML templates on change and exposes the Vite Dev Server location to the Spring Boot application
-            so Hot Module Replacement works end-to-end.
-        </p>
-    </div>
-</div>
+    </article>
 
-<div class="project">
-    <span class="project-badge" aria-hidden="true"><svg><use href="#icon-github"/></svg></span>
-    <div>
-        <h2>GitHub Workflow Navigator</h2>
-        <a class="repo" href="https://github.com/wimdeblauwe/github-workflow-navigator">github.com/wimdeblauwe/github-workflow-navigator</a>
+    <article class="project-compact">
+        <span class="project-badge" aria-hidden="true"><svg><use href="#icon-github"/></svg></span>
+        <h3>Testcontainers-cypress</h3>
         <p class="project-description">
-            A Chrome extension that adds a side panel to the GitHub Actions page to quickly search and navigate
-            workflows, with an automatic tree structure based on configurable naming conventions.
-            Available on the <a href="https://chromewebstore.google.com/detail/github-workflow-navigator/fgjjlimpehmkbeeeiohhndjhjccndkpb">Chrome Web Store</a>.
+            Run <a href="https://www.cypress.io/">Cypress</a> tests from a <a href="https://junit.org/">JUnit</a> test
+            using <a href="https://www.testcontainers.org/">Testcontainers</a>.
         </p>
-    </div>
-</div>
-
-<div class="project">
-    <span class="project-badge" aria-hidden="true"><svg><use href="#icon-github"/></svg></span>
-    <div>
-        <h2>Error Handling Spring Boot Starter</h2>
-        <a class="repo" href="https://github.com/wimdeblauwe/error-handling-spring-boot-starter">github.com/wimdeblauwe/error-handling-spring-boot-starter</a>
-        <p class="project-description">
-            The goal of the project is to make it easy to have proper, consistent error responses for REST APIs build with Spring Boot.
-            See <a href="https://www.wimdeblauwe.com/blog/2020/07/20/error-handling-library-spring-boot/">Error handling library for Spring Boot</a> for a detailed explanation of the project and what it improves on top of the default Spring Boot support for error responses.
-        </p>
-    </div>
-</div>
-
-<div class="project">
-    <span class="project-badge" aria-hidden="true"><svg><use href="#icon-github"/></svg></span>
-    <div>
-        <h2>Testcontainer-cypress</h2>
         <a class="repo" href="https://github.com/wimdeblauwe/testcontainers-cypress">github.com/wimdeblauwe/testcontainers-cypress</a>
-        <p class="project-description">
-            This project allows to run <a href="https://www.cypress.io/">Cypress</a> tests from a <a
-                href="https://junit.org/">JUnit</a> test using <a
-                href="https://www.testcontainers.org/">TestContainers</a>.
-            It is very convenient when using server-side HTML templating like <a href="https://www.thymeleaf.org/">Thymeleaf</a>.
-        </p>
-    </div>
-</div>
+    </article>
 
-<div class="project">
-    <span class="project-badge" aria-hidden="true"><svg><use href="#icon-github"/></svg></span>
-    <div>
-        <h2>JPearl</h2>
+    <article class="project-compact">
+        <span class="project-badge" aria-hidden="true"><svg><use href="#icon-github"/></svg></span>
+        <h3>JPearl</h3>
+        <p class="project-description">
+            Convenient classes and interfaces for using JPA with early primary key generation,
+            and value objects as primary keys.
+        </p>
         <a class="repo" href="https://github.com/wimdeblauwe/jpearl">github.com/wimdeblauwe/jpearl</a>
-        <p class="project-description">
-            The goal of the project is to provide some convenient classes and interface to use JPA with early primary key generation.
-            It also encourages to use value objects as primary keys.
-        </p>
-    </div>
-</div>
+    </article>
 
-<div class="project">
-    <span class="project-badge" aria-hidden="true"><svg><use href="#icon-github"/></svg></span>
-    <div>
-        <h2>Binary Object Repository</h2>
+    <article class="project-compact">
+        <span class="project-badge" aria-hidden="true"><svg><use href="#icon-github"/></svg></span>
+        <h3>Binary Object Repository</h3>
+        <p class="project-description">
+            Makes it easy to store binary data alongside the entities that refer to it.
+        </p>
         <a class="repo" href="https://github.com/wimdeblauwe/biob">github.com/wimdeblauwe/biob</a>
-        <p class="project-description">
-            The goal of this project is to make it easy to store binary data alongside the
-            entities that refer to them.
-        </p>
-    </div>
-</div>
+    </article>
 
-<div class="project">
-    <span class="project-badge" aria-hidden="true"><svg><use href="#icon-code"/></svg></span>
-    <div>
-        <h2>JIRA Database Values Plugin</h2>
+    <article class="project-compact">
+        <span class="project-badge" aria-hidden="true"><svg><use href="#icon-chrome"/></svg></span>
+        <h3>GitHub Workflow Navigator</h3>
+        <p class="project-description">
+            Chrome extension that adds a side panel to GitHub Actions for fast workflow search and tree navigation.
+            On the <a href="https://chromewebstore.google.com/detail/github-workflow-navigator/fgjjlimpehmkbeeeiohhndjhjccndkpb">Chrome Web Store</a>.
+        </p>
+        <a class="repo" href="https://github.com/wimdeblauwe/github-workflow-navigator">github.com/wimdeblauwe/github-workflow-navigator</a>
+    </article>
+
+    <article class="project-compact">
+        <span class="project-badge" aria-hidden="true"><svg><use href="#icon-code"/></svg></span>
+        <h3>JIRA Database Values Plugin</h3>
+        <p class="project-description">
+            Atlassian Jira custom field that connects to an external database and fetches values to associate with issues.
+            Available on the <a href="https://marketplace.atlassian.com/apps/4969/database-values-for-jira">Atlassian Marketplace</a>.
+        </p>
         <a class="repo" href="https://bitbucket.org/wimdeblauwe/jdvp">bitbucket.org/wimdeblauwe/jdvp</a>
-        <p class="project-description">
-            This plugin for <a href="https://www.atlassian.com/software/jira">Atlassian Jira</a> is a custom field that allows you to connect to an external database and fetch
-            some values from there.
-            After adding this custom field to an issue edit screen, you can select one of those values so it will be
-            associated with the current issue.
-        </p>
-        <p class="project-description">
-            The plugin is available on the Atlassian Marketplace at <a
-                href="https://marketplace.atlassian.com/apps/4969/database-values-for-jira">https://marketplace.atlassian.com/apps/4969/database-values-for-jira</a>
-        </p>
-    </div>
+    </article>
+
 </div>
