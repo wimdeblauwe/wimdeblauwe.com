@@ -7,35 +7,35 @@
    Fonts (self-hosted, latin subsets)
    -------------------------------------------------------------------------- */
 @font-face {
-  font-family: "Sora";
+  font-family: "Barlow";
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("/fonts/sora-400.woff2") format("woff2");
+  src: url("/fonts/barlow-400.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
-  font-family: "Sora";
+  font-family: "Barlow";
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url("/fonts/sora-600.woff2") format("woff2");
+  src: url("/fonts/barlow-600.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
-  font-family: "Sora";
+  font-family: "Barlow";
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url("/fonts/sora-700.woff2") format("woff2");
+  src: url("/fonts/barlow-700.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
-  font-family: "Sora";
+  font-family: "Barlow";
   font-style: normal;
   font-weight: 800;
   font-display: swap;
-  src: url("/fonts/sora-800.woff2") format("woff2");
+  src: url("/fonts/barlow-800.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
@@ -102,7 +102,7 @@
   --copper-bright: #e08a4e;
   --copper-soft: #f6e8da;
   --hairline: #e6e2d9;
-  --display: "Sora", sans-serif;
+  --display: "Barlow", sans-serif;
   --body: "Hanken Grotesk", sans-serif;
   --mono: "Geist Mono", monospace;
 }
