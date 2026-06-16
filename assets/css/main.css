@@ -331,7 +331,7 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
 }
 .post-list a:hover .title { color: var(--copper); }
 .post-list .summary { grid-column: 2; color: var(--ink-soft); font-size: .94rem; max-width: 62ch; margin-top: .15rem; }
-.post-list .tags { display: flex; gap: .4rem; }
+.post-list .tags { display: flex; flex-wrap: wrap; gap: .4rem; }
 .post-list .tags span {
   font-family: var(--mono); font-size: .66rem;
   color: var(--ink-soft); background: var(--paper-soft);
@@ -784,7 +784,7 @@ footer.site-footer { background: var(--navy); color: #aeb9c5; margin-top: 4rem; 
 }
 .footer-inner .sig { font-family: var(--display); font-weight: 700; color: #f0ece5; }
 .footer-inner .sig span { color: var(--copper-bright); }
-.footer-inner .links { display: flex; gap: 1.3rem; font-family: var(--mono); font-size: .72rem; }
+.footer-inner .links { display: flex; flex-wrap: wrap; gap: 1.3rem; font-family: var(--mono); font-size: .72rem; }
 .footer-inner .links a { text-decoration: none; }
 .footer-inner .links a:hover { color: var(--copper-bright); }
 
