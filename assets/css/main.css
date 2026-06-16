@@ -714,6 +714,7 @@ img.align-left, .imageblock.text-left > div > img { margin: 10px auto 10px 10px;
   margin: 2.5rem 0 0; display: flex; justify-content: center; gap: .5rem; flex-wrap: wrap;
   font-family: var(--mono); font-size: .8rem;
 }
+.paginator[hidden] { display: none; }
 .paginator a, .paginator span {
   border: 1px solid var(--hairline); border-radius: 9px;
   padding: .4rem .85rem; text-decoration: none; color: var(--ink-soft);
