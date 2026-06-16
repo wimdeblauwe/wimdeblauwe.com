@@ -1,33 +1,34 @@
 {{ $title := $.LinkTitle }}
-{{ $font := resources.GetRemote "https://github.com/google/fonts/raw/main/ofl/rokkitt/Rokkitt%5Bwght%5D.ttf" }}
-{{ $img := resources.Get "images/twittercard/template.png"}}
+{{ $fontTitle := resources.Get "fonts/Barlow-ExtraBold.ttf" }}
+{{ $fontBold := resources.Get "fonts/Barlow-Bold.ttf" }}
+{{ $img := resources.Get "images/twittercard/template.png" }}
 {{ $img = $img.Filter (images.Text $title (dict
-    "color" "#f1f5f9"
-    "size" 120
-    "linespacing" 2
+    "color" "#13202f"
+    "size" 96
+    "linespacing" 8
     "x" 100
-    "y" 200
-    "font" $font
+    "y" 230
+    "font" $fontTitle
 ))}}
 {{ $img = $img.Filter (images.Text "Wim Deblauwe" (dict
-    "color" "#f1f5f9"
-    "size" 80
+    "color" "#13202f"
+    "size" 60
     "linespacing" 2
-    "x" 250
-    "y" 710
-    "font" $font
+    "x" 195
+    "y" 740
+    "font" $fontBold
 ))}}
 {{ if ne .Type "page" }}
     {{ if gt .Params.tags 0 }}
         {{ $tags := delimit .Params.tags ", " }}
         {{ $tags := string $tags }}
         {{ $img = $img.Filter (images.Text $tags (dict
-        "color" "#cbd5e1"
-        "size" 50
+        "color" "#c2702e"
+        "size" 44
         "linespacing" 2
         "x" 100
-        "y" 140
-        "font" $font
+        "y" 130
+        "font" $fontBold
         ))}}
     {{ end }}
 {{ end }}
