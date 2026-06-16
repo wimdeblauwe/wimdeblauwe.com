@@ -438,7 +438,7 @@ article.prose h2 {
   color: var(--navy);
   margin-top: 2.7rem;
   scroll-margin-top: 5rem;
-  display: flex; align-items: center; gap: .7rem;
+  position: relative;
 }
 article.prose h3 {
   font-family: var(--display); font-weight: 700;
@@ -458,15 +458,25 @@ article.prose h4 {
    heading text; render it as the copper diamond from the mockup.
    Only top-level (h2) sections get the diamond; deeper anchors are hidden. */
 article.prose h2 a.anchor {
-  width: 10px; height: 10px; flex-shrink: 0; display: block;
+  position: absolute;
+  left: -1.6rem; top: 0;
+  width: 1.6rem; height: 100%;
+  display: flex; align-items: center;
+  font-size: 0; text-decoration: none;
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+article.prose h2 a.anchor::before {
+  content: "";
+  width: 10px; height: 10px;
   background: var(--copper); border-radius: 2px;
   transform: rotate(45deg);
-  transition: transform .15s ease, background .15s ease, box-shadow .15s ease;
-  font-size: 0; text-decoration: none;
+  transition: background .15s ease, box-shadow .15s ease, transform .15s ease;
 }
-article.prose h2 a.anchor:hover {
+article.prose h2:hover a.anchor { opacity: 1; }
+article.prose h2 a.anchor:hover::before {
   background: var(--copper-bright);
-  transform: rotate(45deg) scale(1.4);
+  transform: rotate(45deg) scale(1.2);
   box-shadow: 0 0 0 4px var(--copper-soft);
 }
 article.prose h3 a.anchor, article.prose h4 a.anchor,
