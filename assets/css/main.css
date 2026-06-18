@@ -165,13 +165,25 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
 /* --------------------------------------------------------------------------
    Hero (homepage)
    -------------------------------------------------------------------------- */
-.hero { padding-block: 4.2rem 2.6rem; }
+.hero {
+  padding-block: 4.2rem 2.6rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "kicker     portrait"
+    "title      portrait"
+    "standfirst portrait";
+  column-gap: 3rem;
+  align-items: center;
+}
 .hero .kicker {
+  grid-area: kicker;
   font-family: var(--mono); font-size: .72rem; letter-spacing: .18em; text-transform: uppercase;
   color: var(--copper);
   animation: fadeUp .6s ease both;
 }
 .hero h1 {
+  grid-area: title;
   margin-top: 1.1rem;
   font-family: var(--display); font-weight: 800;
   font-size: clamp(2.2rem, 5.2vw, 3.4rem);
@@ -182,6 +194,7 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
 }
 .hero h1 em { font-style: normal; color: var(--copper); }
 .hero p.standfirst {
+  grid-area: standfirst;
   margin-top: 1.4rem; max-width: 54ch;
   font-size: 1.08rem; color: var(--ink-soft);
   animation: fadeUp .6s .2s ease both;
@@ -191,6 +204,41 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
   text-decoration-color: var(--copper); text-decoration-thickness: 1.5px; text-underline-offset: 3px;
 }
 .hero p.standfirst a:hover { color: var(--copper); }
+.hero .portrait {
+  grid-area: portrait;
+  width: 240px; height: 240px;
+  object-fit: cover; object-position: 50% 30%;
+  border-radius: 22px;
+  box-shadow:
+    0 0 0 1px var(--hairline),
+    0 0 0 6px var(--paper),
+    0 0 0 7px var(--copper),
+    0 24px 40px -24px rgba(19,32,47,.45);
+  animation: fadeUp .6s .3s ease both;
+}
+@media (max-width: 720px) {
+  .hero {
+    padding-block: 3rem 2.2rem;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "kicker     kicker"
+      "title      title"
+      "portrait   standfirst";
+    column-gap: 1.1rem;
+    align-items: start;
+  }
+  .hero p.standfirst { margin-top: 1.2rem; }
+  .hero .portrait {
+    width: 96px; height: 96px;
+    border-radius: 16px;
+    margin-top: calc(1.2rem + 6px);
+    box-shadow:
+      0 0 0 1px var(--hairline),
+      0 0 0 3px var(--paper),
+      0 0 0 4px var(--copper),
+      0 12px 24px -16px rgba(19,32,47,.4);
+  }
+}
 
 /* --------------------------------------------------------------------------
    Search prompt
