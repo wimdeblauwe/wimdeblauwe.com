@@ -44,3 +44,17 @@ hugo && npx pagefind --site public
 ```
 
 Output is in `public/`. This mirrors what Netlify runs.
+
+## Testing social images
+
+Each page gets an Open Graph / Twitter card image generated at build time by `layouts/partials/opengraph/get-featured-image.html`. The generator starts from `assets/images/twittercard/template.png` and overlays the page title, tags, and "Wim Deblauwe" onto it.
+
+To check what a given page's card looks like:
+
+1. Build the site: `hugo`.
+2. Open the rendered page in `public/<path>/index.html` and locate the `<meta name="twitter:image" ...>` (or `og:image`) tag in `<head>`.
+3. Open the URL from that tag — it points to a generated PNG under `public/images/twittercard/` — to preview the card.
+
+For a final check, paste the deployed page URL into the [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/) or [X Card Validator](https://cards-dev.twitter.com/validator) to see how the card renders on each platform.
+
+If you change `template.png`, also re-check the overlay coordinates in `get-featured-image.html` — the `x`/`y` values assume the existing template layout.
