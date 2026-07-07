@@ -1,0 +1,591 @@
+---
+title: "Testing OAuth2 client login with mock-oauth2-server"
+date: 2026-07-07
+draft: false
+tags: ["thymeleaf", "spring-boot"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+If you use Spring Boot with Thymeleaf, you might be using an external OAuth2 provider like Keycloak or Okta to authenticate your users. In this blog post, I will show you how to test your OAuth2 client login with https://github.com/navikt/mock-oauth2-server[mock-oauth2-server].
+
+<!--more-->
+
+If you use Keycloak, you could start a https://github.com/dasniko/testcontainers-keycloak[Keycloak server in a Docker container] and use that for your tests.
+But that is not always the best option because it is slow to start, and you need to configure it.
+If you use a SaaS like Okta, you cannot start a server in your tests, so you need to mock the OAuth2 server.
+
+With mock-oauth2-server, you can start a mock OAuth2 server in your tests and configure it to return the tokens you want.
+
+== Application setup
+
+Suppose you have a Spring Boot with Thymeleaf application created via https://github.com/wimdeblauwe/ttcli[ttcli].
+To set up Keycloak locally, you can use the following `compose.yaml` file:
+
+[source,yaml]
+----
+services:
+  identity:
+    image: 'quay.io/keycloak/keycloak:26.6.4'
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: local-admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin-pwd
+      KC_DB: postgres
+      KC_DB_URL_HOST: db
+      KC_DB_URL_PORT: 5432
+      KC_DB_USERNAME: keycloak-user
+      KC_DB_PASSWORD: keycloak-pwd
+    volumes:
+      - ./docker/keycloak/realm-import.json:/opt/keycloak/data/import/realm-import.json:ro
+    command: start-dev --import-realm
+    ports:
+      - '8081:8080'
+    depends_on:
+      db:
+        condition: service_healthy
+  db:
+    image: 'postgres:17'
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak-user
+      POSTGRES_PASSWORD: keycloak-pwd
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: [ 'CMD-SHELL', 'pg_isready -U keycloak-user -d keycloak' ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+----
+
+The file `docker/keycloak/realm-import.json` contains the Keycloak realm configuration. You can export it from your Keycloak server by first starting without the volume, configuring Keycloak and exporting the configuration.
+
+Next, add the following dependencies:
+
+[source,xml]
+.pom.xml
+----
+<dependencies>
+  ...
+  <dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+  </dependency>
+  <dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security-oauth2-client</artifactId>
+  </dependency>
+----
+
+Add the following configuration to your `application.yaml` (or a profile specific `application-local.yaml`) file:
+
+[source,yaml]
+----
+spring:
+  security:
+    oauth2:
+      client:
+        provider:
+          keycloak:
+            issuer-uri: 'http://localhost:8081/realms/myrealm'
+            user-name-attribute: 'preferred_username'
+        registration:
+          keycloak:
+            client-id: 'my-application-backend-client'
+            authorization-grant-type: 'authorization_code'
+            redirect-uri: '{baseUrl}/login/oauth2/code/{registrationId}'
+            scope:
+              - openid
+----
+
+Two things need to be configured in Keycloak:
+
+* The realm `myrealm` needs to be created.
+* The client `my-application-backend-client` needs to be created with the following settings:
+** Client ID: `my-application-backend-client`
+** Client Protocol: `openid-connect`
+** Client authentication: `OFF`
+** Authentication Flow: "Standard Flow"
+** Required PKCE: `ON` with method `S256`
+** Root URL: `http://localhost:8080`
+** Valid Redirect URIs: `http://localhost:8080/*`
+** Web Origins: `+`
+
+[TIP]
+====
+If you want to use client roles, you need the following additional configuration in Keycloak:
+
+. Create the wanted client roles (e.g. `USER` and `ADMIN`).
+. Go to Clients > my-application-backend-client > Client scopes and click on
+`my-application-backend-client-dedicated`. Click on "Add predefined mapper" and select "client roles". Click "Add".
+. Click on "client roles" to edit the mapper. Set "Add to ID token" to "on". Save the changes.
+====
+
+To configure Spring Security, you need to add the following configuration class:
+
+[source,java]
+----
+import jakarta.servlet.DispatcherType;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.oauth2.core.oidc.OidcIdToken;
+import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+public class WebSecurityConfiguration {
+  @Bean
+  @Order(1)
+  SecurityFilterChain actuatorFilterChain(HttpSecurity http) { //<.>
+    return http.securityMatcher("/actuator/**")
+        .authorizeHttpRequests(
+            registry ->
+                registry
+                    .requestMatchers(HttpMethod.GET, "/actuator/health/**", "/actuator/info")
+                    .permitAll())
+        .build();
+  }
+
+  @Bean
+  @Order(2)
+  SecurityFilterChain webSecurityFilterChain(HttpSecurity http) { //<.>
+    return http.securityMatcher("/**")
+        .sessionManagement(
+            configurer -> configurer.sessionCreationPolicy(SessionCreationPolicy.ALWAYS))
+        .authorizeHttpRequests(
+            registry ->
+                registry
+                    .dispatcherTypeMatchers(DispatcherType.ERROR)
+                    .permitAll()
+                    .requestMatchers(
+                        "/webjars/**", "/assets/**", "/static/**", "/favicon.ico")
+                    .permitAll()
+                    .anyRequest()
+                    .hasRole(Role.USER.getKeycloakRole()))
+        .oauth2Login(
+            it ->
+                it.userInfoEndpoint(
+                    userInfoEndpointConfig ->
+                        userInfoEndpointConfig.userAuthoritiesMapper(
+                            this::keycloakAuthoritiesMapper))) //<.>
+        .build();
+  }
+
+  private Collection<? extends GrantedAuthority> keycloakAuthoritiesMapper(
+      Collection<? extends GrantedAuthority> authorities) {
+    List<GrantedAuthority> mappedAuthorities = new ArrayList<>(authorities);
+
+    for (GrantedAuthority authority : authorities) {
+      if (authority instanceof OidcUserAuthority oidcUserAuthority) {
+        OidcIdToken idToken = oidcUserAuthority.getIdToken();
+        return ClaimsToRolesConverter.convert(idToken);
+      }
+    }
+
+    return mappedAuthorities;
+  }
+}
+----
+<.> Optional bean in case you use actuator endpoints. It allows unauthenticated access to the health and info endpoints.
+<.> The main security filter chain that secures all endpoints except the actuator endpoints. It requires the user to have the role `USER` to access any endpoint.
+<.> The `keycloakAuthoritiesMapper` method maps the Keycloak roles to Spring Security authorities. It uses the `ClaimsToRolesConverter` class to convert the roles from the ID token to Spring Security authorities.
+
+Two helper classes are used in the `WebSecurityConfiguration` class: `Role` and `ClaimsToRolesConverter`:
+
+[source,java]
+----
+public enum Role {
+  USER(Constants.USER),
+  ADMIN(Constants.ADMIN);
+
+  private final String keycloakRole;
+
+  Role(String keycloakRole) {
+    this.keycloakRole = keycloakRole;
+  }
+
+  public String getKeycloakRole() {
+    return keycloakRole;
+  }
+
+  public static class Constants {
+
+    public static final String USER = "USER";
+    public static final String ADMIN = "ADMIN";
+
+    private Constants() {
+    }
+  }
+}
+----
+
+[source,java]
+----
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.core.ClaimAccessor;
+import org.springframework.util.Assert;
+
+public class ClaimsToRolesConverter {
+
+  private static final String REALM_ACCESS = "realm_access";
+  private static final String RESOURCE_ACCESS = "resource_access";
+  private static final String ROLES = "roles";
+  private static final String ROLE_PREFIX = "ROLE_";
+
+  public static Set<GrantedAuthority> convert(ClaimAccessor claimAccessor) {
+
+    String authorizedParty = claimAccessor.getClaim("azp");
+    Assert.notNull(authorizedParty, "Could not find the azp claim in the token");
+
+    Set<GrantedAuthority> authorities = new HashSet<>();
+    Map<String, Object> realmAccess = claimAccessor.getClaimAsMap(REALM_ACCESS);
+    if (realmAccess != null) {
+      @SuppressWarnings("unchecked")
+      List<String> roles = (List<String>) realmAccess.get(ROLES);
+      if (roles != null) {
+        authorities.addAll(
+            roles.stream().map(rn -> new SimpleGrantedAuthority(ROLE_PREFIX + rn)).toList());
+      }
+    }
+
+    Map<String, Object> resourceAccess = claimAccessor.getClaimAsMap(RESOURCE_ACCESS);
+    if (resourceAccess != null) {
+      Object appResource = resourceAccess.get(authorizedParty);
+      if (appResource instanceof Map) {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> resourceMap = (Map<String, Object>) appResource;
+        @SuppressWarnings("unchecked")
+        List<String> roles = (List<String>) resourceMap.get(ROLES);
+        if (roles != null) {
+          authorities.addAll(
+              roles.stream().map(rn -> new SimpleGrantedAuthority(ROLE_PREFIX + rn)).toList());
+        }
+      }
+    }
+    return authorities;
+  }
+
+  private ClaimsToRolesConverter() {}
+}
+----
+
+The `ClaimsToRolesConverter` class converts the Keycloak roles from the ID token to Spring Security authorities. It looks for the roles in the `realm_access` (Realm wide roles) and `resource_access` claims (Client-specific roles).
+
+With this in place, you can run the application and log in with Keycloak with a test user you created in Keycloak that has the USER client role.
+
+== Testing with mock-oauth2-server
+
+To use mock-oauth2-server in testing, we need to add the following dependency:
+
+[source,xml]
+----
+<dependency>
+    <groupId>no.nav.security</groupId>
+    <artifactId>mock-oauth2-server</artifactId>
+    <version>5.0.2</version>
+    <scope>test</scope>
+</dependency>
+----
+
+Using an `ApplicationContextInitializer`, we can start the mock OAuth2 server:
+
+[source,java]
+----
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.time.Duration;
+import java.util.Map;
+import no.nav.security.mock.oauth2.MockOAuth2Server;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.test.util.TestPropertyValues;
+import org.springframework.context.ApplicationContextInitializer;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.support.GenericApplicationContext;
+import org.springframework.core.retry.RetryException;
+import org.springframework.core.retry.RetryPolicy;
+import org.springframework.core.retry.RetryTemplate;
+
+public class MockOAuth2ServerInitializer
+    implements ApplicationContextInitializer<ConfigurableApplicationContext> {
+
+  public static final String MOCK_OAUTH_2_SERVER_BASE_URL = "mock-oauth2-server.baseUrl";
+
+  private static final Logger logger = LoggerFactory.getLogger(MockOAuth2ServerInitializer.class);
+
+  @Override
+  public void initialize(ConfigurableApplicationContext applicationContext) {
+    var server = registerMockOAuth2Server(applicationContext);
+    var baseUrl = server.baseUrl().toString().replaceAll("/$", "");
+
+    TestPropertyValues.of(Map.of(MOCK_OAUTH_2_SERVER_BASE_URL, baseUrl))
+        .applyTo(applicationContext);
+  }
+
+  private MockOAuth2Server registerMockOAuth2Server(
+      ConfigurableApplicationContext applicationContext) {
+    var server = new MockOAuth2Server();
+    server.start(); //<.>
+    waitForServerReady(server);
+    var genericApplicationContext = (GenericApplicationContext) applicationContext;
+    genericApplicationContext.registerBean(MockOAuth2Server.class, () -> server); //<.>
+    genericApplicationContext.registerBean(
+        MockOAuth2ServerLogin.class,
+        () -> new MockOAuth2ServerLogin(server, applicationContext.getEnvironment())); //<.>
+    return server;
+  }
+
+  private void waitForServerReady(MockOAuth2Server server) {
+    var url = server.wellKnownUrl("issuer1").toString();
+    try {
+      RetryTemplate retryTemplate =
+          new RetryTemplate(
+              RetryPolicy.builder()
+                  .maxRetries(3)
+                  .delay(Duration.ofSeconds(1))
+                  .multiplier(2.0)
+                  .build());
+      retryTemplate.execute(
+          () -> {
+            pingWellKnownUrl(url);
+            return null;
+          });
+    } catch (RetryException e) {
+      logger.warn("MockOAuth2Server may not be fully ready at {}", url, e);
+    }
+  }
+
+  private static void pingWellKnownUrl(String url) throws IOException {
+    HttpURLConnection connection = (HttpURLConnection) URI.create(url).toURL().openConnection();
+    connection.setConnectTimeout(1000);
+    connection.setReadTimeout(1000);
+    connection.getInputStream().close();
+    logger.info("MockOAuth2Server is ready at {}", url);
+  }
+}
+----
+<.> Start the mock OAuth2 server and wait for it to be ready by pinging the well-known URL. We are using a hardcoded issuer `issuer1` here, but you can use any issuer you want.
+<.> Register the `MockOAuth2Server` bean in the application context.
+<.> Register the `MockOAuth2ServerLogin` bean in the application context. This bean will be used to log in with the mock OAuth2 server.
+
+We also need the `MockOAuth2ServerLogin` class that will be used to log in with the mock OAuth2 server:
+
+[source,java]
+----
+import com.nimbusds.jose.JOSEObjectType;
+import com.wimdeblauwe.thymeleaf_mock_oauth2_login.infrastructure.security.Role;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.CookieManager;
+import java.net.HttpCookie;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import no.nav.security.mock.oauth2.MockOAuth2Server;
+import no.nav.security.mock.oauth2.token.DefaultOAuth2TokenCallback;
+import org.springframework.core.env.Environment;
+
+public class MockOAuth2ServerLogin {
+
+  public static final String SESSION_COOKIE_NAME = "JSESSIONID";
+
+  private static final String ISSUER_ID = "issuer1";
+  private static final String CLIENT_ID = "my-application-backend-client"; //<.>
+  private static final long TOKEN_EXPIRY_SECONDS = 3600L;
+
+  private final MockOAuth2Server mockOAuth2Server;
+  private final Environment environment;
+
+  public MockOAuth2ServerLogin(MockOAuth2Server mockOAuth2Server, Environment environment) {
+    this.mockOAuth2Server = mockOAuth2Server;
+    this.environment = environment;
+  }
+
+  public String loginUser() { //<.>
+    return login("user", Role.USER);
+  }
+
+  public String loginAdmin() { //<.>
+    return login("admin", Role.ADMIN);
+  }
+
+  public String login(String username, Role... roles) {
+    List<String> keycloakRoles = Arrays.stream(roles).map(Role::getKeycloakRole).toList();
+    mockOAuth2Server.enqueueCallback(
+        new DefaultOAuth2TokenCallback(
+            ISSUER_ID,
+            username,
+            JOSEObjectType.JWT.getType(),
+            List.of(CLIENT_ID),
+            Map.of("preferred_username", username, "realm_access", Map.of("roles", keycloakRoles)),
+            TOKEN_EXPIRY_SECONDS));
+
+    CookieManager cookieManager = new CookieManager();
+    try (HttpClient httpClient =
+        HttpClient.newBuilder()
+            .cookieHandler(cookieManager)
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build()) {
+      HttpRequest request =
+          HttpRequest.newBuilder(
+                  URI.create(
+                      "http://localhost:%d/oauth2/authorization/keycloak"
+                          .formatted(localServerPort())))
+              .GET()
+              .build();
+      httpClient.send(request, HttpResponse.BodyHandlers.discarding());
+    } catch (IOException e) {
+      throw new UncheckedIOException("OAuth2 login flow failed", e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("OAuth2 login flow interrupted", e);
+    }
+
+    return cookieManager.getCookieStore().getCookies().stream()
+        .filter(cookie -> SESSION_COOKIE_NAME.equals(cookie.getName()))
+        .map(HttpCookie::getValue)
+        .findFirst()
+        .orElseThrow(
+            () -> new IllegalStateException("OAuth2 login did not result in a session cookie"));
+  }
+
+  private int localServerPort() {
+    Integer port = environment.getProperty("local.server.port", Integer.class);
+    if (port == null) {
+      throw new IllegalStateException(
+          "No local.server.port property found. Logging in with MockOAuth2ServerLogin requires"
+              + " a running server, use @PrintingEngineSpringBootTest(webEnvironment ="
+              + " WebEnvironment.RANDOM_PORT)");
+    }
+    return port;
+  }
+}
+
+----
+<.> The client ID of the OAuth2 client that is configured in the Spring Boot application via `application-integration-test.yaml`.
+<.> The `loginUser` method logs in a user with the username `user` and the role `USER`.
+<.> The `loginAdmin` method logs in a user with the username `admin` and the role `ADMIN`.
+
+The `application-integration-test.yaml` file contains the OAuth2 client configuration for the integration tests:
+
+[source,yaml]
+.src/test/resources/application-integration-test.yaml
+----
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: 'my-application-backend-client'
+            authorization-grant-type: 'authorization_code'
+            redirect-uri: '{baseUrl}/login/oauth2/code/{registrationId}'
+            scope:
+              - openid
+----
+
+With all this in place, you can now write integration tests that log in with the mock OAuth2 server:
+
+[source,java]
+----
+@SpringBootTest(
+    properties = {
+        "spring.security.oauth2.client.provider.keycloak.issuer-uri=${"
+            + MOCK_OAUTH_2_SERVER_BASE_URL
+            + "}/issuer1"
+    },
+    webEnvironment = WebEnvironment.RANDOM_PORT) //<.>
+@SpringJUnitConfig(initializers = {MockOAuth2ServerInitializer.class}) //<.>
+@AutoConfigureRestTestClient //<.>
+@ActiveProfiles("integration-test") //<.>
+class HomeControllerTest {
+
+  @Autowired
+  private RestTestClient client;
+
+  @Autowired
+  private MockOAuth2ServerLogin mockOAuth2ServerLogin;
+
+  @Test
+  void testNotLoggedIn() {
+    client.get().uri("/").exchange().expectStatus().is3xxRedirection();
+  }
+
+  @Test
+  void testLoggedIn() {
+    String session = mockOAuth2ServerLogin.loginUser();
+    client.get().uri("/")
+        .cookie(SESSION_COOKIE_NAME, session).exchange().expectStatus().isOk();
+  }
+}
+----
+<.> The `@SpringBootTest` annotation starts the Spring Boot application with a random port and overrides the issuer URI to point to the mock OAuth2 server. Note that we need a real running server to log in with the mock OAuth2 server, so we cannot use `WebEnvironment.MOCK`.
+<.> The `@SpringJUnitConfig` annotation registers the `MockOAuth2ServerInitializer` class that starts the mock OAuth2 server and registers the `MockOAuth2Server` and `MockOAuth2ServerLogin` beans in the application context.
+<.> The `@AutoConfigureRestTestClient` annotation registers the `RestTestClient` bean that is used to make HTTP requests to the Spring Boot application in the tests.
+<.> We activate the `integration-test` profile to use the `application-integration-test.yaml` configuration file.
+
+The most interesting test is the `testLoggedIn` test. It uses the `MockOAuth2ServerLogin` bean to log in a user with the username `user` and the role `USER`. It then uses the session cookie returned by the login method to make a request to the home page and expects a 200 OK response.
+
+Run the tests and you should see that they pass.
+
+[source]
+----
+[INFO] --- surefire:3.5.6:test (default-test) @ thymeleaf-mock-oauth2-login ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO]
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.wimdeblauwe.thymeleaf_mock_oauth2_login.HomeControllerTest
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.825 s -- in com.wimdeblauwe.thymeleaf_mock_oauth2_login.HomeControllerTest
+[INFO]
+[INFO] Results:
+[INFO]
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.391 s
+[INFO] Finished at: 2026-07-07T11:06:42+02:00
+[INFO] ------------------------------------------------------------------------
+----
+
+== Conclusion
+
+The mock-oauth2-server library is a great way to test your OAuth2 client login in a Spring Boot application.
+The example is using Thymeleaf, but the same approach can be used for any Spring MVC template engine.
+
+It allows you to start a mock OAuth2 server in your tests and configure it to return the tokens you want. This way, you can test your application without having to start a real OAuth2 server like Keycloak or Okta.
+
+See https://github.com/wimdeblauwe/blog-example-code/tree/master/thymeleaf-mock-oauth2-login[thymeleaf-mock-oauth2-login] on GitHub for the full sources of these examples.
+
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
