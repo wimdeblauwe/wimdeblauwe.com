@@ -1,0 +1,495 @@
+---
+title: "Writing a Thymeleaf component library"
+date: 2026-07-07
+draft: true
+tags: ["thymeleaf", "spring-boot"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+This blog series will explain how to write a component library for Thymeleaf.
+The goal is to create a library that can be used in any Spring Boot application that uses Thymeleaf as the view technology.
+Users of the library should be able to use the components to quickly build a user interface without having to write a lot of HTML and CSS themselves.
+
+<!--more-->
+
+== Design goals
+
+The library has the following design goals:
+
+* The library should auto-configure any beans that are needed to use the components.
+* The library should be easy to use and require minimal configuration.
+* When authoring a component, the developer should be able to focus on the component itself and not have to worry about the integration with Spring Boot or Thymeleaf.
+* During development, live reload should allow rapid iteration on the components without having to restart the application.
+* The library should be able to use CSS and/or JavaScript libraries.
+
+== Getting started
+
+We start the library as we do with any Spring Boot starter.
+Create a minimal `pom.xml` file:
+
+[source,xml]
+----
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.wimdeblauwe.examples</groupId>
+  <artifactId>thymeleaf-component-library</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <name>Thymeleaf Component Library</name>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <java.version>25</java.version>
+
+    <!-- Dependencies -->
+    <spring-boot.version>4.1.0</spring-boot.version>
+
+    <!-- Maven plugins -->
+    <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
+    <maven-surefire-plugin.version>3.5.6</maven-surefire-plugin.version>
+  </properties>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-dependencies</artifactId>
+        <version>${spring-boot.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-thymeleaf</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-thymeleaf-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>${maven-compiler-plugin.version}</version>
+        <configuration>
+          <release>${java.version}</release>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>org.springframework.boot</groupId>
+              <artifactId>spring-boot-configuration-processor</artifactId>
+            </path>
+            <path>
+              <groupId>org.springframework.boot</groupId>
+              <artifactId>spring-boot-autoconfigure-processor</artifactId>
+            </path>
+          </annotationProcessorPaths>
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${maven-surefire-plugin.version}</version>
+        <configuration>
+          <redirectTestOutputToFile>true</redirectTestOutputToFile>
+          <printSummary>true</printSummary>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>
+----
+
+We will also need something for the live reload.
+We will use https://vite.dev/[Vite] 8 via https://pnpm.io/[pnpm] 11.12.0 for this.
+
+Run `pnpm init --bare` to create a `package.json` file and then run `pnpm add -D vite` to add Vite as a dependency.
+
+This should create a `package.json` file like this:
+
+[source,json]
+----
+{
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.12.0",
+      "onFail": "download"
+    }
+  },
+  "type": "module",
+  "devDependencies": {
+    "vite": "^8.1.4"
+  }
+}
+----
+
+There will also be a `pnpm-lock.yaml` file and a `node_modules` directory created.
+
+Configure Vite by creating a `vite.config.js` file in the root of the project with the following content:
+
+[source,js]
+----
+import {defineConfig} from 'vite';
+
+export default defineConfig({
+  root: __dirname,
+  server: { // <.>
+    port: 5174,
+    strictPort: true,
+    cors: true,
+    origin: 'http://localhost:5174'
+  },
+  build: {
+    manifest: true, // <.>
+    rolldownOptions: {
+      input: { // <.>
+        'tcl-css': path.join(__dirname, 'src/main/resources/static/css/tcl.css'),
+        'tcl-js': path.join(__dirname, 'src/main/resources/static/js/tcl.js'),
+      }
+    },
+    outDir: path.join(__dirname, 'target/classes/META-INF/resources/tcl'), // <.>
+    copyPublicDir: false //<.>
+  },
+});
+----
+
+<.> Configuration of the Vite development server for live reloading.
+The `origin` property is needed to allow the Spring Boot application to make requests to the Vite development server.
+<.> Generate a manifest file that maps the original file names to the hashed file names that are generated by Vite.
+The Spring Boot application will use this manifest file to load the correct files in production.
+<.> Configure the input files for the build. The `tcl-css` and `tcl-js` files will be the entry points for the CSS and JavaScript files of the component library.
+<.> Configure the output directory for the build. The files will be copied to the `target/classes/META-INF/resources/tcl` directory so that they can be https://docs.spring.io/spring-boot/reference/web/servlet.html#web.servlet.spring-mvc.static-content[served by Spring Boot].
+<.> Vite copies files from `public` to the output directory by default. We don't want that, so we disable it.
+
+To run the Vite build, we add 2 scripts to `package.json`:
+
+[source,json]
+----
+{
+  ...
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  }
+}
+----
+
+== Auto-configuration
+
+To make our library an idiomatic Spring Boot starter, we need to add an auto-configuration class:
+
+[source,java]
+----
+package com.wimdeblauwe.examples.tcl;
+
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+
+@AutoConfiguration
+@EnableConfigurationProperties(TclProperties.class)
+public class TclAutoConfiguration {
+
+}
+----
+
+It is empty for now, but we will add some beans to it later.
+
+It also references a `TclProperties` class that we need to create:
+
+[source,java]
+----
+package com.wimdeblauwe.examples.tcl;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@ConfigurationProperties(prefix = "tcl")
+public record TclProperties() {
+
+}
+----
+
+Also still empty for now, but we will add some properties to it later.
+
+As a final step, we add 2 files to the `src/main/resources/META-INF/spring` directory:
+
+* `org.springframework.boot.autoconfigure.AutoConfiguration.imports` with the full qualified name of the auto-configuration class:
++
+[source]
+----
+com.wimdeblauwe.examples.tcl.TclAutoConfiguration
+----
+* `org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc.imports` with the same content:
++
+[source]
+----
+com.wimdeblauwe.examples.tcl.TclAutoConfiguration
+----
+
+The first file is used by Spring Boot to load the auto-configuration class when the library is on the classpath of a Spring Boot application.
+The second file will also load this auto-configuration class when running tests with `@WebMvcTest` in a Spring Boot application that uses this library.
+
+== Vite assets setup
+
+To make sure we can use the CSS and JS files, we will auto-configure a `TclAssets` bean that will provide the correct URLs for the CSS and JS files.
+
+Create `src/main/resources/static/css/tcl.css` and `src/main/resources/static/js/tcl.js` files with some dummy content:
+
+[source,css]
+----
+body {
+  background-color: red;
+}
+----
+
+[source,js]
+----
+function test() {
+  console.log('test');
+}
+
+test();
+----
+
+If you now run `pnpm run build`, you should see the following files in `target/classes/META-INF/resources/tcl`:
+
+* `.vite/manifest.json`
+* `assets/tcl-css.[hash].css`
+* `assets/tcl-js.[hash].js`
+
+The manifest file looks like this:
+
+[source,json]
+----
+{
+  "src/main/resources/static/css/tcl.css": {
+    "file": "assets/tcl-css-W1erjkBN.css",
+    "name": "tcl-css",
+    "names": [
+      "tcl-css.css"
+    ],
+    "src": "src/main/resources/static/css/tcl.css",
+    "isEntry": true
+  },
+  "src/main/resources/static/js/tcl.js": {
+    "file": "assets/tcl-js-ezv46uJz.js",
+    "name": "tcl-js",
+    "src": "src/main/resources/static/js/tcl.js",
+    "isEntry": true
+  }
+}
+----
+
+This is the Vite output in _build_ mode, which is the mode that will be used in production.
+
+When Vite is running in _dev_ mode, there is no manifest file.
+The assets are served directly from the Vite development server, which is running on port 5174.
+
+To read the Vite manifest file, we first create a small helper class `ViteManifestParser`:
+
+[source,java]
+----
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import org.springframework.core.io.Resource;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.json.JsonMapper;
+
+public class ViteManifestParser {
+
+  private final JsonMapper jsonMapper;
+
+  public ViteManifestParser(JsonMapper jsonMapper) {
+    this.jsonMapper = jsonMapper;
+  }
+
+  public ViteManifest parse(Resource resource) throws IOException {
+    try (InputStream inputStream = resource.getInputStream()) {
+      Map<String, ViteManifestEntry> entries =
+          jsonMapper.readValue(inputStream, new TypeReference<>() {
+          });
+      return new ViteManifest(entries);
+    }
+  }
+
+  public record ViteManifest(Map<String, ViteManifestEntry> entries) {
+
+    public ViteManifestEntry getEntry(String key) {
+      return entries.get(key);
+    }
+  }
+
+  public record ViteManifestEntry(String file, String src, boolean isEntry, List<String> css, List<String> imports) {
+
+    public ViteManifestEntry(String file, String src, boolean isEntry, List<String> css, List<String> imports) {
+      this.file = file;
+      this.src = src;
+      this.isEntry = isEntry;
+      this.css = css != null ? css : Collections.emptyList();
+      this.imports = imports != null ? imports : Collections.emptyList();
+    }
+  }
+}
+----
+
+Using this class, we can now create a `TclAssets` bean that will provide the correct URLs for the CSS and JS files:
+
+[source,java]
+----
+package com.wimdeblauwe.examples.tcl;
+
+import com.wimdeblauwe.examples.tcl.ViteManifestParser.ViteManifest;
+import java.io.IOException;
+import java.util.Objects;
+import org.jspecify.annotations.Nullable;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.util.StringUtils;
+
+public class TclAssets {
+
+  private static final String MANIFEST_LOCATION = "META-INF/resources/tcl/.vite/manifest.json";
+  private static final String BASE_URL = "/tcl/";
+  private static final String CSS_MANIFEST_KEY = "css/tcl.css";
+  private static final String JS_MANIFEST_KEY = "js/tcl.js";
+
+  private boolean devMode;
+  private String cssUrl;
+  private String jsUrl;
+  private String viteClientUrl;
+
+  public TclAssets(@Nullable String viteServerUrl,
+      ViteManifestParser viteManifestParser) {
+    if (StringUtils.hasText(viteServerUrl)) {
+      buildAssetsInDevMode(Objects.requireNonNull(viteServerUrl));
+    } else {
+      buildAssetsInBuildMode(viteManifestParser);
+    }
+  }
+
+  public boolean isDevMode() {
+    return devMode;
+  }
+
+  public String getCssUrl() {
+    return cssUrl;
+  }
+
+  public String getJsUrl() {
+    return jsUrl;
+  }
+
+  public String getViteClientUrl() {
+    return viteClientUrl;
+  }
+
+  private void buildAssetsInDevMode(String viteServerUrl) { // <.>
+    String base = stripTrailingSlash(viteServerUrl.trim());
+    this.devMode = true;
+    this.cssUrl = base + "/css/tcl.css";
+    this.jsUrl = base + "/js/tcl.js";
+    this.viteClientUrl = base + "/@vite/client";
+  }
+
+  private void buildAssetsInBuildMode(ViteManifestParser viteManifestParser) { // <.>
+    this.devMode = false;
+    try {
+      ViteManifest manifest = viteManifestParser.parse(new ClassPathResource(MANIFEST_LOCATION));
+      this.cssUrl = BASE_URL + manifest.getEntry(CSS_MANIFEST_KEY).file();
+      this.jsUrl = BASE_URL + manifest.getEntry(JS_MANIFEST_KEY).file();
+      this.viteClientUrl = null;
+    } catch (IOException e) {
+      throw new IllegalStateException(
+          "Failed to read the Vite manifest at '" + MANIFEST_LOCATION + "'.", e);
+    }
+  }
+
+  private static String stripTrailingSlash(String url) {
+    return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+  }
+}
+----
+<.> When the `viteServerUrl` property is set, we are in development mode and the assets are served from the Vite development server.
+<.> When the `viteServerUrl` property is not set, we are in build mode and the assets are served from the Spring Boot application.
+To find the correct URLs for the assets, we read the Vite manifest file generated during the build.
+
+Finally, update the `TclAutoConfiguration` class to create a `TclAssets` bean:
+
+[source,java]
+----
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import tools.jackson.databind.json.JsonMapper;
+
+@AutoConfiguration
+@EnableConfigurationProperties(TclProperties.class)
+public class TclAutoConfiguration {
+
+  @Bean
+  @ConditionalOnMissingBean
+  public TclAssets tclAssets(TclProperties properties,
+      ViteManifestParser viteManifestParser) {
+    return new TclAssets(properties.dev().viteServerUrl(), viteManifestParser);
+  }
+
+  @Bean
+  @ConditionalOnMissingBean
+  public ViteManifestParser viteManifestParser(JsonMapper jsonMapper) {
+    return new ViteManifestParser(jsonMapper);
+  }
+}
+----
+
+The server url of the Vite development server can be configured via the `tcl.dev.vite-server-url` property:
+
+[source,java]
+----
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@ConfigurationProperties(prefix = "tcl")
+public record TclProperties(DevProperties dev) {
+
+  record DevProperties(String viteServerUrl) {
+
+  }
+}
+----
+
+== Frontend maven plugin
+
+TODO: Add a frontend maven plugin to run Vite during the build.
+
+== Test application
+
+We need a way to test our component library.
+
+TODO: Create a test application that uses the component library as it is developed so far and check that everything loads.
+
+== Conclusion
+
+TODO conclusion
+
+//TODO See https://github.com/wimdeblauwe/blog-example-code/tree/master/thymeleaf-mock-oauth2-login[thymeleaf-mock-oauth2-login] on GitHub for the full sources of these examples.
+
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
