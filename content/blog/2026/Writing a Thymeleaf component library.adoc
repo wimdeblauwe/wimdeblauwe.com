@@ -1,7 +1,7 @@
 ---
 title: "Writing a Thymeleaf component library"
-date: 2026-07-07
-draft: true
+date: 2026-07-14
+draft: false
 tags: ["thymeleaf", "spring-boot"]
 keywords: []
 ---
@@ -128,9 +128,7 @@ This should create a `package.json` file like this:
 {
   "devEngines": {
     "packageManager": {
-      "name": "pnpm",
-      "version": "^11.12.0",
-      "onFail": "download"
+      "name": "pnpm"
     }
   },
   "type": "module",
@@ -139,6 +137,13 @@ This should create a `package.json` file like this:
   }
 }
 ----
+
+[NOTE]
+====
+By default `pnpm init --bare` will create a `package.json` file with `version` and `onFail` properties inside `devEngines.packageManager`.
+
+I like to remove them as this sometimes gives strange errors after upgrading pnpm to a new version.
+====
 
 There will also be a `pnpm-lock.yaml` file and a `node_modules` directory created.
 
@@ -477,7 +482,88 @@ public record TclProperties(DevProperties dev) {
 
 == Frontend maven plugin
 
-TODO: Add a frontend maven plugin to run Vite during the build.
+To make sure the Vite build is run when building the library with Maven, we can use the https://github.com/eirslett/frontend-maven-plugin[frontend-maven-plugin].
+
+Adjust the `pom.xml` file to add the plugin:
+
+[source,xml]
+----
+<project>
+  ...
+  <properties>
+    ...
+    <frontend-maven-plugin.version>2.0.1</frontend-maven-plugin.version>
+    <frontend-maven-plugin.nodeVersion>v24.18.0</frontend-maven-plugin.nodeVersion>
+    <frontend-maven-plugin.pnpmVersion>11.13.0</frontend-maven-plugin.pnpmVersion>
+  </properties>
+  <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <excludes>
+          <exclude>static/**/*.css</exclude>
+          <exclude>static/**/*.js</exclude>
+        </excludes>
+      </resource>
+    </resources>
+    <plugins>
+      ...
+      <plugin>
+        <groupId>com.github.eirslett</groupId>
+        <artifactId>frontend-maven-plugin</artifactId>
+        <version>${frontend-maven-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>install-node-and-pnpm</id>
+            <goals>
+              <goal>install-node-and-pnpm</goal>
+            </goals>
+            <phase>generate-resources</phase>
+            <configuration>
+              <nodeVersion>${frontend-maven-plugin.nodeVersion}</nodeVersion>
+              <pnpmVersion>${frontend-maven-plugin.pnpmVersion}</pnpmVersion>
+            </configuration>
+          </execution>
+          <execution>
+            <id>pnpm-install</id>
+            <goals>
+              <goal>pnpm</goal>
+            </goals>
+            <phase>generate-resources</phase>
+            <configuration>
+              <arguments>install</arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>pnpm-build</id>
+            <goals>
+              <goal>pnpm</goal>
+            </goals>
+            <phase>generate-resources</phase>
+            <configuration>
+              <arguments>run build</arguments>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>
+----
+
+There are 3 parts to change:
+
+. Add version properties for the plugin, Node.js and pnpm.
+. Exclude the CSS and JS files from the resources so that they are not copied to the `target/classes` directory by the Maven resources plugin.
+We don't want the source files to be copied as Vite will generate the files with hashed names in the `target/classes/META-INF/resources/tcl` directory.
+. Add the plugin configuration to install Node.js and pnpm, run `pnpm install` and run `pnpm run build` during the `generate-resources` phase of the Maven build.
+
+Run `mvn clean install` to build the jar and install it into your local Maven repository.
+
+The jar should contain the following files:
+
+image::{imagesdir}/2026/07/thymeleaf-component-library-1.png[]
+
 
 == Test application
 
