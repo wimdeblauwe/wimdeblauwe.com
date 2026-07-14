@@ -668,11 +668,11 @@ Now run the application:
 You can also run the application directly from your IDE, but make sure to set the `local` profile and set the working directory to the root of the sample project.
 
 Open your browser and go to http://localhost:8080.
-If everything is ok, the text on the page should be red, which is the CSS we added to the library.
+If everything is ok, the text on the page should be red, due to the CSS we added to the library.
 Next, open the developer tools in your browser and check the console output.
 You should see the `test` message from the JS file in the library.
 
-
+image::{imagesdir}/2026/07/thymeleaf-component-library-2.png[]
 
 == Conclusion
 
