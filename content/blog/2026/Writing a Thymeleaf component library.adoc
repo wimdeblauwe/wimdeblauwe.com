@@ -506,23 +506,20 @@ To make it easy for the users of our library to use the assets, we create a `tcl
     </head>
 -->
 <head>
-  <th:block th:fragment="head">
-    <th:block th:if="${@tclAssets.devMode}">
+    <th:block th:fragment="head">
+    <th:block th:if="${@tclAssets.devMode}"> <!--1-->
       <script type="module" th:with="viteClientUrl=${@tclAssets.viteClientUrl}"
               th:src="${viteClientUrl}"></script>
-      <script type="module" th:with="cssUrl=${@tclAssets.cssUrl}" th:src="${cssUrl}"></script>
-      <script type="module" th:with="jsUrl=${@tclAssets.jsUrl}" th:src="${jsUrl}"></script>
     </th:block>
-    <th:block th:unless="${@tclAssets.devMode}">
-      <link rel="stylesheet" th:with="url=${@tclAssets.cssUrl}" th:href="@{${url}}"/>
-      <script type="module" th:with="url=${@tclAssets.jsUrl}" th:src="@{${url}}"></script>
-    </th:block>
+    <link rel="stylesheet" th:with="url=${@tclAssets.cssUrl}" th:href="@{${url}}"/>
+    <script type="module" th:with="url=${@tclAssets.jsUrl}" th:src="@{${url}}"></script>
   </th:block>
 </head>
 <body>
 </body>
 </html>
 ----
+<.> Only add the Vite client script when in development mode.
 
 Note how the fragment uses the `TclAssets` bean to get the correct URLs for the CSS and JS files.
 When in development mode, it loads the assets from the Vite development server.
@@ -676,9 +673,12 @@ image::{imagesdir}/2026/07/thymeleaf-component-library-2.png[]
 
 == Conclusion
 
-TODO conclusion
+This blog post explained how to set up a Thymeleaf component library that can be used in a Spring Boot application.
+We used the library in build mode in a sample application and verified that the CSS and JS files were loaded correctly.
 
-//TODO See https://github.com/wimdeblauwe/blog-example-code/tree/master/thymeleaf-mock-oauth2-login[thymeleaf-mock-oauth2-login] on GitHub for the full sources of these examples.
+The next step will be to finish the development mode setup, so we can have live reload of the CSS and JS files in the library when running the sample application.
 
+// TODO fix link
+This will be done in https://TODO[part 2] of this blog series.
 
 If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
