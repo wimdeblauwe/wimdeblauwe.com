@@ -485,6 +485,7 @@ article.prose h2 {
   font-size: 1.45rem; letter-spacing: -0.025em; line-height: 1.2;
   color: var(--navy);
   margin-top: 2.7rem;
+  margin-bottom: 0.25rem;
   scroll-margin-top: 5rem;
   position: relative;
 }
