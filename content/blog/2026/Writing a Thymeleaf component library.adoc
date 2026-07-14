@@ -259,7 +259,7 @@ Create `src/main/resources/static/css/tcl.css` and `src/main/resources/static/js
 [source,css]
 ----
 body {
-  background-color: red;
+  color: red;
 }
 ----
 
@@ -339,7 +339,11 @@ public class ViteManifestParser {
   public record ViteManifest(Map<String, ViteManifestEntry> entries) {
 
     public ViteManifestEntry getEntry(String key) {
-      return entries.get(key);
+      ViteManifestEntry entry = entries.get(key);
+      if (entry == null) {
+        throw new IllegalArgumentException("No entry found for key %s. Known entries: %s".formatted(key, entries.keySet()));
+      }
+      return entry;
     }
   }
 
@@ -373,8 +377,9 @@ public class TclAssets {
 
   private static final String MANIFEST_LOCATION = "META-INF/resources/tcl/.vite/manifest.json";
   private static final String BASE_URL = "/tcl/";
-  private static final String CSS_MANIFEST_KEY = "css/tcl.css";
-  private static final String JS_MANIFEST_KEY = "js/tcl.js";
+  private static final String MANIFEST_KEY_BASE_PATH = "src/main/resources/static/";
+  private static final String CSS_MANIFEST_KEY = MANIFEST_KEY_BASE_PATH + "css/tcl.css";
+  private static final String JS_MANIFEST_KEY = MANIFEST_KEY_BASE_PATH + "js/tcl.js";
 
   private boolean devMode;
   private String cssUrl;
@@ -417,7 +422,11 @@ public class TclAssets {
   private void buildAssetsInBuildMode(ViteManifestParser viteManifestParser) { // <.>
     this.devMode = false;
     try {
-      ViteManifest manifest = viteManifestParser.parse(new ClassPathResource(MANIFEST_LOCATION));
+      ClassPathResource resource = new ClassPathResource(MANIFEST_LOCATION);
+      if(!resource.exists()) {
+        throw new IllegalStateException("Failed to read the Vite manifest at '" + MANIFEST_LOCATION + "'.");
+      }
+      ViteManifest manifest = viteManifestParser.parse(resource);
       this.cssUrl = BASE_URL + manifest.getEntry(CSS_MANIFEST_KEY).file();
       this.jsUrl = BASE_URL + manifest.getEntry(JS_MANIFEST_KEY).file();
       this.viteClientUrl = null;
@@ -470,15 +479,56 @@ The server url of the Vite development server can be configured via the `tcl.dev
 [source,java]
 ----
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.DefaultValue;
 
 @ConfigurationProperties(prefix = "tcl")
-public record TclProperties(DevProperties dev) {
+public record TclProperties(@DefaultValue DevProperties dev) {
 
   record DevProperties(String viteServerUrl) {
 
   }
 }
 ----
+
+To make it easy for the users of our library to use the assets, we create a `tcl/layout {2c} head` fragment that can be included in the `<head>` of the HTML page:
+
+[source,html]
+.src/main/resources/templates/tcl/layout.html
+----
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<!--
+  Public asset entry point for consuming applications.
+
+  Usage in a consumer template:
+    <head>
+      <th:block th:replace="~{tcl/layout :: head}"></th:block>
+    </head>
+-->
+<head>
+  <th:block th:fragment="head">
+    <th:block th:if="${@tclAssets.devMode}">
+      <script type="module" th:with="viteClientUrl=${@tclAssets.viteClientUrl}"
+              th:src="${viteClientUrl}"></script>
+      <script type="module" th:with="cssUrl=${@tclAssets.cssUrl}" th:src="${cssUrl}"></script>
+      <script type="module" th:with="jsUrl=${@tclAssets.jsUrl}" th:src="${jsUrl}"></script>
+    </th:block>
+    <th:block th:unless="${@tclAssets.devMode}">
+      <link rel="stylesheet" th:with="url=${@tclAssets.cssUrl}" th:href="@{${url}}"/>
+      <script type="module" th:with="url=${@tclAssets.jsUrl}" th:src="@{${url}}"></script>
+    </th:block>
+  </th:block>
+</head>
+<body>
+</body>
+</html>
+----
+
+Note how the fragment uses the `TclAssets` bean to get the correct URLs for the CSS and JS files.
+When in development mode, it loads the assets from the Vite development server.
+When in build mode, it loads the assets from the library jar.
+
+We will now set up Maven correctly, so we have a jar we can test in a sample application.
 
 == Frontend maven plugin
 
@@ -551,7 +601,7 @@ Adjust the `pom.xml` file to add the plugin:
 </project>
 ----
 
-There are 3 parts to change:
+There are three parts to change:
 
 . Add version properties for the plugin, Node.js and pnpm.
 . Exclude the CSS and JS files from the resources so that they are not copied to the `target/classes` directory by the Maven resources plugin.
@@ -564,12 +614,65 @@ The jar should contain the following files:
 
 image::{imagesdir}/2026/07/thymeleaf-component-library-1.png[]
 
-
 == Test application
 
-We need a way to test our component library.
+We need a way to test our component library so let's create a test application that uses the library.
 
-TODO: Create a test application that uses the component library as it is developed so far and check that everything loads.
+Install https://github.com/wimdeblauwe/ttcli[ttcli] if you don't have it yet.
+Create a `samples` directory inside the library.
+Run `ttcli init` to create a new Spring Boot application and select the following options:
+
+* Group: `com.wimdeblauwe.examples.tcl`
+* Artifact: `tcl-sample-01`
+* Project name: `TCL Sample App 1`
+* Spring Boot version: `4.1.0`
+* Java version: `25`
+* Template engine: `Thymeleaf`
+* Live reload: `Vite`
+* Package manager: `pnpm`
+* Web dependencies: `AlpineJS`, `htmx`
+
+After the project is generated, add our library as a dependency in the `pom.xml` file of the sample application:
+
+[source,xml]
+----
+    <dependency>
+      <groupId>com.wimdeblauwe.examples</groupId>
+      <artifactId>thymeleaf-component-library</artifactId>
+      <version>0.0.1-SNAPSHOT</version>
+    </dependency>
+----
+
+Update the `src/main/resources/templates/layout/main.html` file to include the CSS and JS from the libray using the `tcl/layout {2c} head` fragment:
+
+[source,html]
+----
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title></title>
+  <th:block th:replace="~{tcl/layout :: head}"></th:block>
+  <vite:client></vite:client>
+  <vite:vite>
+    <vite:entry value="/css/application.css"></vite:entry>
+  </vite:vite>
+</head>
+
+----
+
+Now run the application:
+
+1. Start the Vite development server in the sample project directory: `pnpm run dev`
+2. Start the Spring Boot application using the `local` profile: `mvn spring-boot:run -Dspring-boot.run.profiles=local`.
+You can also run the application directly from your IDE, but make sure to set the `local` profile and set the working directory to the root of the sample project.
+
+Open your browser and go to http://localhost:8080.
+If everything is ok, the text on the page should be red, which is the CSS we added to the library.
+Next, open the developer tools in your browser and check the console output.
+You should see the `test` message from the JS file in the library.
+
+
 
 == Conclusion
 
