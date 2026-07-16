@@ -154,7 +154,7 @@ Configure Vite by creating a `vite.config.js` file in the root of the project wi
 import {defineConfig} from 'vite';
 
 export default defineConfig({
-  root: __dirname,
+  root: path.join(__dirname, 'src/main/resources/static'),
   server: { // <.>
     port: 5174,
     strictPort: true,
@@ -671,14 +671,62 @@ You should see the `test` message from the JS file in the library.
 
 image::{imagesdir}/2026/07/thymeleaf-component-library-2.png[]
 
+== Live reload of CSS and JS files
+
+Building the library each time via Maven is annoying and slow. That is why we added this `tcl.dev.vite-server-url` property to the `TclProperties` class.
+When this property is set, the library will load the CSS and JS files from the Vite development server instead of from the jar.
+
+Set the property in the `application-local.properties` file of the sample application:
+
+[source,properties]
+----
+spring.thymeleaf.cache=false
+spring.web.resources.chain.cache=false
+
+tcl.dev.vite-server-url=http://localhost:5174
+
+vite.mode=dev
+----
+
+Now do these 3 steps:
+
+1. Start the Vite development server in the library project directory: `pnpm run dev`
+2. Start the Vite development server in the sample project directory: `pnpm run dev`
+3. Start the Spring Boot application using the `local` profile: `mvn spring-boot:run -Dspring-boot.run.profiles=local`.
+
+Open the browser and go to http://localhost:8080.
+Now change the color in the `src/main/resources/static/css/tcl.css` file of the library project and save the file.
+The browser should automatically reload and you should see the new color.
+
+The same works for the JS file. Change the `test` message in the `src/main/resources/static/js/tcl.js` file of the library project and save the file.
+The web console should automatically show the new message.
+
+It is also possible to adjust the sample specific CSS (and JS) files in the sample project and have them automatically reloaded in the browser.
+
+This is possible because we have 2 Vite development servers running, one for the library and one for the sample application.
+If you check the HTML source, you will see this:
+
+[source,html]
+----
+<head>
+  <script type="module" src="http://localhost:5174/@vite/client"></script>
+  <link rel="stylesheet" href="http://localhost:5174/css/tcl.css">
+  <script type="module" src="http://localhost:5174/js/tcl.js"></script>
+
+  <script type="module" src="//localhost:5173/@vite/client"></script>
+  <link rel="stylesheet" href="//localhost:5173/static/css/application.css">
+</head>
+----
+
+The links using port 5174 are the assets from the library and the links using port 5173 are the assets from the sample application.
+
 == Conclusion
 
 This blog post explained how to set up a Thymeleaf component library that can be used in a Spring Boot application.
 We used the library in build mode in a sample application and verified that the CSS and JS files were loaded correctly.
 
-The next step will be to finish the development mode setup, so we can have live reload of the CSS and JS files in the library when running the sample application.
+The next step will be to write an actual component and use it in the sample application.
 
-// TODO fix link
 This will be done in https://TODO[part 2] of this blog series.
 
 If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
