@@ -322,7 +322,7 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
   border-radius: 10px; padding: .65rem 1.4rem;
   transition: all .15s ease;
 }
-.feature-card .cta:hover { background: var(--copper-bright); transform: translateY(-2px); }
+.feature-card .cta:hover { background: var(--copper-bright); color: #fff; }
 .feature-card .cta.ghost {
   background: transparent; color: #d8dee5;
   border: 1px solid rgba(216,222,229,.35);
@@ -465,10 +465,10 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
   font-family: var(--display); font-weight: 700; font-size: .82rem;
   text-decoration: none;
   background: var(--copper); color: #fff;
-  border-radius: 9px; padding: .5rem 1.2rem;
+  border-radius: 10px; padding: .5rem 1.2rem;
   transition: all .15s ease;
 }
-.book-ad .copy a.cta:hover { background: var(--copper-bright); transform: translateY(-1px); }
+.book-ad .copy a.cta:hover { background: var(--copper-bright); color: #fff; }
 
 /* --------------------------------------------------------------------------
    Article body
@@ -819,7 +819,7 @@ img.align-left, .imageblock.text-left > div > img { margin: 10px auto 10px 10px;
   padding: .7rem 1.5rem; cursor: pointer;
   transition: all .15s ease;
 }
-.newsletter button:hover, .newsletter input[type="submit"]:hover { background: var(--copper-bright); transform: translateY(-1px); }
+.newsletter button:hover, .newsletter input[type="submit"]:hover { background: var(--copper-bright); color: #fff; }
 .newsletter .small-note { font-size: .72rem; margin-top: .8rem; font-style: italic; color: var(--ink-soft); }
 
 /* --------------------------------------------------------------------------
@@ -916,7 +916,7 @@ a.book-read-more-link {
   text-decoration: none;
   transition: all .15s ease;
 }
-a.book-read-more-link:hover { background: var(--copper-bright); transform: translateY(-2px); }
+a.book-read-more-link:hover { background: var(--copper-bright); color: #fff; }
 .book-read-more-link-arrow { width: 1em; height: 1em; margin-left: .5em; }
 
 .bundle-announcement { margin-top: 1rem; display: flex; gap: 1rem; justify-content: center; align-items: center; }
