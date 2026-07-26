@@ -526,7 +526,7 @@ image::{imagesdir}/2026/07/thymeleaf-component-library-5.png[]
 
 This concludes the third part of this series on writing a Thymeleaf component library.
 From this point on, we can add more components to the library, and use them in our applications.
-In the fourth and final part of this series, we will create an interactive component that uses AlpineJS for interactivity.
+In the http://TODO[fourth] and final part of this series, we will create an interactive component that uses AlpineJS for interactivity.
 
 //TODO See https://github.com/wimdeblauwe/blog-example-code/tree/master/thymeleaf-mock-oauth2-login[thymeleaf-mock-oauth2-login] on GitHub for the full sources of these examples.
 
