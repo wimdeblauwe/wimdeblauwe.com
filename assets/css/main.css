@@ -821,6 +821,13 @@ img.align-left, .imageblock.text-left > div > img { margin: 10px auto 10px 10px;
 }
 .newsletter button:hover, .newsletter input[type="submit"]:hover { background: var(--copper-bright); color: #fff; }
 .newsletter .small-note { font-size: .72rem; margin-top: .8rem; font-style: italic; color: var(--ink-soft); }
+.newsletter-status {
+  flex-basis: 100%; margin-top: .4rem;
+  font-family: var(--mono); font-size: .8rem; line-height: 1.5;
+}
+.newsletter-status[hidden] { display: none; }
+.newsletter-status.is-success { color: var(--copper); }
+.newsletter-status.is-error { color: #a33a2a; }
 
 /* --------------------------------------------------------------------------
    Footer

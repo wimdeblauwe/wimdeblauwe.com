@@ -2,13 +2,59 @@
     <span class="badge">Newsletter</span>
     <h3>Get the next article in your inbox</h3>
     <p>If you want to be notified about new articles, as well as other interesting things I'm working on, join my mailing list!</p>
-    <!-- Begin Mailchimp Signup Form -->
-    <form action="https://wimdeblauwe.us4.list-manage.com/subscribe/post?u=4913cbe525013df09001104d4&amp;id=e87eb6e672" method="post" name="mc-embedded-subscribe-form" target="_blank" novalidate>
-        <input type="email" value="" name="EMAIL" placeholder="you@example.com" aria-label="Email address" required>
-        <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
-        <div style="position: absolute; left: -5000px;" aria-hidden="true"><input type="text" name="b_4913cbe525013df09001104d4_e87eb6e672" tabindex="-1" value=""></div>
-        <button type="submit" name="subscribe">Subscribe</button>
+    <form action="/api/subscribe" method="post" data-newsletter novalidate>
+        <input type="email" value="" name="email" placeholder="you@example.com" aria-label="Email address" required>
+        <!-- Honeypot: hidden from real people, so anything filling it in is a bot.
+             The server-side checks in netlify/functions/subscribe.mjs are what
+             actually protect this form — this only catches the lazy ones. -->
+        <div style="position: absolute; left: -5000px;" aria-hidden="true"><input type="text" name="website_url" tabindex="-1" value=""></div>
+        <button type="submit">Subscribe</button>
+        <p class="newsletter-status" role="status" aria-live="polite" hidden></p>
     </form>
-    <!--End mc_embed_signup-->
     <p class="small-note">I send emails quite infrequently, and will never share your email address with anyone else.</p>
 </section>
+<script>
+    // Submits via fetch so the reader stays on the page. Without JS the form
+    // posts normally and the function returns a plain HTML confirmation.
+    //
+    // A page can render this partial more than once (layout + shortcode), so
+    // guard the delegated listener — registering it twice would submit twice.
+    if (!window.__newsletterFormInit) {
+    window.__newsletterFormInit = true;
+    document.addEventListener("submit", async function (event) {
+        const form = event.target.closest("form[data-newsletter]");
+        if (!form) return;
+        event.preventDefault();
+
+        const button = form.querySelector("button[type=submit]");
+        const status = form.querySelector(".newsletter-status");
+        const original = button.textContent;
+        button.disabled = true;
+        button.textContent = "Subscribing…";
+        status.hidden = true;
+        status.classList.remove("is-error", "is-success");
+
+        try {
+            const response = await fetch(form.action, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                body: JSON.stringify({
+                    email: form.querySelector("input[name=email]").value,
+                    website_url: form.querySelector("input[name=website_url]").value
+                })
+            });
+            const result = await response.json();
+            status.textContent = result.message;
+            status.classList.add(result.ok ? "is-success" : "is-error");
+            if (result.ok) form.reset();
+        } catch (error) {
+            status.textContent = "Something went wrong. Please try again.";
+            status.classList.add("is-error");
+        } finally {
+            status.hidden = false;
+            button.disabled = false;
+            button.textContent = original;
+        }
+    });
+    }
+</script>
