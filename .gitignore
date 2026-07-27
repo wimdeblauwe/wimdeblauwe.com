@@ -4,3 +4,4 @@ todo.txt
 .hugo_build.lock
 resources
 .playwright-mcp
+.DS_Store
