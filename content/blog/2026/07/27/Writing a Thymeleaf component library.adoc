@@ -1,6 +1,6 @@
 ---
 title: "Writing a Thymeleaf component library"
-date: 2026-07-14
+date: 2026-07-27
 draft: false
 tags: ["thymeleaf", "spring-boot"]
 keywords: []
@@ -21,6 +21,17 @@ Users of the library should be able to use the components to quickly build a use
 
 <!--more-->
 
+[TIP]
+====
+This blog post is part of a series:
+
+* https://wimdeblauwe.com/blog/2026/07/27/writing-a-thymeleaf-component-library[Part 1: Setting up the library]
+* Part 2: Writing a component
+* Part 3: Support slots
+* Part 4: Using AlpineJS for interactivity
+====
+
+
 == Design goals
 
 The library has the following design goals:
@@ -33,7 +44,7 @@ The library has the following design goals:
 
 == Getting started
 
-We start the library as we do with any Spring Boot starter.
+We start the library as we do with any https://leanpub.com/crafting-spring-boot-starters[Spring Boot starter].
 Create a minimal `pom.xml` file:
 
 [source,xml]
@@ -704,7 +715,7 @@ The web console should automatically show the new message.
 It is also possible to adjust the sample specific CSS (and JS) files in the sample project and have them automatically reloaded in the browser.
 
 This is possible because we have 2 Vite development servers running, one for the library and one for the sample application.
-If you check the HTML source, you will see this:
+If you check the HTML source in the browser, you will see this:
 
 [source,html]
 ----
@@ -727,6 +738,6 @@ We used the library in build mode in a sample application and verified that the 
 
 The next step will be to write an actual component and use it in the sample application.
 
-This will be done in https://TODO[part 2] of this blog series.
+This will be done in part 2 of this blog series.
 
 If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
