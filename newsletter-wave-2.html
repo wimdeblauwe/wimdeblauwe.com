@@ -1,0 +1,187 @@
+<!--
+  Wave 2 newsletter — paste into EmailOctopus "Code your own" editor.
+  Send to tag: wave-2 (495 contacts — the 2025 cohort, none of whom have ever
+  received an email from this list)
+
+  Subject:   You signed up in 2025 — here is the first newsletter
+  Preheader: A new Thymeleaf component library series, plus the posts you missed.
+
+  Required merge tags {{UnsubscribeURL}} and {{SenderInfo}} are in the footer.
+  If the editor rejects the template asking for {{RewardsURL}}, add this next
+  to the unsubscribe link:  <a href="{{RewardsURL}}">Sent with EmailOctopus</a>
+
+  Before sending, per newsletter.md step 3:
+    - From address must be newsletter@wimdeblauwe.com (NOT the gmail address)
+    - Send a test to yourself; check Authentication-Results reads
+      header.from=wimdeblauwe.com, not eomail5.com
+    - Reply-To is wim.deblauwe@gmail.com — expect "who are you?" replies
+-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#faf9f5;margin:0;padding:0;">
+  <tr>
+    <td align="center" style="padding:24px 12px;">
+
+      <!-- preheader: shown in the inbox preview, hidden in the body -->
+      <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+        A new Thymeleaf component library series, plus the posts you missed.
+      </div>
+
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background-color:#ffffff;border:1px solid #e6e2d9;border-radius:12px;">
+        <tr>
+          <td style="padding:32px 32px 8px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+
+            <p style="margin:0 0 20px 0;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#c2702e;font-weight:700;">
+              Wim Deblauwe &middot; Newsletter
+            </p>
+
+            <p style="margin:0 0 16px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              Hi,
+            </p>
+
+            <p style="margin:0 0 16px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              You subscribed to this newsletter on
+              <a href="https://www.wimdeblauwe.com/" style="color:#c2702e;text-decoration:underline;">wimdeblauwe.com</a>
+              sometime in 2025, and then never heard a word from me. This is
+              the first email you are getting. I am sorry about that: I did keep
+              writing on the blog, I just never sent anything out.
+            </p>
+
+            <p style="margin:0 0 16px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              In case you need a refresher: I write about Spring Boot, Thymeleaf, testing and htmx.
+              That is what this newsletter will be about. Expect low volume: a short note when there is something new worth reading, not a weekly obligation.
+            </p>
+
+            <p style="margin:0 0 28px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              If none of that rings a bell, or it simply is not for you anymore, the
+              unsubscribe link at the bottom takes one click, no problem!
+            </p>
+
+            <hr style="border:none;border-top:1px solid #e6e2d9;margin:0 0 28px 0;">
+
+            <h2 style="margin:0 0 12px 0;font-size:21px;line-height:1.3;color:#13202f;font-weight:800;">
+              New series: writing a Thymeleaf component library
+            </h2>
+
+            <p style="margin:0 0 16px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              Part 1 of my new blog series is live. The series shows how to build a component library you can drop into
+              any Spring Boot application that uses Thymeleaf, so you can assemble a
+              UI without writing the same HTML and CSS over and over.
+            </p>
+
+            <p style="margin:0 0 20px 0;">
+              <a href="https://www.wimdeblauwe.com/blog/2026/07/27/writing-a-thymeleaf-component-library/"
+                 style="display:inline-block;background-color:#c2702e;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:12px 24px;border-radius:8px;">
+                Read part 1: Setting up the library
+              </a>
+            </p>
+
+            <p style="margin:0 0 8px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              Three more parts follow over the coming weeks:
+            </p>
+
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 28px 0;">
+              <tr><td style="padding:3px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#5d6673;">Part&nbsp;2 &mdash; Writing a component</td></tr>
+              <tr><td style="padding:3px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#5d6673;">Part&nbsp;3 &mdash; Support slots</td></tr>
+              <tr><td style="padding:3px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#5d6673;">Part&nbsp;4 &mdash; Using AlpineJS for interactivity</td></tr>
+            </table>
+
+            <hr style="border:none;border-top:1px solid #e6e2d9;margin:0 0 28px 0;">
+
+            <h2 style="margin:0 0 8px 0;font-size:21px;line-height:1.3;color:#13202f;font-weight:800;">
+              What you missed since you signed up
+            </h2>
+
+            <p style="margin:0 0 24px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              The first three form a single series on how I actually build Spring Boot
+              applications, end to end.<br/>
+              AI has made this more relevant, not less. A coding agent will happily produce
+              something that works and scatter it across your codebase; a clear architecture is
+              what keeps it on the rails. Settle on your conventions first, then let the agent
+              work inside them.
+            </p>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="padding:0 0 20px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+                  <a href="https://www.wimdeblauwe.com/blog/2025/06/24/how-i-write-production-ready-spring-boot-applications/" style="font-size:16px;font-weight:700;color:#13202f;text-decoration:none;">
+                    How I write production-ready Spring Boot applications &rarr;
+                  </a>
+                  <div style="margin-top:4px;font-size:15px;line-height:1.6;color:#5d6673;">
+                    Architecture, package structure and naming conventions, drawn from
+                    25&nbsp;years of writing Java.
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:0 0 20px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+                  <a href="https://www.wimdeblauwe.com/blog/2025/07/30/how-i-test-production-ready-spring-boot-applications/" style="font-size:16px;font-weight:700;color:#13202f;text-decoration:none;">
+                    How I test production-ready Spring Boot applications &rarr;
+                  </a>
+                  <div style="margin-top:4px;font-size:15px;line-height:1.6;color:#5d6673;">
+                    The testing approach that goes with that structure.
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:0 0 20px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+                  <a href="https://www.wimdeblauwe.com/blog/2025/09/08/how-i-document-production-ready-spring-boot-applications/" style="font-size:16px;font-weight:700;color:#13202f;text-decoration:none;">
+                    How I document production-ready Spring Boot applications &rarr;
+                  </a>
+                  <div style="margin-top:4px;font-size:15px;line-height:1.6;color:#5d6673;">
+                    Closing the series: keeping documentation useful and current.
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:0 0 20px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+                  <a href="https://www.wimdeblauwe.com/blog/2026/02/25/migrating-away-from-thymeleaf-layout-dialect/" style="font-size:16px;font-weight:700;color:#13202f;text-decoration:none;">
+                    Migrating away from Thymeleaf Layout Dialect &rarr;
+                  </a>
+                  <div style="margin-top:4px;font-size:15px;line-height:1.6;color:#5d6673;">
+                    Why I moved off the Layout Dialect, and what replaced it.
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:0 0 4px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+                  <a href="https://www.wimdeblauwe.com/blog/2026/07/07/testing-oauth2-client-login-with-mock-oauth2-server/" style="font-size:16px;font-weight:700;color:#13202f;text-decoration:none;">
+                    Testing OAuth2 client login with mock-oauth2-server &rarr;
+                  </a>
+                  <div style="margin-top:4px;font-size:15px;line-height:1.6;color:#5d6673;">
+                    Getting an OAuth2 login under test without standing up a real
+                    identity provider.
+                  </div>
+                </td>
+              </tr>
+            </table>
+
+            <hr style="border:none;border-top:1px solid #e6e2d9;margin:28px 0;">
+
+            <p style="margin:0 0 6px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              Thanks for your patience,
+            </p>
+            <p style="margin:0 0 32px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              Wim
+            </p>
+
+          </td>
+        </tr>
+      </table>
+
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
+        <tr>
+          <td style="padding:20px 32px 8px 32px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:1.7;color:#5d6673;">
+            <p style="margin:0 0 8px 0;">
+              You are receiving this because you subscribed at wimdeblauwe.com.
+            </p>
+            <p style="margin:0 0 8px 0;">
+              <a href="{{UnsubscribeURL}}" style="color:#5d6673;text-decoration:underline;">Unsubscribe</a> |
+              <a href="{{RewardsURL}}" style="color:#5d6673;text-decoration:underline;">Sent with EmailOctopus</a>
+            </p>
+            <p style="margin:0;">{{SenderInfo}}</p>
+          </td>
+        </tr>
+      </table>
+
+    </td>
+  </tr>
+</table>

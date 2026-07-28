@@ -1,8 +1,9 @@
 # Newsletter migration: Mailchimp → EmailOctopus
 
-Status as of 2026-07-27. **Migration complete — 667 subscribers live in EmailOctopus.**
-**Wave-1 sent 2026-07-27 from `newsletter@wimdeblauwe.com`, after a test send exposed a
-sender-identity bug. Open follow-ups below before wave-2.**
+Status as of 2026-07-28. **Migration complete — 667 subscribers live in EmailOctopus.**
+**Wave-1 sent 2026-07-27** from `newsletter@wimdeblauwe.com`, after a test send exposed a
+sender-identity bug. **Wave-2 sent 2026-07-28** (495 contacts, `newsletter-wave-2.html`).
+**Wave-3 (132) is the last one — gated on wave-2's numbers, see below.**
 Working files live in `~/Downloads/audience_export_18e5870fbf/` (**not** in this repo — they
 contain email addresses and this repo is on GitHub).
 
@@ -117,8 +118,9 @@ missing, but because sending from the unverified gmail-based From address bypass
 entire verified-domain configuration at once — DKIM, return-path *and* tracking. Fixing
 the From address switches all three over together.
 
-- [ ] Confirm on the next send that link hrefs point at `eot.wimdeblauwe.com`, not
-      `sptr.eomail5.com`.
+- [x] Confirm on the next send that link hrefs point at `eot.wimdeblauwe.com`, not
+      `sptr.eomail5.com`. **Verified in the delivered wave-1 mail (2026-07-28)** — the
+      From-address fix did switch DKIM, return-path and tracking over together, as expected.
 
 ### DMARC `rua=` reporting — deliberately skipped
 
@@ -150,18 +152,52 @@ publishes a wildcard authorisation and sends a weekly readable summary instead o
 `widit.be` already has `rua` pointing at itself, which is why reports already arrive for
 *that* domain and not this one.
 
-### Watch before committing to wave-2
+### Wave-1 result (measured 2026-07-28, ~24h after send)
 
-Per step 3, wave-2 is gated on wave-1's numbers: **bounces under ~2%** (under 1 hard bounce
-in 40) and **complaints under 0.1%**. With 40 contacts a single spam complaint is 2.5%, so
-read the rate as "any complaint at all is worth pausing over", not as a percentage.
+| Metric | Value | Gate | Verdict |
+|---|---|---|---|
+| Opens | **16 / 40 = 40%** | — (signal, not a gate) | Strong. 20–30% is typical; the cold-domain problem is not live. |
+| Bounces | **0** | under ~2% (i.e. 0 of 40) | Pass |
+| Complaints | **no figure shown in EmailOctopus** | under 0.1% | See below |
 
-Open rate is the other signal — these 40 are the friendliest segment (28 previously
-engaged + 2026 signups). If they open well, the domain starts building reputation and
-wave-2 is safer. If they don't, the cold-domain problem is still live and wave-2 at 495
-should wait.
+EmailOctopus surfaces no complaint count on this report. Absence of the metric is not the
+same as a measured zero — read the **unsubscribe count** as the proxy, since a Gmail/Outlook
+"report spam" click lands as an unsubscribe here. With 0 bounces and 40% opens the send is
+clearly healthy, so wave-2 was approved on that basis.
 
-Remaining after that: wave-2, wave-3, then step 7.
+*(The gate this replaced: bounces under ~2% — under 1 hard bounce in 40 — and complaints
+under 0.1%. With 40 contacts a single complaint is 2.5%, so it was read as "any complaint at
+all is worth pausing over", not as a percentage.)*
+
+## 2026-07-28 — wave-2 sent (495 contacts)
+
+`newsletter-wave-2.html`, to tag `wave-2`. Content differs from wave-1 because this cohort
+has **never** received anything: the opener says so directly, states what the newsletter is
+and its cadence, and makes the unsubscribe explicit — with a 1–2 year gap between signup and
+first email, that line is what turns a would-be spam complaint into an unsubscribe.
+
+Only part 1 of the Thymeleaf series is linked; parts 2–4 are still `draft: true` (dated
+2026-08-03/10/17) and their URLs 404. All other linked URLs verified 200 before sending.
+
+The plan's "you subscribed in \<month\> 2025" opener (step 3) was **not** used — the
+`Signup date` custom field is a date type and EmailOctopus merge tags substitute raw values
+without formatting, so `{{SignupDate}}` renders `2025-07-14`, not `July 2025`. Copy says
+"sometime in 2025" instead. A month-name opener would need a separate **text** custom field
+populated from the CSV at import time.
+
+### Watch before wave-3
+
+Wave-3 is 132 contacts from 2020–2024 — the coldest segment, some four to six years stale.
+Check wave-2 first, at ~48h:
+
+| Metric | Gate | Why |
+|---|---|---|
+| Bounces | under ~2% (under 10 of 495) | 495 never-emailed addresses is the first real test of list quality; the MX check only ran at import |
+| Complaints / unsubscribes | watch the **unsubscribe count** | EmailOctopus shows no complaint figure — see the wave-1 note above. A spike here, not the raw open rate, is the signal to stop |
+| Opens | no gate — expect well below wave-1's 40% | Wave-1 was the friendliest 40 (28 previously engaged). A lower number here is normal, not a failure |
+
+Per step 3, wave-3 is **re-permission only — drop non-openers.** Do not simply resend the
+wave-2 content to it. After that, step 7.
 
 ---
 
