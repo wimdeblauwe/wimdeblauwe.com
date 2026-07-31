@@ -1,0 +1,156 @@
+<!--
+  Wave 3 newsletter — paste into EmailOctopus "Code your own" editor.
+
+  Send to tag: wave-3a  (the random 30-contact canary — NOT wave-3)
+  Then, only if the canary clears its gate, send the same content to the
+  remaining 102 by drawing them from tag wave-3.
+
+  Subject:   Still want my newsletter?
+  Preheader: You signed up a few years ago. One click keeps you on the list.
+
+  THIS IS A RE-PERMISSION EMAIL, NOT A NEWSLETTER ISSUE.
+  Every wave-3 contact sits at MEMBER_RATING 2* or below — not one has ever
+  opened or clicked anything from this list, and the 2021-2023 signups were
+  sent the December 2024 campaign and ignored it. The goal is not readership
+  this send; it is a clean, small list of people who actively said yes.
+
+  Unsubscribes here are a SUCCESS, not a cost. So are non-responses.
+
+  How the "keep me" signal works:
+    EmailOctopus records clicks per contact, not per link, so ANY click in
+    this email counts as "wants to stay". Both content links below are
+    therefore valid keep signals. After ~2 weeks:
+      GET /campaigns/{id}/reports?status=clicked   -> keep these
+      everyone else -> delete
+    Do NOT use opens: 43% of wave-2's "openers" were bot-shaped, and opens
+    are inflated by Gmail image proxying, scanners and Apple MPP.
+
+  Do NOT reuse wave-2's opener. It said "This is the first email you are
+  getting", which is false for most of this cohort.
+
+  Before sending, per newsletter.md step 3:
+    - From address must be newsletter@wimdeblauwe.com (NOT the gmail address)
+    - Send a test to yourself; check Authentication-Results reads
+      header.from=wimdeblauwe.com, not eomail5.com
+    - Reply-To is wim.deblauwe@gmail.com — expect "who are you?" replies
+    - Confirm https://www.wimdeblauwe.com/newsletter-confirmed/ is live first;
+      the primary button points at it
+
+  Required merge tags {{UnsubscribeURL}} and {{SenderInfo}} are in the footer.
+-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#faf9f5;margin:0;padding:0;">
+  <tr>
+    <td align="center" style="padding:24px 12px;">
+
+      <!-- preheader: shown in the inbox preview, hidden in the body -->
+      <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+        You signed up a few years ago. One click keeps you on the list.
+      </div>
+
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background-color:#ffffff;border:1px solid #e6e2d9;border-radius:12px;">
+        <tr>
+          <td style="padding:32px 32px 8px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+
+            <p style="margin:0 0 20px 0;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#c2702e;font-weight:700;">
+              Wim Deblauwe &middot; Newsletter
+            </p>
+
+            <p style="margin:0 0 16px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              Hi,
+            </p>
+
+            <p style="margin:0 0 16px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              You signed up for my newsletter on
+              <a href="https://www.wimdeblauwe.com/" style="color:#c2702e;text-decoration:underline;">wimdeblauwe.com</a>
+              somewhere between 2020 and 2024 &mdash; quite possibly long enough ago
+              that you have no memory of doing it.
+            </p>
+
+            <p style="margin:0 0 16px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              I have barely used this list. If an email from me arrived in December
+              2024, that was the last one, and there was not much before it either.
+              That is entirely on me.
+            </p>
+
+            <p style="margin:0 0 24px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              I am starting it up properly now, so you deserve a straight question
+              before anything else lands in your inbox.
+            </p>
+
+            <p style="margin:0 0 20px 0;font-size:20px;line-height:1.4;color:#13202f;font-weight:800;">
+              Do you still want it?
+            </p>
+
+            <p style="margin:0 0 24px 0;">
+              <a href="https://www.wimdeblauwe.com/newsletter-confirmed/"
+                 style="display:inline-block;background-color:#c2702e;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:8px;">
+                Yes &mdash; keep me subscribed
+              </a>
+            </p>
+
+            <p style="margin:0 0 28px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              <strong>If you do not click, I will take you off the list.</strong>
+              You need not do anything, and there is nothing to unsubscribe from.
+              You signed up a long time ago and interests change &mdash; no hard
+              feelings, and no follow-up from me either way.
+            </p>
+
+            <hr style="border:none;border-top:1px solid #e6e2d9;margin:0 0 28px 0;">
+
+            <h2 style="margin:0 0 12px 0;font-size:19px;line-height:1.3;color:#13202f;font-weight:800;">
+              What you would be staying for
+            </h2>
+
+            <p style="margin:0 0 16px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              I write about Spring Boot, Thymeleaf, testing and htmx. Low volume: a
+              short note when there is something new worth reading, not a weekly
+              obligation.
+            </p>
+
+            <p style="margin:0 0 8px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              The most recent thing I published:
+            </p>
+
+            <p style="margin:0 0 28px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+              <a href="https://www.wimdeblauwe.com/blog/2026/07/27/writing-a-thymeleaf-component-library/" style="font-size:16px;font-weight:700;color:#13202f;text-decoration:none;">
+                Writing a Thymeleaf component library, part 1 &rarr;
+              </a>
+              <span style="display:block;margin-top:4px;font-size:15px;line-height:1.6;color:#5d6673;">
+                Building a component library you can drop into any Spring Boot
+                application that uses Thymeleaf, so you can assemble a UI without
+                writing the same HTML and CSS over and over.
+              </span>
+            </p>
+
+            <hr style="border:none;border-top:1px solid #e6e2d9;margin:0 0 28px 0;">
+
+            <p style="margin:0 0 6px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              Either way, thanks for the years of patience,
+            </p>
+            <p style="margin:0 0 32px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              Wim
+            </p>
+
+          </td>
+        </tr>
+      </table>
+
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
+        <tr>
+          <td style="padding:20px 32px 8px 32px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:1.7;color:#5d6673;">
+            <p style="margin:0 0 8px 0;">
+              You are receiving this because you subscribed at wimdeblauwe.com
+              between 2020 and 2024.
+            </p>
+            <p style="margin:0 0 8px 0;">
+              <a href="{{UnsubscribeURL}}" style="color:#5d6673;text-decoration:underline;">Unsubscribe immediately</a> |
+              <a href="{{RewardsURL}}" style="color:#5d6673;text-decoration:underline;">Sent with EmailOctopus</a>
+            </p>
+            <p style="margin:0;">{{SenderInfo}}</p>
+          </td>
+        </tr>
+      </table>
+
+    </td>
+  </tr>
+</table>
