@@ -1,6 +1,10 @@
 # Newsletter migration: Mailchimp → EmailOctopus
 
-Status as of 2026-07-31. **SENDING HALTED.**
+Status as of 2026-07-31. **SENDING PAUSED — list cleaned, wave-3 pending a canary split.**
+**285 bot contacts purged 2026-07-31**, leaving **207 subscribed**: wave-1's 40, wave-3's
+132, and 35 kept from wave-2. (667 imported − 174 bounce-suppressed − 1 unsubscribed − 285
+deleted. Only 174 of the 185 bounces suppressed themselves; the other 11 were soft bounces
+that stayed `subscribed` and went out with the purge.)
 **Wave-1 sent 2026-07-27** from `newsletter@wimdeblauwe.com`, after a test send exposed a
 sender-identity bug. **Wave-2 sent 2026-07-28** (495 contacts, `newsletter-wave-2.html`)
 and **bounced at 37.4%** — the 2025 cohort is a bot signup campaign, not an audience.
@@ -295,9 +299,14 @@ salvage in this cohort.
 
 **Zero complaints is the good news, and it matters for recovery.** The damage is purely
 invalid-recipient, not complaint-driven — much the more recoverable of the two failure
-modes. It also vindicates the wave-2 copy: the explicit "you signed up a year ago, here is
-the unsubscribe" framing converted what could have been complaints into one clean
-unsubscribe, exactly as intended.
+modes.
+
+**But do not read it as evidence that the copy works.** An earlier revision of this section
+claimed the "you signed up a year ago, here is the unsubscribe" framing had converted
+complaints into a clean unsubscribe. It cannot have: at most one human received wave-2, and
+bots do not file spam complaints. Zero complaints out of ~1 human is not a result. The only
+real human complaint data on record is wave-1's 40 — all previously engaged — which says
+nothing about how disengaged strangers react. **The copy is still untested.**
 
 **Do not use opens as a keep signal on this list.** At 43% bot-shaped they are worse than
 useless — they would have rescued ~20 bot addresses into the "engaged" segment and carried
@@ -371,7 +380,56 @@ bounded to the May–Sep 2025 window.
    friendly.
 6. **Fix the form before it refills the list** — see the reversed Turnstile decision under
    *Steps 4 & 5*. The hole is still open.
-7. Only then reconsider wave-3, as re-permission to a verified subset.
+7. Only then wave-3 — and **split it**, see below.
+
+## Wave-3 — send as a canary split, not in one go
+
+**Waiting does not repair reputation.** It is not a cooldown timer; reputation recovers
+through sustained good sending, not idle time. What time does buy is letting the bounce
+event age out of Gmail's rolling window, and that window is ~30 days, not a few days.
+"Wait a few days then send" leaves you approximately where you are now.
+
+### What wave-3 actually is
+
+`MEMBER_RATING` from the Mailchimp export, which the migration never looked at:
+
+| Cohort | Ratings | Read |
+|---|---|---|
+| wave-1 (42) | 2★=14, 3★=15, 4★=12 | 27 with real engagement history — hence 0 bounces, 40% opens |
+| wave-3 (133) | **1★=6, 2★=127** | **Not one contact above 2★** |
+
+2★ is Mailchimp's default and only rises with engagement, so **no wave-3 contact has ever
+opened or clicked anything sent from this list**, and 6 carry negative signals. The
+2021–2023 signups were mailed the Dec 2024 campaign and ignored it. Signup years:
+2020=2, 2021=19, 2022=34, 2023=31, 2024=47.
+
+These are real people — the bot fingerprints are absent (see the cohort comparison above).
+They are simply the least interested people on the list.
+
+### The split
+
+Send to a **random 30 of the 132**, wait 48h, then send the remaining 102 only if clean.
+
+| Gate on the 30 | Threshold |
+|---|---|
+| Bounces | under 2 |
+| Complaints (`?status=complained`) | 0 |
+| Unsubscribes | under 3 |
+
+**Why a subsample works here when wave-1 did not.** Wave-1 and wave-2 were different
+populations, so a clean wave-1 was never evidence about wave-2 — that is the reasoning
+error that sent 495 emails into the void. Wave-3 is one homogeneous cohort, so a *random*
+30 genuinely predicts the other 102. Draw it randomly; do not take the first 30
+alphabetically or by signup date.
+
+Expect 5–15% bounces on 4–6 year old addresses (7–20 of 132). Above the 2% gate, but
+nowhere near wave-2, and the canary catches it at 30 rather than 132.
+
+### Set expectations
+
+132 never-engaged contacts might yield 10–20 actual readers. That is the realistic prize.
+Re-permission only: send once, keep whoever responds, let the rest go. Do not build a
+recurring send on this segment.
 
 ---
 
@@ -408,7 +466,7 @@ complaints and bounces that can get a fresh account suspended. Send to a **tag s
 |---|---|---|---|
 | `wave-1` | **40** | Re-introduction. The 28 previously-engaged + 2026 signups — friendliest audience. | Sent 07-27. Clean: 0 bounces, 40% opens |
 | `wave-2` | 495 | The 2025 cohort. Open with "you subscribed in \<month\> 2025". | Sent 07-28. **37.4% bounce — cohort was bots** |
-| `wave-3` | 132 | 2020–2024 leftovers, coldest. Re-permission only; drop non-openers. | **Cancelled** pending remediation |
+| `wave-3` | 132 | 2020–2024 leftovers, coldest. Re-permission only; drop non-openers. | Pending — send as a **30 + 102 canary split** |
 
 Also available: `engaged` (28), `never-emailed` (~511), `mailed-before` (~156).
 
