@@ -416,6 +416,18 @@ Send to a **random 30 of the 132**, wait 48h, then send the remaining 102 only i
 | Complaints (`?status=complained`) | 0 |
 | Unsubscribes | under 3 |
 
+**The free Starter plan caps a list at 10 tags.** Creating the 11th fails with
+`403 out-of-limits`, which blocked the first attempt at tagging the canary batch. The cap
+is on tags existing on the list, not per contact, so the 11th fails for every contact at
+once — nothing is partially tagged, and the state stays clean. Free a slot with
+`tags.mjs delete <tag> --confirm`; the provenance-only tags (`mailchimp-import`,
+`never-emailed`) are the cheap ones, since the source CSVs in the working directory still
+carry that information. Then re-run `wave3-split.mjs apply` — the drawn sample is on disk,
+so it does not need redrawing.
+
+**Budget the remaining slots.** Every future cohort split costs one, so delete a tag when
+its wave is finished rather than accumulating them.
+
 **Why a subsample works here when wave-1 did not.** Wave-1 and wave-2 were different
 populations, so a clean wave-1 was never evidence about wave-2 — that is the reasoning
 error that sent 495 emails into the void. Wave-3 is one homogeneous cohort, so a *random*
