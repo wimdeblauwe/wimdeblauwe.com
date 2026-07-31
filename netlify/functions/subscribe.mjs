@@ -23,6 +23,13 @@ const EXTRA_BLOCKED = new Set([
   "silesia.life",
   "mailfroms.info",
   "hubmail.info",
+  // Found in the wave-2 fallout (2026-07-31). The 8,168-domain public blocklist matched
+  // none of these — see the 2025-cohort section in newsletter.md.
+  "mailgetget.asia",
+  "zikzak.gq",
+  "110416.xyz",
+  "apotekberjalan.com",
+  "thinhmin.com",
 ]);
 
 const EMAIL_RE =

@@ -1,9 +1,11 @@
 # Newsletter migration: Mailchimp → EmailOctopus
 
-Status as of 2026-07-28. **Migration complete — 667 subscribers live in EmailOctopus.**
+Status as of 2026-07-31. **SENDING HALTED.**
 **Wave-1 sent 2026-07-27** from `newsletter@wimdeblauwe.com`, after a test send exposed a
-sender-identity bug. **Wave-2 sent 2026-07-28** (495 contacts, `newsletter-wave-2.html`).
-**Wave-3 (132) is the last one — gated on wave-2's numbers, see below.**
+sender-identity bug. **Wave-2 sent 2026-07-28** (495 contacts, `newsletter-wave-2.html`)
+and **bounced at 37.4%** — the 2025 cohort is a bot signup campaign, not an audience.
+**Wave-3 is cancelled in its current form. Send nothing until the remediation below is
+done.** The "667 subscribers" figure is not real; see *The 2025 cohort is fake*.
 Working files live in `~/Downloads/audience_export_18e5870fbf/` (**not** in this repo — they
 contain email addresses and this repo is on GitHub).
 
@@ -165,6 +167,16 @@ same as a measured zero — read the **unsubscribe count** as the proxy, since a
 "report spam" click lands as an unsubscribe here. With 0 bounces and 40% opens the send is
 clearly healthy, so wave-2 was approved on that basis.
 
+> **Superseded 2026-07-31.** The proxy was only ever needed because the *UI* hides the
+> figure; the **API exposes complaints directly** — `GET /campaigns/{id}/reports?status=
+> complained`. Use that. The proxy is also now broken on this list: 185 of its 186
+> unsubscribes are bounces. See *Account standing* under wave-2.
+>
+> The deeper error was not the metric but the inference. Wave-1 was the previously-engaged
+> segment — structurally the one cohort that could not contain 2025 bot signups. "Wave-1
+> was clean, so wave-2 was approved on that basis" is the reasoning that let 495 go out.
+> A clean send to your friendliest 40 says nothing about the 495 behind it.
+
 *(The gate this replaced: bounces under ~2% — under 1 hard bounce in 40 — and complaints
 under 0.1%. With 40 contacts a single complaint is 2.5%, so it was read as "any complaint at
 all is worth pausing over", not as a percentage.)*
@@ -185,19 +197,144 @@ without formatting, so `{{SignupDate}}` renders `2025-07-14`, not `July 2025`. C
 "sometime in 2025" instead. A month-name opener would need a separate **text** custom field
 populated from the CSV at import time.
 
-### Watch before wave-3
+### Wave-2 result (measured 2026-07-31, ~72h after send) — FAILED
 
-Wave-3 is 132 contacts from 2020–2024 — the coldest segment, some four to six years stale.
-Check wave-2 first, at ~48h:
+| Metric | Value | Gate | Verdict |
+|---|---|---|---|
+| Bounces | **185 / 495 = 37.4%** | under ~2% (under 10 of 495) | **Fail, by ~18×** |
+| Unsubscribes | 1 / 310 delivered = 0.32% | watch for a spike | Pass |
+| Opens | 47 / 310 delivered = 15.2% (9.5% of sent) | no gate | Meaningless here — see below |
 
-| Metric | Gate | Why |
+The recipients who existed behaved fine. One unsubscribe out of 310 is a healthy number,
+and it means the "you signed up a year ago" framing worked. **The list is what failed.**
+
+Treat the 47 opens as an upper bound on humans, not a count of them: open tracking is a
+pixel load, and Gmail image proxying, security scanners and Apple MPP all inflate it.
+Delivered ≠ real, either — Gmail accepts-then-discards for some invalid mailboxes rather
+than bouncing, so the true bot share is *higher* than 37.4%, not lower.
+
+## The 2025 cohort is fake
+
+The mid-2025 signup spike was a bot campaign. Wave-2 was that spike, and it is why the
+send bounced. From `emailoctopus-import-670.csv`, wave-2's 495 contacts:
+
+| Signal | Measured | What a real audience looks like |
 |---|---|---|
-| Bounces | under ~2% (under 10 of 495) | 495 never-emailed addresses is the first real test of list quality; the MX check only ran at import |
-| Complaints / unsubscribes | watch the **unsubscribe count** | EmailOctopus shows no complaint figure — see the wave-1 note above. A spike here, not the raw open rate, is the signal to stop |
-| Opens | no gate — expect well below wave-1's 40% | Wave-1 was the friendliest 40 (28 previously engaged). A lower number here is normal, not a failure |
+| Domains | 386 gmail + 91 yahoo = **96.4%** | long tail of corporate/EU/self-hosted — there are ~18 |
+| Local-part shape | **318 (67%)** match `name` + exactly 2 digits | mixed `first.last`, initials, handles |
+| Distinct signup IPs | **489 of 495** — near-zero reuse | organic traffic repeats IPs |
+| Geography | IN 64, BR 60, VN 37, **KH 37**, ID 28, ZA 24, BD 23, KE 16 | EU/US-weighted, for a Belgian Spring/Thymeleaf blog |
+| Signup months | 52 / 109 / **164** / 86 / 63 across May–Sep 2025 | not a 5-month rectangular pulse |
 
-Per step 3, wave-3 is **re-permission only — drop non-openers.** Do not simply resend the
-wave-2 content to it. After that, step 7.
+91 yahoo.com addresses on a modern Java blog, and Cambodia as the #4 country, are not
+plausible. Near-zero IP reuse across 495 signups is *more* damning than reuse would be —
+it means a residential-proxy network was rotating exits per request.
+
+**Every check in `subscribe.mjs` passed these.** gmail.com and yahoo.com are not on the
+disposable blocklist; the generated names were varied enough to dodge the pattern
+clusters; and `resolveMx` (line 122) resolves the **domain**, so `anything@gmail.com`
+passes validation and then hard-bounces at the mailbox. Domain-level MX cannot detect
+this class of address. Only mailbox-level verification or a challenge at signup can.
+
+### What this costs
+
+- **Gmail reputation.** 386 of the 495 targeted gmail.com, and most did not exist. A
+  sender blasting hundreds of non-existent Gmail mailboxes on its second-ever send is
+  behaviourally identical to a dictionary spam attack. This is the worst possible event
+  for a domain still warming, and it is the real damage — worse than the bounce number.
+- **Account standing.** 37.4% is far above the ~5% that triggers automated ESP review.
+  **Check whether EmailOctopus has flagged or suspended the account — do this first.**
+- **The list.** Provable humans across all sends: 16 wave-1 openers + at most 47 wave-2
+  openers ≈ **63**, against a nominal 667. Wave-3's 132 (2020–2024) predate the attack
+  and are probably genuine, but are 4–6 years stale and untested.
+
+### Account standing — checked 2026-07-31, OK
+
+Not suspended, not flagged. **186 contacts moved to `unsubscribed`** = the 185 bounces
+plus the 1 genuine unsubscribe.
+
+EmailOctopus's contact-status enum is only `subscribed` / `unsubscribed` / `pending` —
+**there is no "bounced" contact status**, so bounces have nowhere else to go. `bounced`
+exists only as a *campaign report* status, not on the contact record.
+
+Two consequences:
+
+- **~11 bounced addresses are still `subscribed` and will bounce again.** 495 wave-2
+  contacts − 320 still subscribed = 175 that left the subscribed state, one of which is
+  the genuine unsubscriber. So ~174 contacts were suppressed by bouncing, against **185
+  bounce events** — the ~11 soft bounces stayed put. (The list's 186 unsubscribed = those
+  175 + the 11-address Mailchimp suppression list imported in step 2.)
+  **Correction:** an earlier revision of this section claimed hard-vs-soft didn't matter
+  because everything collapses to `unsubscribed`. Only *hard* bounces do. `wave2-triage.mjs`
+  now marks any survivor appearing in the bounce report as DELETE, above every keep rule.
+- **The unsubscribe count is dead as a complaint proxy.** Wave-1's section and the wave-2
+  watch table both lean on it, because the UI report shows no complaint figure. With 185
+  of 186 unsubscribes being bounces, that reading is now meaningless. **Use the API
+  instead — it exposes complaints directly**, which the UI does not:
+
+  ```
+  GET /campaigns/{id}/reports?status=complained   # the real complaint count
+  GET /campaigns/{id}/reports?status=opened       # the 47 openers, with addresses
+  GET /campaigns/{id}/reports?status=bounced      # the 185, with addresses
+  GET /lists/{id}/contacts?tag=wave-2&status=subscribed   # the 310 survivors
+  ```
+
+### Measured engagement — wave-2 produced at most one human
+
+Pulled via API on 2026-07-31 (`wave2-triage.mjs audit`), none of it visible in the UI:
+
+| Report | Count | Reading |
+|---|---|---|
+| complained | **0** | Nobody marked it spam |
+| unsubscribed | 1 | The genuine one |
+| opened | 47 | **20 (43%) are bot-shaped** — pixel loads, not readers |
+| clicked | **2** | **1 of the 2 is bot-shaped** — consistent with link-scanning (Proofpoint, Outlook ATP) |
+
+**Out of 495 sent, one click that plausibly came from a person.** There is no audience to
+salvage in this cohort.
+
+**Zero complaints is the good news, and it matters for recovery.** The damage is purely
+invalid-recipient, not complaint-driven — much the more recoverable of the two failure
+modes. It also vindicates the wave-2 copy: the explicit "you signed up a year ago, here is
+the unsubscribe" framing converted what could have been complaints into one clean
+unsubscribe, exactly as intended.
+
+**Do not use opens as a keep signal on this list.** At 43% bot-shaped they are worse than
+useless — they would have rescued ~20 bot addresses into the "engaged" segment and carried
+the contamination into every future send. `wave2-triage.mjs` ranks address shape above
+opens for this reason; only clicks are treated as a signal that a pixel cannot fake.
+
+### Wave-1 and wave-3 are genuine — the attack is confined to 2025
+
+Same measurements as the table above, run against the other 175 contacts:
+
+| Signal | wave-2 (495) | wave-1 + wave-3 (175) |
+|---|---|---|
+| `name`+2digits | 318 (67%) | **11 (6.3%)** |
+| yahoo.com | 91 | **4** |
+| Top countries | IN, BR, VN, KH, ID, ZA | **US 23, IN 14, UK 9, NL 8, DE 7, BE 5** |
+| Domain tail | ~18 | outlook, icloud, hotmail, yandex, yahoo.gr, wisdomofcode.com |
+
+US/UK/NL/DE/BE with a real provider spread is what this blog's audience should look like.
+**Wave-3's 132 are real people** — 4–6 years stale, but not bots. The bot campaign is
+bounded to the May–Sep 2025 window.
+
+### Remediation, in order
+
+1. **Send nothing.** Not wave-3, not a "sorry" mail. Another send now compounds it.
+2. ~~Check EmailOctopus account standing.~~ Done 07-31, clean.
+3. **Purge the wave-2 remnant.** 310 are still marked `subscribed` and only ~47 showed
+   any sign of life. The bounces suppressed themselves; **the silent ones did not**, and
+   they are the more dangerous half — Gmail accepts-then-discards for some dead mailboxes,
+   so a resend to them bounces *less* while hurting reputation *more* (spam placement
+   rather than rejection). Keep the openers and the ~18 non-gmail/yahoo; delete the rest.
+4. **Set up Google Postmaster Tools** on `wimdeblauwe.com` before sending again. Domain
+   reputation is now the binding constraint and it is currently invisible — this is the
+   monitoring gap, not DMARC `rua` (bounces are invalid recipients, not an auth failure,
+   so `rua` would not have caught this and still wouldn't).
+5. **Fix the form before it refills the list** — see the reversed Turnstile decision in
+   step 5. The hole is still open.
+6. Only then reconsider wave-3, as re-permission to a verified subset.
 
 ---
 
@@ -230,16 +367,24 @@ who already left can be re-mailed.
 514 people have never heard from you and the account is new. A single 670-blast risks
 complaints and bounces that can get a fresh account suspended. Send to a **tag segment**:
 
-| Segment | Size | Content |
-|---|---|---|
-| `wave-1` | **40** | Re-introduction. The 28 previously-engaged + 2026 signups — friendliest audience. |
-| `wave-2` | 495 | The 2025 cohort. Open with "you subscribed in \<month\> 2025". |
-| `wave-3` | 132 | 2020–2024 leftovers, coldest. Re-permission only; drop non-openers. |
+| Segment | Size | Content | Outcome |
+|---|---|---|---|
+| `wave-1` | **40** | Re-introduction. The 28 previously-engaged + 2026 signups — friendliest audience. | Sent 07-27. Clean: 0 bounces, 40% opens |
+| `wave-2` | 495 | The 2025 cohort. Open with "you subscribed in \<month\> 2025". | Sent 07-28. **37.4% bounce — cohort was bots** |
+| `wave-3` | 132 | 2020–2024 leftovers, coldest. Re-permission only; drop non-openers. | **Cancelled** pending remediation |
 
 Also available: `engaged` (28), `never-emailed` (~511), `mailed-before` (~156).
 
 Between waves check: **bounces under ~2%, complaints under 0.1%**. If wave 1 looks clean,
 continue. If 40 addresses bounce hard, stop and diagnose before burning 495 more.
+
+**The wave strategy worked — it is the reason this was survivable.** Blasting all 670 at
+once would have put the same 185 bounces into a single send with no prior clean history,
+and taken the account down. What it could not do is catch the problem *before* wave-2,
+because wave-1's segment was the previously-engaged cohort — the one group guaranteed not
+to contain 2025 bot signups. **A clean wave-1 was never evidence about wave-2's quality.**
+Next time, order waves so the first send samples the segment you are least sure of, or
+verify a random sample of a cohort before mailing all of it.
 
 Before each send: send a test to yourself, and make sure reply-to is a mailbox you read —
 after 19 months you will get "who are you?" replies worth answering.
@@ -292,11 +437,20 @@ Notes on the implementation:
   and could resurrect someone from the suppression list.
 - Works without JavaScript — the function returns a plain HTML page for non-`fetch` posts.
 - Verified: 7 logic cases pass, Hugo builds, layout checked at desktop and 390px.
-- **Cloudflare Turnstile is deliberately deferred.** All 71 junk entries would have been
-  caught by checks 3–4 alone. At ~23 bots/year, adding a widget to a form already converting
-  at ~0.1% isn't worth the friction. Add only if junk keeps arriving: client widget → hidden
-  `cf-turnstile-response` → verify at
-  `https://challenges.cloudflare.com/turnstile/v0/siteverify`.
+- **Cloudflare Turnstile — DEFERRAL REVERSED 2026-07-31. Add it.** The original reasoning
+  was: "all 71 junk entries would have been caught by checks 3–4 alone; at ~23 bots/year a
+  widget isn't worth the friction on a form converting at ~0.1%." **Both halves were wrong,
+  because the bot count was read off `newsletter-junk-71.csv` — which only ever contained
+  the bots that were *easy to spot*.** Wave-2's 37.4% bounce exposed ~474 more in May–Sep
+  2025 alone: roughly **100× the estimate**, and checks 3–4 do *not* catch them, since they
+  use real gmail.com/yahoo.com domains that pass both the blocklist and the MX lookup. The
+  0.1% conversion rate that made the friction look expensive was itself an artifact — the
+  denominator was inflated by the same bots. Client widget → hidden `cf-turnstile-response`
+  → verify at `https://challenges.cloudflare.com/turnstile/v0/siteverify`.
+- **Domain-level MX is not address validation.** `resolveMx` (line 122) proves the domain
+  can receive mail, not that the mailbox exists. It earns its keep against typos like
+  `outlookc.om`, but it is structurally blind to `plausiblename47@gmail.com`. Closing that
+  gap needs either a challenge at signup (above) or mailbox-level verification.
 
 ## Step 6 — Double opt-in *(done)*
 
@@ -316,12 +470,19 @@ See the 2026-07-27 section above — this bit the wave-1 send twice.
 
 ## Follow-up: growth, not ads
 
-Signup history shows a large spike — **474 signups May–Sep 2025, peaking at 164 in July
-2025** — then a fall back to ~2/month. Against ~2K monthly users that's roughly **0.1%
-conversion**, where 0.5–2% is typical.
+**Superseded 2026-07-31 — the premise was wrong.** This section read the mid-2025 spike as
+a growth win worth reverse-engineering: "474 signups May–Sep 2025, peaking at 164 in July,
+then a fall back to ~2/month… something in mid-2025 worked very well."
 
-Something in mid-2025 worked very well. Finding out what is worth more than any display-ad
-revenue: at ~3–5K pageviews/month, AdSense would pay roughly $3–15/month, wouldn't qualify
+Nothing worked. That spike is the bot campaign — same months, same shape, and it is exactly
+the cohort that bounced at 37.4%. There is no tactic to rediscover. **~2 signups/month is
+not a fall back to baseline; it is the baseline**, and the ~0.1% conversion figure was
+computed against a denominator the bots inflated, so the real rate was never that bad.
+
+The ad arithmetic below is unaffected and still holds — if anything more so, since the true
+list is ~63 provable humans rather than 667:
+
+At ~3–5K pageviews/month, AdSense would pay roughly $3–15/month, wouldn't qualify
 for Mediavine (50K sessions) or Raptive (100K pageviews), and would force a cookie-consent
 banner onto a currently tracker-light site. The three product placements already in
 `layouts/blog/single.html` are worth far more per visitor — one Leanpub sale ≈ two to three
