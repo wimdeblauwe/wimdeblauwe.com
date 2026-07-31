@@ -328,13 +328,50 @@ bounded to the May–Sep 2025 window.
    they are the more dangerous half — Gmail accepts-then-discards for some dead mailboxes,
    so a resend to them bounces *less* while hurting reputation *more* (spam placement
    rather than rejection). Keep the openers and the ~18 non-gmail/yahoo; delete the rest.
-4. **Set up Google Postmaster Tools** on `wimdeblauwe.com` before sending again. Domain
-   reputation is now the binding constraint and it is currently invisible — this is the
-   monitoring gap, not DMARC `rua` (bounces are invalid recipients, not an auth failure,
-   so `rua` would not have caught this and still wouldn't).
-5. **Fix the form before it refills the list** — see the reversed Turnstile decision in
-   step 5. The hole is still open.
-6. Only then reconsider wave-3, as re-permission to a verified subset.
+4. **Set up Google Postmaster Tools** on the apex `wimdeblauwe.com` — that is the DKIM
+   `d=` domain, and Google attributes to the DKIM domain when it and SPF differ.
+   (`eom.wimdeblauwe.com`, the return-path, is optional and secondary.) Verification is a
+   TXT record at the apex; **it is not an SPF record, so it does not conflict with the
+   single-`v=spf1` rule above.** This is the monitoring gap, not DMARC `rua` — bounces are
+   invalid recipients, not an auth failure, so `rua` would not have caught this.
+
+   **Two limits, so an empty dashboard is not read as good news:**
+   - **It does not backfill.** Collection starts at verification, so the 2026-07-28 event
+     will never appear there. Set it up anyway — it is insurance against the next one.
+   - **It will probably stay empty at this volume.** Google needs meaningful daily volume
+     to Gmail (order of 100+/day) before the reputation dashboards populate. A ~172-person
+     list sending occasionally will show sparse data or none. **Postmaster Tools cannot
+     tell you whether it is safe to send wave-3.**
+
+5. **Seed test before any real send — this is what replaces the dashboard.** Works at any
+   volume, and it is the same technique that caught the original sender-identity bug.
+   `seed-test.mjs` (in the working dir) adds a `seed-test`-tagged segment, and removes it
+   afterwards:
+
+   ```
+   node seed-test.mjs add       # reads seed-addresses.txt
+   # send a campaign to the seed-test tag, record placement per inbox
+   node seed-test.mjs remove    # do not skip — seeds must not linger in the list
+   ```
+
+   Seeds are created `subscribed`, not `pending`: double opt-in is on, and a pending
+   contact never receives the campaign.
+
+   **Record Inbox / Promotions / Spam per provider. Placement is the signal — not whether
+   it arrived.** Weight the set to the real audience (gmail 115, outlook 5, yahoo 4,
+   icloud 3, hotmail 3 across wave-1 + wave-3): a Gmail seed matters more than the rest
+   combined, then Microsoft, then Yahoo/iCloud, plus `wim.deblauwe@widit.be` for
+   corporate filtering.
+
+   **Do not seed `wim.deblauwe@gmail.com`.** It is the campaign Reply-To, and Gmail
+   personalises placement around correspondence history — it will inbox regardless of
+   domain reputation and report all-clear while strangers get filtered. Use a Gmail
+   account with **no** prior correspondence. This is the same error as reading a clean
+   wave-1 as evidence about wave-2: testing against the one recipient guaranteed to be
+   friendly.
+6. **Fix the form before it refills the list** — see the reversed Turnstile decision under
+   *Steps 4 & 5*. The hole is still open.
+7. Only then reconsider wave-3, as re-permission to a verified subset.
 
 ---
 
