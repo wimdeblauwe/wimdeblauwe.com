@@ -19,11 +19,17 @@
   How the "keep me" signal works:
     EmailOctopus records clicks per contact, not per link, so ANY click in
     this email counts as "wants to stay". Both content links below are
-    therefore valid keep signals. After ~2 weeks:
+    therefore valid keep signals. Two weeks after the send:
       GET /campaigns/{id}/reports?status=clicked   -> keep these
       everyone else -> delete
     Do NOT use opens: 43% of wave-2's "openers" were bot-shaped, and opens
     are inflated by Gmail image proxying, scanners and Apple MPP.
+
+    THE BODY PROMISES TWO WEEKS. Actually do the deletion at two weeks.
+    Saying "I will remove you" and then not doing it makes the next
+    re-permission ask worthless, and leaves you holding exactly the dead
+    weight this send exists to shed. The deadline is deliberately relative
+    rather than a fixed date, so it stays correct if the send slips.
 
   Do NOT reuse wave-2's opener. It said "This is the first email you are
   getting", which is false for most of this cohort.
@@ -89,10 +95,10 @@
             </p>
 
             <p style="margin:0 0 28px 0;font-size:16px;line-height:1.65;color:#1b2531;">
-              <strong>If you do not click, I will take you off the list.</strong>
-              You need not do anything, and there is nothing to unsubscribe from.
-              You signed up a long time ago and interests change &mdash; no hard
-              feelings, and no follow-up from me either way.
+              <strong>If you do not click, I will take you off the list in two
+              weeks.</strong> You need not do anything, and there is nothing to
+              unsubscribe from. You signed up a long time ago and interests change
+              &mdash; no hard feelings, and no follow-up from me either way.
             </p>
 
             <hr style="border:none;border-top:1px solid #e6e2d9;margin:0 0 28px 0;">

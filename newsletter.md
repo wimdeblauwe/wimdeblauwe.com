@@ -437,10 +437,31 @@ alphabetically or by signup date.
 Expect 5–15% bounces on 4–6 year old addresses (7–20 of 132). Above the 2% gate, but
 nowhere near wave-2, and the canary catches it at 30 rather than 132.
 
+### The email — `newsletter-wave-3.html`
+
+Not a newsletter issue. It asks one question and makes silence the default outcome: click
+to stay, no click and you are removed. Sending a normal issue to people who have never
+engaged assumes a relationship the data says does not exist.
+
+- **Retention is decided on clicks, not opens.** EmailOctopus records clicks per contact
+  rather than per link, so any click counts. Opens are unusable — 43% of wave-2's openers
+  were bot-shaped, plus Gmail proxying, scanners and Apple MPP.
+  `GET /campaigns/{id}/reports?status=clicked` → keep. Everyone else → delete.
+- **The body promises removal in two weeks. Honour it.** Saying "I will remove you" and
+  then not doing it makes any future re-permission ask worthless, and leaves exactly the
+  dead weight this send exists to shed. The deadline is relative, not a fixed date, so it
+  stays correct if the send slips.
+- **Does not reuse wave-2's opener.** That said "this is the first email you are getting",
+  which is false here — many of this cohort received the Dec 2024 send.
+- `/newsletter-confirmed/` is the landing page for the keep-me button. Confirm it is live
+  before sending; it went up 2026-07-31.
+
 ### Set expectations
 
-132 never-engaged contacts might yield 10–20 actual readers. That is the realistic prize.
-Re-permission only: send once, keep whoever responds, let the rest go. Do not build a
+132 never-engaged contacts might yield 10–20 actual readers, and the canary batch of 30
+might yield 2–5. That is the realistic prize, and a low response rate is the expected
+result rather than a failure. Unsubscribes and non-responses are both successes here.
+Re-permission only: send once, keep whoever clicks, let the rest go. Do not build a
 recurring send on this segment.
 
 ---
