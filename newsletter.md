@@ -406,6 +406,16 @@ opened or clicked anything sent from this list**, and 6 carry negative signals. 
 These are real people — the bot fingerprints are absent (see the cohort comparison above).
 They are simply the least interested people on the list.
 
+### Status: canary sent 2026-07-31
+
+Sent to tag `wave-3a` (30 contacts). Two dated checkpoints follow — **both are easy to
+let slip, and the second is a promise made in the email body**:
+
+| When | Date | Do |
+|---|---|---|
+| +48h | **2026-08-02** | Read the gate below. If clean, send the same content to the remaining 102. |
+| +2 weeks | **2026-08-14** | `?status=clicked` → keep. **Delete everyone else.** The email promised this. |
+
 ### The split
 
 Send to a **random 30 of the 132**, wait 48h, then send the remaining 102 only if clean.
