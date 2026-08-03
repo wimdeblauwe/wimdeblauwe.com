@@ -26,7 +26,7 @@ Users of the library should be able to use the components to quickly build a use
 This blog post is part of a series:
 
 * https://wimdeblauwe.com/blog/2026/07/27/writing-a-thymeleaf-component-library[Part 1: Setting up the library]
-* Part 2: Writing a component
+* https://www.wimdeblauwe.com/blog/2026/08/03/writing-a-thymeleaf-component-library---part-2/[Part 2: Writing a component]
 * Part 3: Support slots
 * Part 4: Using AlpineJS for interactivity
 ====
@@ -738,6 +738,6 @@ We used the library in build mode in a sample application and verified that the 
 
 The next step will be to write an actual component and use it in the sample application.
 
-This will be done in part 2 of this blog series.
+This will be done in https://www.wimdeblauwe.com/blog/2026/08/03/writing-a-thymeleaf-component-library---part-2/[part 2] of this blog series.
 
 If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
