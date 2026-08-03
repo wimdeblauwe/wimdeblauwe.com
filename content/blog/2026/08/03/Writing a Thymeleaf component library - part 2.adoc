@@ -1,7 +1,7 @@
 ---
 title: "Writing a Thymeleaf component library - part 2"
 date: 2026-08-03
-draft: true
+draft: false
 tags: ["thymeleaf", "spring-boot"]
 keywords: []
 ---
@@ -15,7 +15,7 @@ keywords: []
 :2c: ::
 :underscore: _
 
-In http://TODO[part 1] we created a Thymeleaf component library that can be used in a Spring Boot application.
+In https://www.wimdeblauwe.com/blog/2026/07/27/writing-a-thymeleaf-component-library/[part 1] we created a Thymeleaf component library that can be used in a Spring Boot application.
 There is a sample application that uses the library, and there is full live reload support for changing the CSS and JS files in the library.
 We will create an actual component in the library and use it in the sample application.
 
