@@ -413,8 +413,33 @@ let slip, and the second is a promise made in the email body**:
 
 | When | Date | Do |
 |---|---|---|
-| +48h | **2026-08-02** | Read the gate below. If clean, send the same content to the remaining 102. |
-| +2 weeks | **2026-08-14** | `?status=clicked` → keep. **Delete everyone else.** The email promised this. |
+| +48h | **2026-08-02** | ~~Read the gate. If clean, send the same content to the remaining 102.~~ **Done 2026-08-03: all gates passed, remaining batch sent.** |
+| +2 weeks | **2026-08-14** | `?status=clicked` → keep. **Delete everyone else.** The email promised this. Covers the whole cohort — both the 30 and the 100. |
+
+**Remaining batch sent 2026-08-03.** Same `newsletter-wave-3.html`, verbatim, after the
+canary cleared all three gates. **100 contacts, not the 102 predicted** — 2 of wave-3 had
+dropped out of `subscribed` since the split. Segment was **has tag `wave-3` AND NOT tag
+`wave-3a`**: the 30 canary contacts still carry the `wave-3` tag, so targeting `wave-3`
+alone would have re-mailed them. The 2026-08-14 prune now applies to all of `wave-3`.
+
+#### Canary result (measured 2026-08-03, ~48h after send) — ALL GATES PASS
+
+30 sent, ~29 delivered. Pulled via `wave3-followup.mjs report` (campaign
+`bfa9c05e-8cac-11f1-b84c-a3273ded34a4`, sent 2026-07-31T07:06Z).
+
+| Metric | Value | Gate | Verdict |
+|---|---|---|---|
+| Bounces | **1 / 30 = 3.3%** | under 2 | **Pass** — below the 5–15% expected on 4–6-year-old addresses |
+| Complaints | **0** | exactly 0 | **Pass** (API `?status=complained` — UI hides it) |
+| Unsubscribes | **0** | under 3 | **Pass** |
+| Clicks | **6 / 30 = 20%** | — (keep signal, not a gate) | Strong. The doc set expectations at 2–5 readers; this is at/above the top |
+| Opens | 10 | — | Not a keep signal — bot/proxy-inflated per wave-2 |
+
+**Gate cleared — cleared to send the remaining 102** (same `newsletter-wave-3.html`, tag
+`wave-3` excluding `wave-3a`). 6 clicks is genuine engagement — more than wave-2's 495
+produced — though discount 1–2 as possible link-scanner clicks (Proofpoint/Outlook ATP).
+The 2026-08-14 checkpoint still stands: `wave3-followup.mjs prune` keeps the clickers and
+deletes the rest, honouring the removal the email body promised.
 
 ### The split
 
