@@ -947,27 +947,81 @@ a.book-read-more-link:hover { background: var(--copper-bright); color: #fff; }
 }
 
 /* Testimonials */
-.testimonial { display: flex; align-items: center; }
-.testimonial:not(first-child) { margin-top: 2rem; }
-.testimonial-image { margin-left: 1rem; margin-right: 1rem; display: flex; flex-direction: column; flex-shrink: 0; align-items: center; }
-.testimonial-image > img { width: 150px; height: 150px; object-fit: cover; border-radius: 50%; }
-.testimonial-text { position: relative; }
+.testimonial {
+  display: flex;
+}
+
+.testimonial:not(first-child) {
+  margin-top: 2rem;
+}
+
+.testimonial-image {
+  margin-left: 1rem;
+  margin-right: 1rem;
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  align-items: center;
+  width: 13rem;
+}
+
+.testimonial-image > img {
+  width: 150px;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.testimonial-text {
+  position: relative;
+}
+
 .testimonial-text > p:first-of-type::before {
   content: "\201C";
-  font-size: 270px; height: 82px; line-height: 1;
-  position: absolute; top: -60px; left: -40px; z-index: -1;
+  font-size: 270px;
+  height: 82px;
+  line-height: 1;
+  position: absolute;
+  top: -60px;
+  left: -40px;
+  z-index: -1;
   font-family: var(--display);
   color: var(--copper-soft);
 }
-.testimonial-person { font-size: 1.1rem; font-weight: 600; }
-.testimonial-person-title { font-size: .8rem; color: var(--ink-soft); }
-@media only screen and (max-width: 768px) {
-  .testimonial { flex-direction: column; }
-  .testimonial-image { flex-direction: row; }
-  .testimonial-image > img { margin-right: 2rem; }
+
+.testimonial-person {
+  font-size: 1.1rem;
+  font-weight: 600;
 }
+
+.testimonial-person-title {
+  font-size: .8rem;
+  color: var(--ink-soft);
+}
+
+@media only screen and (max-width: 768px) {
+  .testimonial {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .testimonial-image {
+    flex-direction: row;
+    width: unset;
+    margin-top: unset;
+  }
+
+  .testimonial-image > img {
+    margin-right: 2rem;
+  }
+}
+
 @media only screen and (max-width: 425px) {
-  .testimonial-image > img { width: 100px; height: 100px; }
+  .testimonial-image > img {
+    width: 100px;
+    height: 100px;
+  }
 }
 
 /* Projects page ("B3c" from the fix-proposals review) */
