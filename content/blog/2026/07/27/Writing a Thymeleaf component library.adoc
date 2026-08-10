@@ -27,7 +27,7 @@ This blog post is part of a series:
 
 * https://wimdeblauwe.com/blog/2026/07/27/writing-a-thymeleaf-component-library[Part 1: Setting up the library]
 * https://www.wimdeblauwe.com/blog/2026/08/03/writing-a-thymeleaf-component-library---part-2/[Part 2: Writing a component]
-* Part 3: Support slots
+* https://www.wimdeblauwe.com/blog/2026/08/10/writing-a-thymeleaf-component-library---part-3/[Part 3: Support slots]
 * Part 4: Using AlpineJS for interactivity
 ====
 
