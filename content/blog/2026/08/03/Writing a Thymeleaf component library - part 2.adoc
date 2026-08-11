@@ -601,6 +601,6 @@ public class AttrsExceptAttributeProcessor extends AbstractAttributeTagProcessor
 This part showed how to create an actual component using a custom Thymeleaf dialect, with support for custom attributes and a passthrough of any additional attributes.
 
 One important feature is still missing: the ability to add arbitrary content _inside_ a component.
-In https://www.wimdeblauwe.com/blog/2026/08/03/writing-a-thymeleaf-component-library---part-2/[part 3] we will add support for slots to make this possible.
+In https://www.wimdeblauwe.com/blog/2026/08/10/writing-a-thymeleaf-component-library---part-3/[part 3] we will add support for slots to make this possible.
 
 If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
