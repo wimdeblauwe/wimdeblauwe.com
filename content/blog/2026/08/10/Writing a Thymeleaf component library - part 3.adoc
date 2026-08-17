@@ -526,7 +526,6 @@ image::{imagesdir}/2026/07/thymeleaf-component-library-5.png[]
 
 This concludes the third part of this series on writing a Thymeleaf component library.
 From this point on, we can add more components to the library, and use them in our applications.
-In the fourth and final part of this series, we will create an interactive component that uses AlpineJS for interactivity.
-
+In the https://www.wimdeblauwe.com/blog/2026/08/17/writing-a-thymeleaf-component-library---part-4/[fourth and final part of this series], we will create an interactive component that uses AlpineJS for interactivity.
 
 If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].

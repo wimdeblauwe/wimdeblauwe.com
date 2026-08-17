@@ -1,7 +1,7 @@
 ---
 title: "Writing a Thymeleaf component library - part 4"
 date: 2026-08-17
-draft: true
+draft: false
 tags: ["thymeleaf", "spring-boot", "alpine"]
 keywords: []
 ---
@@ -15,7 +15,7 @@ keywords: []
 :2c: ::
 :underscore: _
 
-After http://TODOpart1[creating a Thymeleaf component library], http://TODOpart2[building a component] and adding http://TODOpart3[support for slots], we will now turn our attention to adding client-side interactivity to a component.
+After https://wimdeblauwe.com/blog/2026/07/27/writing-a-thymeleaf-component-library[creating a Thymeleaf component library], https://www.wimdeblauwe.com/blog/2026/08/03/writing-a-thymeleaf-component-library---part-2/[building a component] and adding https://www.wimdeblauwe.com/blog/2026/08/10/writing-a-thymeleaf-component-library---part-3/[support for slots], we will now turn our attention to adding client-side interactivity to a component.
 
 <!--more-->
 
@@ -385,7 +385,6 @@ This was the last part of the series on writing a Thymeleaf component library.
 The series showed that it is possible to create a component library for Thymeleaf, and that it is not that hard to do.
 From this point on, you can start creating your own components and use them in your applications.
 
-//TODO See https://github.com/wimdeblauwe/blog-example-code/tree/master/thymeleaf-mock-oauth2-login[thymeleaf-mock-oauth2-login] on GitHub for the full sources of these examples.
-
+See https://github.com/wimdeblauwe/blog-example-code/tree/master/thymeleaf-component-library[thymeleaf-component-library] on GitHub for the full sources of these examples.
 
 If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
