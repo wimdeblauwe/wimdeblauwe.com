@@ -25,7 +25,21 @@
 {{ partial "new-book-feature.html" . }}
 {{ end }}
 
+{{ if not .Site.Params.featureNewBook }}
+<div class="frame">
+    <h2>My books</h2>
+</div>
+{{ end }}
 <div class="frame books-strip">
+    {{ if not .Site.Params.featureNewBook }}
+    <a class="book-card" href="/books/crafting-spring-boot-starters/">
+        <img src="/images/crafting-spring-boot-starters/cover-small.png" alt="Crafting Spring Boot Starters cover">
+        <div>
+            <h3>Crafting Spring Boot Starters</h3>
+            <p>Design, build, test and publish auto-configuration libraries on Spring Boot.</p>
+        </div>
+    </a>
+    {{ end }}
     <a class="book-card" href="/books/taming-thymeleaf/">
         <img src="/images/taming-thymeleaf-cover-3D-transparent.png" alt="Taming Thymeleaf cover">
         <div>

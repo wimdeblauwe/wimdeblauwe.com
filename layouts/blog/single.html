@@ -15,9 +15,13 @@
         {{- end }}
     </div>
 
+    {{ if .Site.Params.featureNewBook }}
+    {{ partial "crafting-spring-boot-starters-ad.html" . }}
+    {{ else }}
     {{ partial "taming-thymeleaf-ad.html" . }}
     {{ partial "modern-frontends-with-htmx-ad.html" . }}
     {{ partial "testing-spring-boot-masterclass-ad.html" . }}
+    {{ end }}
 </div>
 
 <article class="prose prose-frame" data-pagefind-body>
