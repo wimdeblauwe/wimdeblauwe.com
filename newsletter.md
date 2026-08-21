@@ -1,15 +1,21 @@
 # Newsletter migration: Mailchimp → EmailOctopus
 
-Status as of 2026-07-31. **SENDING PAUSED — list cleaned, wave-3 pending a canary split.**
-**285 bot contacts purged 2026-07-31**, leaving **207 subscribed**: wave-1's 40, wave-3's
-132, and 35 kept from wave-2. (667 imported − 174 bounce-suppressed − 1 unsubscribed − 285
-deleted. Only 174 of the 185 bounces suppressed themselves; the other 11 were soft bounces
-that stayed `subscribed` and went out with the purge.)
+Status as of 2026-08-21. **All three waves sent, wave-3 pruned, list at 102 real contacts.
+The urgent item is now the signup form: a bot campaign is hitting it live** — 33 signups in
+the 20 hours to 2026-08-21T03:00Z, against a ~2/month baseline. See *The form is under
+attack*.
 **Wave-1 sent 2026-07-27** from `newsletter@wimdeblauwe.com`, after a test send exposed a
-sender-identity bug. **Wave-2 sent 2026-07-28** (495 contacts, `newsletter-wave-2.html`)
-and **bounced at 37.4%** — the 2025 cohort is a bot signup campaign, not an audience.
-**Wave-3 is cancelled in its current form. Send nothing until the remediation below is
-done.** The "667 subscribers" figure is not real; see *The 2025 cohort is fake*.
+sender-identity bug: 0 bounces, 40% opens.
+**Wave-2 sent 2026-07-28** (495 contacts, `newsletter-wave-2.html`) and **bounced at
+37.4%** — the 2025 cohort is a bot signup campaign, not an audience. **285 bot contacts
+purged 2026-07-31**, leaving **207 subscribed**. (667 imported − 174 bounce-suppressed − 1
+unsubscribed − 285 deleted. Only 174 of the 185 bounces suppressed themselves; the other 11
+were soft bounces that stayed `subscribed` and went out with the purge.)
+**Wave-3 sent as a 30 + 100 canary split** (2026-07-31, 2026-08-03) and produced **26
+clickers out of 130 sent**, 0 complaints. **Pruned 2026-08-21** to those 26. The list is now
+**102 subscribed** (40 wave-1, 35 wave-2 survivors, 26 wave-3, 1 website signup) — small,
+but every wave-3 contact on it clicked something this month.
+The "667 subscribers" figure was never real; see *The 2025 cohort is fake*.
 Working files live in `~/Downloads/audience_export_18e5870fbf/` (**not** in this repo — they
 contain email addresses and this repo is on GitHub).
 
@@ -382,6 +388,57 @@ bounded to the May–Sep 2025 window.
    *Steps 4 & 5*. The hole is still open.
 7. Only then wave-3 — and **split it**, see below.
 
+## The form is under attack — found 2026-08-21
+
+Discovered while verifying the prune: **33 contacts sitting at `pending`, every one tagged
+`website-signup`, every one created between 2026-08-20T06:30Z and 2026-08-21T02:56Z.** That
+is 33 signups in under 21 hours against a ~2/month baseline, plus 5 more from August already
+in `unsubscribed`. Two of the 33 share an identical timestamp to the second.
+
+**This is a second bot campaign, in progress now.** It is not the 2025 one resuming — the
+shape is different:
+
+| Signal | 2025 campaign (wave-2) | 2026-08 campaign |
+|---|---|---|
+| Domains | 96.4% gmail + yahoo | 18/33 gmail, then US corporate/gov/edu — `detcog.gov`, `rsd.edu`, `gray.tv`, `phly.com`, `hydro-tex.com`, `ballardexpl.com` |
+| Local-part | 67% `name`+2 digits | **3 / 33** |
+| Window | 5 months | **21 hours** |
+
+The corporate/gov/edu tail reads as a scraped B2B list rather than generated addresses, and
+it defeats every heuristic in `subscribe.mjs`: real domains, real MX, not on any blocklist,
+plausible local-parts. Exactly the blind spot recorded under *Steps 4 & 5*.
+
+### What is and isn't working
+
+**Double opt-in is holding.** All 33 are stuck at `pending`, so **none can receive a
+campaign and none can inflate a send**. The step-6 root-cause fix is doing precisely its
+job — without it these would be `subscribed` and the next send would repeat wave-2.
+
+**But the confirmation emails are still going out, from the verified domain, to addresses
+that may not exist.** Every bot signup triggers one. 33 in a day, and the 5 August contacts
+already at `unsubscribed` suggest some are bouncing. **This is wave-2's reputation damage
+again, just metered through the opt-in flow instead of a campaign** — and it lands on
+`wimdeblauwe.com`, the domain painstakingly warmed since 2026-07-27. A form that anyone can
+use to make your domain send mail to arbitrary addresses is an open relay with extra steps.
+
+### Do this now
+
+1. **Turnstile.** No longer a deferred nice-to-have — it is the control that stops the send,
+   not just the subscribe. The deferral was already reversed on 2026-07-31; this is the
+   second campaign in a year, so the "~23 bots/year" premise is dead twice over.
+2. **Rate-limit `/api/subscribe`** regardless of Turnstile — per-IP and global. 33/day is
+   trivially above any legitimate rate for this site, and a global cap bounds the blast
+   radius of the next campaign before a widget is even wired up.
+3. **Delete the 33 pending** once the form is closed, not before — otherwise they refill.
+   They are unconfirmed, so nothing is lost; a genuine signup among them can sign up again.
+4. **Watch `pending` as a monitoring signal.** It is the leading indicator this list has —
+   it moved 20 hours before anyone would have noticed, and nothing surfaces it. The wave-2
+   attack ran for five months undetected because nobody was looking at signup rate.
+
+**Nobody would have caught this from the UI.** It surfaced only because the post-prune
+verification counted contacts by status, and `pending` is a status the migration had checked
+exactly once, back at import.
+
 ## Wave-3 — send as a canary split, not in one go
 
 **Waiting does not repair reputation.** It is not a cooldown timer; reputation recovers
@@ -414,7 +471,7 @@ let slip, and the second is a promise made in the email body**:
 | When | Date | Do |
 |---|---|---|
 | +48h | **2026-08-02** | ~~Read the gate. If clean, send the same content to the remaining 102.~~ **Done 2026-08-03: all gates passed, remaining batch sent.** |
-| +2 weeks | **2026-08-14** | `?status=clicked` → keep. **Delete everyone else.** The email promised this. Covers the whole cohort — both the 30 and the 100. |
+| +2 weeks | **2026-08-14** | ~~`?status=clicked` → keep. **Delete everyone else.**~~ **Done 2026-08-21** (a week late): kept 26, deleted 103, 0 failures. Promise honoured. |
 
 **Remaining batch sent 2026-08-03.** Same `newsletter-wave-3.html`, verbatim, after the
 canary cleared all three gates. **100 contacts, not the 102 predicted** — 2 of wave-3 had
@@ -441,6 +498,61 @@ produced — though discount 1–2 as possible link-scanner clicks (Proofpoint/O
 The 2026-08-14 checkpoint still stands: `wave3-followup.mjs prune` keeps the clickers and
 deletes the rest, honouring the removal the email body promised.
 
+#### Wave-3b result (measured 2026-08-21, ~18 days after send)
+
+100 sent. Pulled via `wave3-followup.mjs prune` (campaign `115911f8-8f63-11f1-b444-d9232482b9e3`).
+
+| Metric | 3b (100) | 3a canary (30) | Reading |
+|---|---|---|---|
+| Bounces | **5 = 5.0%** | 1 = 3.3% | Within the 5–15% predicted for 4–6-year-old addresses |
+| Complaints | **0** | 0 | API `?status=complained` — the UI still shows no figure |
+| Unsubscribes | 1 | 0 | Healthy |
+| Clicks | **19 = 19%** | 7 = 23% | The canary predicted the remainder almost exactly |
+| Opens | 37 | 11 | Not a keep signal |
+
+**The canary split did what it was supposed to do.** A random 30 forecast 19% clicks against
+the remainder's actual 19%, and 3.3% bounces against 5.0% — the homogeneous-cohort reasoning
+held. That is the method to reuse, and the contrast with reading wave-1 as evidence about
+wave-2 is the whole lesson of this migration.
+
+**Wave-3a's own numbers moved after the 48h gate**: 6 clicks → 7, 10 opens → 11. Late
+clickers are real on a re-permission ask with a two-week deadline. **Re-pull every campaign
+at prune time; never prune against a figure recorded at the gate.**
+
+The 26 keepers look like an audience — 13 gmail, and a tail of `outlook`, `icloud`, `gmx`,
+`mac`, plus self-hosted domains (`wisdomofcode.com`, `surly.dev`, `evol-tech.com`,
+`kobelnet.ch`, `insuit.cz`, `wadley.org`, `daly.ws`, `arnhart.com`, `irsch.net`). 50% gmail
+with a long tail is the wave-1/wave-3 fingerprint, not wave-2's 96.4%.
+
+### The prune — scope bug found 2026-08-21
+
+`wave3-followup.mjs prune` was written during the canary and hardcoded `TAG = 'wave-3a'`
+with a `resolveCampaign()` that returns the **most recent** wave-3 campaign. Run unchanged
+after 3b, it would have:
+
+- taken its pool from tag `wave-3a` — the 30 canary contacts, not the 129-strong cohort;
+- taken its keep set from wave-3b's clickers — 19 addresses, **none of which are in that
+  pool**;
+- therefore **deleted all 30 canary contacts, including the 7 who clicked**, and left every
+  wave-3b non-clicker untouched.
+
+Exactly inverted, and it would have destroyed the best contacts on the list while keeping
+the dead weight. Fixed: the pool is now `wave-3` ∪ `wave-3a`, and the keep set is the union
+of clickers across **every** wave-3 campaign.
+
+**The general rule: a script written for one batch does not become a cohort-wide tool by
+being run later.** Both the tag and the campaign were scoped to the canary, and neither
+would have failed loudly.
+
+Two more rules the plan encodes:
+
+- **Still-subscribed bouncers are deleted regardless of clicks.** 6 bounce events across 3a
+  and 3b, but only 4 contacts left `subscribed` — **3 soft bounces stayed put**, because
+  EmailOctopus has no `bounced` contact status. Same precedence as `wave2-triage.mjs`.
+  (None of the 3 had clicked, so nothing was lost to this rule.)
+- The plan is written to `wave3-prune-plan.csv` and `--confirm` executes *that file*, so
+  what is reviewed is what runs.
+
 ### The split
 
 Send to a **random 30 of the 132**, wait 48h, then send the remaining 102 only if clean.
@@ -462,6 +574,23 @@ so it does not need redrawing.
 
 **Budget the remaining slots.** Every future cohort split costs one, so delete a tag when
 its wave is finished rather than accumulating them.
+
+**Cleared 2026-08-21, after the prune:** `wave-1`, `wave-3` and `wave-3a` are spent — both
+wave-3 checkpoints are closed and every contact still carrying them clicked. All four wave
+tags are re-derivable from disk if ever needed (`emailoctopus-import-670.csv` Tags column
+for wave-1/2/3, `wave3-canary.csv` for the wave-3a thirty), so none of this is a one-way
+door. `never-emailed`, `engaged` and `mailed-before` are staler still — they describe
+Mailchimp-era state from before three sends, and `never-emailed` is now false for everyone.
+
+**Keep `wave-2` until the 35 have earned their place.** They are the only unproven segment
+left on the list — a third of it. The triage kept 2 clickers (1 bot-shaped), **25 on opens**
+and **13 on nothing but a non-freemail domain**, which contradicts this document's own rule
+that opens are not a keep signal on this list. Until they click something, `wave-2` is what
+lets you attribute a bounce or complaint on the next send, and what scopes the click-or-go
+rule wave-3 just passed. Re-deriving it later costs an API re-tagging loop and a slot.
+
+**Never delete `website-signup`** — `subscribe.mjs` writes it on every new signup, and it is
+what made the 2026-08 bot campaign legible.
 
 **Why a subsample works here when wave-1 did not.** Wave-1 and wave-2 were different
 populations, so a clean wave-1 was never evidence about wave-2 — that is the reasoning
