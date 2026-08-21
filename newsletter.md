@@ -19,6 +19,15 @@ The "667 subscribers" figure was never real; see *The 2025 cohort is fake*.
 Working files live in `~/Downloads/audience_export_18e5870fbf/` (**not** in this repo — they
 contain email addresses and this repo is on GitHub).
 
+Sent newsletters live in `newsletters/<year>/`, named `YYYY-MM-DD-<slug>.html` by send date.
+References below to `newsletter-wave-N.html` are the pre-move names; the files are now:
+
+| Was | Now |
+| --- | --- |
+| `newsletter-wave-1.html` | `newsletters/2026/2026-07-27-wave-1-newsletter-reboot.html` |
+| `newsletter-wave-2.html` | `newsletters/2026/2026-07-28-wave-2-newsletter-reboot.html` |
+| `newsletter-wave-3.html` | `newsletters/2026/2026-07-31-wave-3-re-permission.html` |
+
 ## Why this migration
 
 - Mailchimp free tier ended at 250 subscribers; list sat at 741 and went unused.
