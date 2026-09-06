@@ -1,0 +1,373 @@
+---
+title: "Testing your auto-configuration against a missing optional dependency"
+date: 2026-09-06
+draft: false
+tags: ["spring-boot", "auto-configuration"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+If your library or starter has optional dependencies, it is surprisingly easy to write an auto-configuration that blows up at startup for everybody who does _not_ have that optional dependency on the classpath.
+Even more annoying: `FilteredClassLoader`, the tool that Spring Boot gives us for this kind of test, cannot reproduce that failure.
+In this blog post, I will show you why, and give you a small `HidingClassLoader` that can.
+
+<!--more-->
+
+== The auto-configuration
+
+Suppose we are building a "greeter" starter.
+It has a `Greeter` class that our users can inject, and _if_ they happen to use `RestClient`, we also want to contribute a `ClientHttpRequestInterceptor` that adds a header to each outgoing request.
+
+Because not every user of the library uses `RestClient`, we declare `spring-web` as an optional dependency:
+
+[source,xml]
+.pom.xml
+----
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-autoconfigure</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-web</artifactId>
+    <optional>true</optional> <!--.-->
+</dependency>
+----
+<.> `spring-web` is available when we compile and test the library, but it is not pulled in transitively by the applications that use our library.
+
+The auto-configuration itself looks innocent enough:
+
+[source,java]
+----
+@AutoConfiguration
+@EnableConfigurationProperties(GreeterProperties.class)
+public class GreeterAutoConfiguration {
+
+  @Bean
+  @ConditionalOnMissingBean
+  public Greeter greeter(GreeterProperties properties) {
+    return new Greeter(properties.getGreeting());
+  }
+
+  @Bean
+  @ConditionalOnClass(ClientHttpRequestInterceptor.class) //<.>
+  public ClientHttpRequestInterceptor greeterRequestInterceptor(Greeter greeter) { //<.>
+    return new GreeterRequestInterceptor(greeter);
+  }
+}
+----
+<.> We were even careful and guarded the bean with `@ConditionalOnClass`, so it is only created when `spring-web` is there.
+<.> `ClientHttpRequestInterceptor` comes from `spring-web`, our optional dependency.
+
+This works perfectly on our own machine, because `spring-web` is on the test classpath of the library.
+It also works for every user that has `spring-web`.
+
+== The problem
+
+For a user _without_ `spring-web`, the application does not start:
+
+[source]
+----
+java.lang.IllegalStateException: Error processing condition on com.wimdeblauwe.greeter.GreeterAutoConfiguration.greeter
+Caused by: java.lang.IllegalStateException: @ConditionalOnMissingBean did not specify a bean using type, name or annotation and the attempt to deduce the bean's type failed
+Caused by: org.springframework.boot.autoconfigure.condition.OnBeanCondition$BeanTypeDeductionException: Failed to deduce bean type for com.wimdeblauwe.greeter.GreeterAutoConfiguration.greeter
+Caused by: java.lang.IllegalStateException: Failed to introspect Class [com.wimdeblauwe.greeter.GreeterAutoConfiguration]
+Caused by: java.lang.NoClassDefFoundError: org/springframework/http/client/ClientHttpRequestInterceptor
+	at java.base/java.lang.Class.getDeclaredMethods0(Native Method)
+	at java.base/java.lang.Class.privateGetDeclaredMethods(Class.java:3010)
+	at java.base/java.lang.Class.getDeclaredMethods(Class.java:2329)
+	at org.springframework.util.ReflectionUtils.getDeclaredMethods(ReflectionUtils.java:465)
+Caused by: java.lang.ClassNotFoundException: org.springframework.http.client.ClientHttpRequestInterceptor
+----
+
+Read that stack trace from the bottom up and note how nasty this is:
+
+. Spring evaluates `@ConditionalOnMissingBean` on the `greeter` method.
+. To do that, `OnBeanCondition` needs to know the return type of the `greeter` method, so it goes looking for that method with `ReflectionUtils.findMethod`.
+. That ends up in `Class.getDeclaredMethods()`, and there the JVM resolves the signature of _every_ declared method of the class, not just the one we are interested in.
+. `greeterRequestInterceptor` has a return type that cannot be resolved, so we get a `NoClassDefFoundError`.
+
+The bean that fails is `greeter`, which has nothing to do with `spring-web` at all.
+The mere _presence_ of another method with an unresolvable return type in the same class is enough.
+
+And notice that the `@ConditionalOnClass` on `greeterRequestInterceptor` does not save us.
+Conditions are evaluated from annotation metadata that Spring reads with ASM, but `Class.getDeclaredMethods()` happens on the class as a whole, before any condition gets the chance to skip a method.
+
+I have made this mistake myself, and I have seen it in other libraries as well.
+So obviously I wanted a regression test for it.
+
+== Why `FilteredClassLoader` does not work
+
+The usual way to test conditional behaviour of an auto-configuration is `ApplicationContextRunner` combined with `FilteredClassLoader`:
+
+[source,java]
+----
+@Test
+void filteredClassLoaderDoesNotDetectTheProblem() {
+  new ApplicationContextRunner()
+      .withClassLoader(new FilteredClassLoader(ClientHttpRequestInterceptor.class))
+      .withConfiguration(AutoConfigurations.of(GreeterAutoConfiguration.class))
+      .run(context -> assertThat(context).hasNotFailed()); //<.>
+}
+----
+<.> This assertion passes, even though the application of our user does not start.
+
+The test is green, so all is well?
+Unfortunately not.
+
+`FilteredClassLoader` is constructed as `super(new URL[0], parent)`.
+It has no URLs of its own, so it can never _define_ a class itself.
+It only intercepts class _loading_ and throws a `ClassNotFoundException` for the names you filtered, delegating everything else to its parent.
+
+The consequence is that `GreeterAutoConfiguration` is still defined by the application class loader, the one that _does_ have `spring-web`.
+When the JVM resolves the method signatures of a class, it uses the defining class loader of that class.
+So `ClientHttpRequestInterceptor` is found and no `NoClassDefFoundError` occurs.
+
+`FilteredClassLoader` is great for testing `@ConditionalOnClass` and `@ConditionalOnMissingClass`, because those do a lookup by name via the context class loader.
+It simply cannot simulate the case where the failure comes from the JVM resolving a signature.
+
+I opened https://github.com/spring-projects/spring-boot/issues/51377[an issue on Spring Boot] to ask for a test class loader that can do this.
+It was declined because it is a lot of work to make such a utility complete and robust enough for public consumption, which I fully understand.
+So the code below is what I now copy into the projects that need it.
+
+== The `HidingClassLoader`
+
+What we need is a class loader that:
+
+. Owns the location of our own classes, so it can *define* those classes itself.
+. Is child-first for those classes, so it becomes their *defining* class loader.
+. Pretends that a set of other classes is absent.
+. Delegates everything else to the parent, so we do not end up with duplicate versions of Spring classes and confusing `ClassCastException` s.
+
+[source,java]
+.src/test/java/com/wimdeblauwe/greeter/HidingClassLoader.java
+----
+public final class HidingClassLoader extends URLClassLoader {
+
+  private final Set<String> locallyDefinedClassNames;
+  private final Set<String> hiddenClassNames;
+
+  private HidingClassLoader(URL[] urls,
+                            ClassLoader parent,
+                            Set<String> locallyDefinedClassNames,
+                            Set<String> hiddenClassNames) {
+    super(urls, parent);
+    this.locallyDefinedClassNames = locallyDefinedClassNames;
+    this.hiddenClassNames = hiddenClassNames;
+  }
+
+  public static Builder defining(Class<?>... classes) {
+    return new Builder(classes);
+  }
+
+  @Override
+  protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+    if (hiddenClassNames.contains(name)) {
+      throw new ClassNotFoundException(name); //<.>
+    }
+    if (!shouldDefineLocally(name)) {
+      return super.loadClass(name, resolve); //<.>
+    }
+    synchronized (getClassLoadingLock(name)) { //<.>
+      Class<?> result = findLoadedClass(name);
+      if (result == null) {
+        result = findClass(name);
+      }
+      if (resolve) {
+        resolveClass(result);
+      }
+      return result;
+    }
+  }
+
+  private boolean shouldDefineLocally(String name) {
+    return locallyDefinedClassNames.stream()
+                                   .anyMatch(local -> name.equals(local)
+                                       || name.startsWith(local + "$")); //<.>
+  }
+
+  public static final class Builder {
+
+    private final Class<?>[] classes;
+
+    private Builder(Class<?>[] classes) {
+      this.classes = classes;
+    }
+
+    public HidingClassLoader hiding(Class<?>... classesToHide) {
+      return hiding(Arrays.stream(classesToHide)
+                          .map(Class::getName)
+                          .collect(Collectors.toSet()));
+    }
+
+    public HidingClassLoader hiding(Set<String> classNamesToHide) { //<.>
+      return new HidingClassLoader(codeSourceLocations(),
+                                   HidingClassLoader.class.getClassLoader(),
+                                   Arrays.stream(classes)
+                                         .map(Class::getName)
+                                         .collect(Collectors.toSet()),
+                                   Set.copyOf(classNamesToHide));
+    }
+
+    private URL[] codeSourceLocations() { //<.>
+      return Arrays.stream(classes)
+                   .map(Builder::codeSourceLocation)
+                   .distinct()
+                   .toArray(URL[]::new);
+    }
+
+    private static URL codeSourceLocation(Class<?> clazz) {
+      CodeSource codeSource = clazz.getProtectionDomain().getCodeSource();
+      if (codeSource == null || codeSource.getLocation() == null) {
+        throw new IllegalArgumentException(
+            "Unable to determine the code source location of " + clazz.getName());
+      }
+      return codeSource.getLocation();
+    }
+  }
+}
+----
+<.> A hidden class is simply not there, exactly like `FilteredClassLoader` does it.
+<.> Everything that we do not want to define ourselves is delegated to the parent class loader. This keeps the type identity intact for all shared classes.
+<.> For the selected classes we go child-first: look at the classes we already loaded, otherwise define the class ourselves from our own URLs.
+<.> Nested classes like `GreeterAutoConfiguration$RestClientConfiguration` need to be defined by us as well, otherwise the parent would define them and we are back to square one.
+<.> There is an overload that takes class names as `String`, for when the class you want to hide is not on your test classpath at all.
+<.> Instead of trying to reconstruct the full classpath (which is unreliable under Surefire, as it uses a manifest-only JAR), we ask each class where it came from. For our own classes that is the `target/classes` directory.
+
+== The test that reproduces the failure
+
+With that class loader, we can write the test that we wanted all along:
+
+[source,java]
+----
+@Test
+void hidingClassLoaderDetectsTheProblem() throws Exception {
+  try (HidingClassLoader classLoader =
+           HidingClassLoader.defining(GreeterAutoConfiguration.class) //<.>
+                            .hiding(ClientHttpRequestInterceptor.class)) { //<.>
+    Class<?> autoConfiguration = classLoader.loadClass(GreeterAutoConfiguration.class.getName()); //<.>
+
+    new ApplicationContextRunner()
+        .withClassLoader(classLoader)
+        .withConfiguration(AutoConfigurations.of(autoConfiguration))
+        .run(context -> assertThat(context).getFailure()
+                                           .rootCause()
+                                           .isInstanceOf(ClassNotFoundException.class)
+                                           .hasMessageContaining(
+                                               ClientHttpRequestInterceptor.class.getName()));
+  }
+}
+----
+<.> The auto-configuration under test is defined by our `HidingClassLoader`.
+<.> `ClientHttpRequestInterceptor` acts as if it is not on the classpath.
+<.> Very important: load the auto-configuration class _through_ the `HidingClassLoader`. If you pass `GreeterAutoConfiguration.class` directly, you are handing Spring the class that was defined by the application class loader and nothing is reproduced.
+
+This test now fails in exactly the same way as the application of our user, with the same `NoClassDefFoundError` as root cause.
+
+Note that this test asserts the broken behaviour on purpose, to prove that the reproduction works.
+In your own project, you would write the assertion for the behaviour that you actually want, as I do at the end of this post.
+
+== Fixing the auto-configuration
+
+The fix is the pattern that Spring Boot itself uses all over `spring-boot-autoconfigure`: move the beans that reference the optional dependency into a nested configuration class that is guarded by `@ConditionalOnClass`.
+
+[source,java]
+----
+@AutoConfiguration
+@EnableConfigurationProperties(GreeterProperties.class)
+public class GreeterAutoConfiguration {
+
+  @Bean
+  @ConditionalOnMissingBean
+  public Greeter greeter(GreeterProperties properties) {
+    return new Greeter(properties.getGreeting());
+  }
+
+  @Configuration(proxyBeanMethods = false)
+  @ConditionalOnClass(ClientHttpRequestInterceptor.class) //<.>
+  public static class RestClientConfiguration {
+
+    @Bean
+    public ClientHttpRequestInterceptor greeterRequestInterceptor(Greeter greeter) { //<.>
+      return new GreeterRequestInterceptor(greeter);
+    }
+  }
+}
+----
+<.> The condition is evaluated from the annotation metadata, which Spring reads with ASM. The nested class itself is never loaded when `spring-web` is missing.
+<.> The method with the problematic return type now lives in a class that is only loaded when that return type can actually be resolved.
+
+The rule to remember: *no method signature of an auto-configuration class may reference a type from an optional dependency*.
+That includes return types and parameter types.
+Everything that touches an optional dependency goes into a nested class with `@ConditionalOnClass`.
+
+== The test for the fixed version
+
+Now we can write the two tests that describe what our starter should do:
+
+[source,java]
+----
+class GreeterAutoConfigurationTest {
+
+  private final ApplicationContextRunner contextRunner =
+      new ApplicationContextRunner().withConfiguration(
+          AutoConfigurations.of(GreeterAutoConfiguration.class));
+
+  @Test
+  void greeterAndInterceptorAreRegisteredWhenSpringWebIsPresent() {
+    contextRunner.run(context -> {
+      assertThat(context).hasSingleBean(Greeter.class);
+      assertThat(context).hasSingleBean(ClientHttpRequestInterceptor.class);
+    });
+  }
+
+  @Test
+  void onlyGreeterIsRegisteredWhenSpringWebIsMissing() throws Exception {
+    try (HidingClassLoader classLoader =
+             HidingClassLoader.defining(GreeterAutoConfiguration.class)
+                              .hiding(ClientHttpRequestInterceptor.class)) {
+      Class<?> autoConfiguration = classLoader.loadClass(GreeterAutoConfiguration.class.getName());
+
+      new ApplicationContextRunner()
+          .withClassLoader(classLoader)
+          .withConfiguration(AutoConfigurations.of(autoConfiguration))
+          .run(context -> {
+            assertThat(context).hasNotFailed(); //<.>
+            assertThat(context).hasSingleBean(Greeter.class); //<.>
+            assertThat(context).doesNotHaveBean(ClientHttpRequestInterceptor.class);
+          });
+    }
+  }
+}
+----
+<.> Before the fix, this assertion fails. After the fix, it passes.
+<.> `Greeter` is not in the set of locally defined classes, so it is loaded by the parent class loader and this assertion compares the same `Class` object.
+
+That last callout is the main thing to keep in mind when you use this class loader.
+Only the classes that you pass to `defining()` (and their nested classes) get a second identity.
+So `assertThat(context).hasSingleBean(GreeterAutoConfiguration.class)` would _not_ work, because the class in the context is the one that was defined by the `HidingClassLoader`, not the one you refer to in your test.
+Keep the set of locally defined classes as small as possible: usually the auto-configuration under test is enough.
+
+TIP: In the https://github.com/wimdeblauwe/blog-example-code/tree/master/testing-missing-optional-dependency[example project], the broken variant is kept as `BrokenGreeterAutoConfiguration` so that both variants can be tested side by side.
+
+== Conclusion
+
+`FilteredClassLoader` is the right tool for testing `@ConditionalOnClass`, but it cannot reproduce a `NoClassDefFoundError` that happens while Spring reflects over the methods of a configuration class.
+For that, you need a class loader that is the defining class loader of the class under test.
+
+The `HidingClassLoader` in this post is about 70 lines of code and turns a bug that only your users can find into a regular red test.
+If you maintain a starter with optional dependencies, it is worth adding to your test sources.
+
+Want to learn more about creating Spring Boot starters? Check out https://www.wimdeblauwe.com/books/crafting-spring-boot-starters/[Crafting Spring Boot Starters]!
+
+See https://github.com/wimdeblauwe/blog-example-code/tree/master/testing-missing-optional-dependency[testing-missing-optional-dependency] on GitHub for the full sources of these examples.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
