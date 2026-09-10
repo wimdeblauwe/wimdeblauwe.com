@@ -1,0 +1,262 @@
+---
+title: "Using multiple GitHub accounts on one machine"
+date: 2026-09-14
+draft: false
+tags: ["git", "github"]
+keywords: []
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+I have a personal GitHub account, an account for my own company, and one for each client I work with.
+They all live on the same laptop, and they all talk to `github.com`.
+That combination is exactly what Git and SSH are bad at out of the box: commits end up with the wrong email address, and `git push` authenticates with whatever SSH key happens to be offered first.
+
+In this blog post, I show the setup I use now: one base directory per account, and no special URLs.
+I clone with the exact URL that GitHub puts on my clipboard.
+
+<!--more-->
+
+== The idea
+
+Everything is based on one rule: the directory a repository lives in determines which account it belongs to.
+
+[source]
+----
+~/Projects
+├── wimdeblauwe/   <.>
+├── forks/         <.>
+├── widit/          <.>
+└── bigcorp/       <.>
+----
+<.> My personal repositories.
+<.> Forks of other people's projects, also under my personal account.
+<.> My own company.
+<.> A client.
+
+[NOTE]
+====
+Two directories can map to the same account, as `wimdeblauwe` and `forks` do here.
+The directory is not the account, it is just how I decide which account to use.
+====
+
+Git can act on that rule via `includeIf`, and SSH can act on it via host aliases.
+The piece that ties them together, and the piece that most tutorials leave out, is `insteadOf`.
+
+== Step 1: one SSH key per account
+
+You cannot reuse a single SSH key for multiple GitHub accounts.
+GitHub rejects a public key that is already registered on another account. You can't work around it: the key is the identity that GitHub authenticates you with.
+
+So generate one public key per account:
+
+[source]
+----
+ssh-keygen -t ed25519 -f ~/.ssh/wimdeblauwe-git -C "wim.deblauwe@gmail.com"
+ssh-keygen -t ed25519 -f ~/.ssh/widit-git -C "wim@widit.be"
+----
+
+Then add each public key to the matching account under `Settings` → `SSH and GPG keys` → `New SSH key`.
+
+TIP: I keep my keys in 1Password and use its SSH agent, so the private keys are not on disk at all. Only the `.pub` files are, and that is all the configuration below needs. If you use 1Password with the browser extension, you can ask 1Password to create the keys for you and add them to GitHub automatically at that page on GitHub.
+
+== Step 2: give every account its own SSH host
+
+SSH cannot guess which key belongs to which account, because as far as SSH is concerned there is only one server: `github.com`.
+The fix is to invent a hostname per account in `~/.ssh/config`:
+
+[source]
+.~/.ssh/config
+----
+Host gh-wimdeblauwe
+	HostName github.com    # <.>
+	User git
+	IdentityFile ~/.ssh/wimdeblauwe-git.pub
+	IdentitiesOnly yes     # <.>
+
+Host gh-widit
+	HostName github.com
+	User git
+	IdentityFile ~/.ssh/widit-git.pub
+	IdentitiesOnly yes
+----
+<.> `gh-wimdeblauwe` and `gh-widit` are not real hostnames. They both resolve to `github.com`, they just carry a different `IdentityFile`.
+<.> Without this, your agent offers *every* key it has and GitHub authenticates you as the owner of the first one that matches. That is exactly the bug we are trying to avoid, so do not leave it out.
+
+NOTE: Pointing `IdentityFile` at the `.pub` file looks odd, but it is the correct thing to do when the private key lives in an agent like the 1Password one. SSH uses the public key to ask the agent for a signature. If your private keys are on disk, point at the private key instead.
+
+Check both of them:
+
+[source]
+----
+$ ssh -T git@gh-wimdeblauwe
+Hi wimdeblauwe! You've successfully authenticated, but GitHub does not provide shell access.
+
+$ ssh -T git@gh-widit
+Hi wimdeblauwe-widit! You've successfully authenticated, but GitHub does not provide shell access.
+----
+
+If both lines greet you with the same username, `IdentitiesOnly yes` is missing somewhere.
+
+At this point you have a working, but annoying, setup: you can clone with `git@gh-widit:widit/some-service.git`.
+This is what I have used for a long time, but it is tedious to copy-paste from GitHub and edit every single clone URL to use the correct prefix. The next step fixes that.
+
+== Step 3: select a config file per base directory
+
+`~/.gitconfig` does not need to contain any identity at all.
+It only needs to point Git at the right file, based on where the repository lives:
+
+[source]
+.~/.gitconfig
+----
+[init]
+	defaultBranch = main
+
+[includeIf "gitdir:~/Projects/wimdeblauwe/"]  # <.>
+	path = ~/Projects/wimdeblauwe/.gitconfig  # <.>
+
+[includeIf "gitdir:~/Projects/forks/"]
+	path = ~/Projects/forks/.gitconfig
+
+[includeIf "gitdir:~/Projects/widit/"]
+	path = ~/Projects/widit/.gitconfig
+
+[includeIf "gitdir:~/Projects/bigcorp/"]
+	path = ~/Projects/bigcorp/.gitconfig
+----
+<.> The trailing slash matters. `gitdir:~/Projects/wimdeblauwe/` means "this directory and everything below it". Without the slash it only matches a repository called `wimdeblauwe` itself.
+<.> I keep the included file inside the directory it describes, but that is only a convention. Any path works.
+
+== Step 4: the per-account configuration
+
+This is where the actual identity lives:
+
+[source]
+.~/Projects/widit/.gitconfig
+----
+[user]
+	email = wim@widit.be
+	name = Wim Deblauwe
+
+[url "git@gh-widit:"]     # <.>
+	insteadOf = git@github.com:
+
+[github]
+	user = "wimdeblauwe-widit"  # <.>
+----
+<.> This is the interesting one, see below.
+<.> Not used by Git itself, but several tools (GitHub CLI wrappers, IDE plugins) pick it up.
+
+And the personal one, which is identical apart from the values:
+
+[source]
+.~/Projects/wimdeblauwe/.gitconfig
+----
+[user]
+	email = wim.deblauwe@gmail.com
+	name = Wim Deblauwe
+
+[url "git@gh-wimdeblauwe:"]
+	insteadOf = git@github.com:
+
+[github]
+	user = "wimdeblauwe"
+----
+
+`~/Projects/forks/.gitconfig` contains the exact same content as the personal one, because both directories belong to the same account.
+
+== Why `insteadOf` is the part that matters
+
+`url.<base>.insteadOf` tells Git: whenever you are about to *use* a URL that starts with `git@github.com:`, replace that prefix with `git@gh-widit:` first.
+
+The important word is _use_.
+The rewrite happens at the moment Git contacts the remote, not at the moment the URL is stored.
+So the URL in `.git/config` stays exactly what you typed:
+
+[source]
+----
+$ cd ~/Projects/wimdeblauwe/wimdeblauwe.com
+$ git config remote.origin.url
+git@github.com:wimdeblauwe/wimdeblauwe.com.git
+----
+
+...while the connection actually goes through the alias:
+
+[source]
+----
+$ GIT_TRACE=1 git fetch 2>&1 | grep start_command
+trace: start_command: /usr/bin/ssh -o SendEnv=GIT_PROTOCOL git@gh-wimdeblauwe 'git-upload-pack ...'
+----
+
+That is the whole trick.
+The repository on disk is indistinguishable from one that a colleague cloned with a plain, boring setup, and my machine still uses the right key.
+
+=== It works for `git clone` too
+
+This surprised me the first time, because `includeIf "gitdir:..."` needs a `.git` directory to match against and during a clone there is no repository yet.
+
+But Git creates the repository directory *before* it contacts the remote, so by the time the URL is used, the condition already matches:
+
+[source]
+----
+$ cd ~/Projects/widit
+$ GIT_TRACE=1 git clone git@github.com:widit/some-service.git 2>&1 | grep start_command
+trace: start_command: /usr/bin/ssh -o SendEnv=GIT_PROTOCOL git@gh-widit 'git-upload-pack ...'
+----
+
+So the workflow is: press the copy button on GitHub, `cd` into the right base directory, paste.
+Nothing to edit, nothing to remember.
+
+[TIP]
+====
+If the `Code` button gives you HTTPS URLs rather than SSH ones, add a second line to the same section so those get rewritten as well:
+
+[source]
+----
+[url "git@gh-widit:"]
+	insteadOf = git@github.com:
+	insteadOf = https://github.com/
+----
+
+`insteadOf` is a multi-valued key, so both prefixes are rewritten to the same alias.
+====
+
+== Bonus: signing keys per account
+
+Anything else that is account-specific belongs in the same file.
+For the accounts where commit signing is required, my per-account config also contains:
+
+[source]
+.~/Projects/bigcorp/.gitconfig
+----
+[user]
+	signingkey = ~/.ssh/bigcorp-git.pub  # <.>
+
+[gpg]
+	format = ssh
+
+[gpg "ssh"]
+	program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
+
+[commit]
+	gpgsign = true
+----
+<.> With `gpg.format = ssh`, `signingkey` accepts the path to the public key when the private key lives in an agent, so there is no key material in the config file.
+
+Signing is on for that client and off everywhere else, without me having to think about it.
+
+== Conclusion
+
+The setup is four small pieces: a key per account, an SSH host alias per key, an `includeIf` per base directory, and an `insteadOf` per account.
+
+The last one is what makes it pleasant to live with.
+Because the rewriting happens when Git *uses* a URL and not when it stores one, the repositories on my disk look completely ordinary, submodules and tooling keep working, and I can clone anything by pasting the URL GitHub gives me into the right directory.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
