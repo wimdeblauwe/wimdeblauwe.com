@@ -4,6 +4,7 @@ date: 2026-09-14
 draft: false
 tags: ["git", "github"]
 keywords: []
+description: "Set up Git for multiple GitHub accounts on one machine with includeIf and insteadOf: an SSH key and commit email per account, no special clone URLs."
 ---
 :source-highlighter: rouge
 :rouge-css: style
@@ -24,7 +25,7 @@ I clone with the exact URL that GitHub puts on my clipboard.
 
 <!--more-->
 
-== The idea
+== One base directory per account
 
 Everything is based on one rule: the directory a repository lives in determines which account it belongs to.
 

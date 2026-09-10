@@ -39,6 +39,21 @@ weight = 5
 [taxonomies]
 tag = "tags"
 
+# Related posts. Hugo's built-in defaults only index "keywords", which no post
+# sets, so tags are indexed explicitly here.
+[related]
+  threshold = 20
+  includeNewer = true
+  toLower = true
+
+  [[related.indices]]
+    name = "tags"
+    weight = 100
+
+  [[related.indices]]
+    name = "date"
+    weight = 10
+
 # Emit <a class="anchor" href="#id"> before each section heading (styled as a
 # copper diamond in CSS) without touching the per-post .adoc attributes.
 [markup.asciidocExt.attributes]

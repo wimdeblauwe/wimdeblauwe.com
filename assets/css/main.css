@@ -758,6 +758,27 @@ img.align-left, .imageblock.text-left > div > img { margin: 10px auto 10px 10px;
 .pagination .dir { font-family: var(--mono); font-size: .66rem; letter-spacing: .12em; text-transform: uppercase; color: var(--copper); }
 .pagination .title { font-family: var(--display); font-weight: 700; font-size: .95rem; line-height: 1.3; letter-spacing: -0.015em; color: var(--navy); }
 
+/* Related posts (matched on tags) */
+.related { margin-top: 3.5rem; }
+.related h2 {
+  font-family: var(--mono); font-size: .66rem; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--copper); margin: 0 0 1.1rem;
+}
+.related ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .7rem; }
+.related a {
+  background: var(--card);
+  border: 1px solid var(--hairline); border-radius: 14px;
+  padding: .95rem 1.2rem; text-decoration: none;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
+  transition: all .18s ease;
+}
+.related a:hover { border-color: var(--copper); transform: translateY(-3px); box-shadow: 0 14px 30px -22px rgba(194,112,46,.55); }
+.related .title {
+  font-family: var(--display); font-weight: 700; font-size: .95rem;
+  line-height: 1.3; letter-spacing: -0.015em; color: var(--navy);
+}
+.related .date { font-family: var(--mono); font-size: .7rem; color: var(--ink-soft); white-space: nowrap; }
+
 /* List pagination (older/newer pages) */
 .paginator {
   margin: 2.5rem 0 0; display: flex; justify-content: center; gap: .5rem; flex-wrap: wrap;
@@ -1201,6 +1222,7 @@ h3.summary a:hover { color: var(--copper); }
 }
 @media (max-width: 680px) {
   .pagination { grid-template-columns: 1fr; }
+  .related a { flex-direction: column; align-items: flex-start; gap: .3rem; }
   .pagination a.next { text-align: left; }
   .book-ad { flex-direction: column; text-align: center; }
   .book-ad .badge { left: 50%; transform: translateX(-50%) rotate(-1.5deg); }

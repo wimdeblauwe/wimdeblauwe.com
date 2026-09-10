@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ block "title" . }}{{ if .IsHome }}{{ .Site.Title }}{{ else }}{{ .Title }} - {{ .Site.Title }}{{ end }}{{ end }}</title>
     <link rel="canonical" href="{{ .Permalink }}">
+    {{- $desc := .Description }}
+    {{- if not $desc }}{{ $desc = .Summary | plainify | htmlUnescape | replaceRE `\s+` " " | replaceRE `^ +| +$` "" | truncate 160 }}{{ end }}
+    {{- with $desc }}
+    <meta name="description" content="{{ . }}">
+    {{- end }}
     {{- with .Site.Params.favicon }}
     <link rel="icon" href="{{ . | absURL }}">
     {{- end }}
@@ -16,6 +21,9 @@
     {{- end }}
     {{ partial "opengraph/opengraph.html" . }}
     {{ partial "opengraph/twitter_cards.html" . }}
+    {{- if and .IsPage (eq .Section "blog") }}
+    {{ partial "schema.html" (dict "page" . "description" $desc) }}
+    {{- end }}
     {{- if eq (getenv "HUGO_ENV") "production" }}
     {{ template "_internal/google_analytics.html" . }}
     {{- end }}

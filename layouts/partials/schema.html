@@ -1,0 +1,32 @@
+{{- /* JSON-LD structured data. Expects a dict with "page" and "description". */ -}}
+{{- $page := .page -}}
+{{- $desc := .description -}}
+{{- $iso8601 := "2006-01-02T15:04:05-07:00" -}}
+{{- $author := dict
+      "@type" "Person"
+      "name" "Wim Deblauwe"
+      "url" (absURL "/about/") -}}
+{{- $image := "" -}}
+{{- with $page.Params.images -}}
+  {{- $image = index . 0 | absURL -}}
+{{- else -}}
+  {{- with partial "opengraph/get-featured-image.html" $page -}}
+    {{- $image = .Permalink -}}
+  {{- end -}}
+{{- end -}}
+{{- $data := dict
+      "@context" "https://schema.org"
+      "@type" "BlogPosting"
+      "mainEntityOfPage" (dict "@type" "WebPage" "@id" $page.Permalink)
+      "url" $page.Permalink
+      "headline" $page.Title
+      "datePublished" ($page.Date.Format $iso8601)
+      "dateModified" ($page.Lastmod.Format $iso8601)
+      "author" $author
+      "publisher" $author
+      "inLanguage" "en" -}}
+{{- with $desc }}{{ $data = merge $data (dict "description" .) }}{{ end -}}
+{{- with $image }}{{ $data = merge $data (dict "image" .) }}{{ end -}}
+{{- with $page.Params.tags }}{{ $data = merge $data (dict "keywords" (delimit . ", ")) }}{{ end -}}
+{{- with $page.WordCount }}{{ $data = merge $data (dict "wordCount" .) }}{{ end -}}
+<script type="application/ld+json">{{ $data | jsonify (dict "indent" "  ") | safeJS }}</script>

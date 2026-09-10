@@ -29,6 +29,23 @@
 </article>
 
 <div class="prose-frame">
+    {{- $related := first 2 (.Site.RegularPages.Related .) }}
+    {{- with $related }}
+    <nav class="related" aria-labelledby="related-heading">
+        <h2 id="related-heading">Related posts</h2>
+        <ul>
+            {{- range . }}
+            <li>
+                <a href="{{ .RelPermalink }}">
+                    <span class="title">{{ .Title }}</span>
+                    <span class="date">{{ .Date.Format "January 2, 2006" }}</span>
+                </a>
+            </li>
+            {{- end }}
+        </ul>
+    </nav>
+    {{- end }}
+
     {{- if or .Prev .Next }}
     <nav class="pagination">
         {{- if .Prev }}
