@@ -1,0 +1,50 @@
+---
+title: "Taming Thymeleaf 4th edition release"
+date: 2026-09-27
+draft: false
+tags: ["thymeleaf", "spring-boot", "tailwindcss"]
+keywords: []
+description: "The 4th edition of Taming Thymeleaf is out: updated for Spring Boot 4.1, Java 25, Tailwind CSS 4 and a Vite-based live reload setup."
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+🎉 The 4th edition of my book https://www.wimdeblauwe.com/books/taming-thymeleaf/[Taming Thymeleaf] is out!
+It has been fully updated for Spring Boot 4, Java 25 and Tailwind CSS 4, and it switches the frontend build over to Vite.
+
+<!--more-->
+
+Check out the launch video:
+
+{{< youtube 4COLR7GfR4w >}}
+
+== What is new in the 4th edition?
+
+Every chapter and every example project has been reworked for the current versions of the Spring and frontend ecosystem.
+The most important changes are:
+
+* *Spring Boot 4.1.1*: all code in the book now runs on the latest Spring Boot.
+* *Java 25*: the book now uses the current LTS version of Java.
+* *Vite for the frontend build*: the live reload setup now uses https://vite.dev/[Vite] instead of npm scripts.
+Together with https://github.com/wimdeblauwe/vite-plugin-spring-boot[vite-plugin-spring-boot], this gives you a fast development loop where the browser reloads automatically whenever you change a template, CSS or JavaScript file.
+* *Tailwind CSS 4*: the application is styled with Tailwind CSS 4, compiled through the Tailwind CSS Vite plugin, and uses Tailwind Plus Elements for interactive components like the user menu.
+* *Cally date picker*: the unmaintained Duet Date Picker has been replaced with https://wicky.nillia.ms/cally/[Cally] in chapter 16.
+* *Testcontainers with `@ServiceConnection`*: the tests no longer configure Testcontainers via the JDBC URL, but via a `@Bean` annotated with `@ServiceConnection`.
+* *Cypress 16.1.0*: the end-to-end tests have been updated to the latest Cypress version.
+
+The source code of all the examples is available on https://github.com/wimdeblauwe/taming-thymeleaf-sources[GitHub].
+
+== Get the book
+
+If you already bought Taming Thymeleaf on https://leanpub.com/taming-thymeleaf[Leanpub], you can download the 4th edition for free.
+
+If you don't have the book yet, head over to the https://www.wimdeblauwe.com/books/taming-thymeleaf/[Taming Thymeleaf] page for more information and the links to buy it.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
