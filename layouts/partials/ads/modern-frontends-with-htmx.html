@@ -1,6 +1,3 @@
-<!-- Add section about Modern frontends with htmx for blog posts with the 'htmx' tag -->
-{{ if and (ne .Type "page") (gt .Params.tags 0) (in .Params.tags "htmx")}}
-    {{ if not (strings.HasSuffix .Permalink "blog/2023/12/03/book-launch-modern-frontends-with-htmx/") }}
 <aside class="book-ad">
     <span class="badge">From the author</span>
     <a href="/books/modern-frontends-with-htmx/"><img src="/images/modern-frontends-with-htmx/cover-small.jpg" alt="Modern frontends with htmx cover"></a>
@@ -11,5 +8,3 @@
         <a class="cta" href="/books/modern-frontends-with-htmx/">Get the book →</a>
     </div>
 </aside>
-    {{ end }}
-{{ end }}

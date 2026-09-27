@@ -5,6 +5,7 @@ draft: false
 tags: ["thymeleaf", "spring-boot", "tailwindcss"]
 keywords: []
 description: "The 4th edition of Taming Thymeleaf is out: updated for Spring Boot 4.1, Java 25, Tailwind CSS 4 and a Vite-based live reload setup."
+ad: none
 ---
 :source-highlighter: rouge
 :rouge-css: style

@@ -3,6 +3,7 @@ title: "Release Taming Thymeleaf book"
 date: 2020-12-21
 draft: false
 tags: ["spring-boot","thymeleaf"]
+ad: none
 ---
 :source-highlighter: rouge
 :rouge-css: style

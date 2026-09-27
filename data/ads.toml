@@ -1,0 +1,32 @@
+# Book/course ads shown at the top of blog posts.
+#
+# Ads are evaluated top to bottom; the FIRST ad that has at least one tag in
+# common with the post is shown, and no other ad is served. Order therefore
+# defines priority (e.g. htmx before thymeleaf, since htmx posts are usually
+# tagged thymeleaf too).
+#
+# A post can override the selection in its front matter:
+#   ad: none                 -> show no ad
+#   ad: taming-thymeleaf     -> force a specific ad (by name)
+#
+# `partial` is rendered from layouts/partials/ads/.
+
+[[ads]]
+name = "modern-frontends-with-htmx"
+partial = "modern-frontends-with-htmx.html"
+tags = ["htmx"]
+
+[[ads]]
+name = "taming-thymeleaf"
+partial = "taming-thymeleaf.html"
+tags = ["thymeleaf"]
+
+[[ads]]
+name = "crafting-spring-boot-starters"
+partial = "crafting-spring-boot-starters.html"
+tags = ["auto-configuration"]
+
+[[ads]]
+name = "testing-spring-boot-masterclass"
+partial = "testing-spring-boot-masterclass.html"
+tags = ["assertj", "junit", "spring-boot"]

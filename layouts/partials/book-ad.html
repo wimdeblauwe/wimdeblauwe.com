@@ -1,0 +1,22 @@
+{{- /*
+  Renders at most one ad for a blog post. Rules live in data/ads.toml:
+  the first ad whose tags intersect the post's tags wins.
+  Front matter `ad: none` suppresses the ad, `ad: <name>` forces one.
+*/ -}}
+{{- $override := .Params.ad -}}
+{{- $tags := .Params.tags | default slice -}}
+{{- $selected := false -}}
+{{- if ne $override "none" -}}
+  {{- range site.Data.ads.ads -}}
+    {{- if not $selected -}}
+      {{- if $override -}}
+        {{- if eq .name $override }}{{ $selected = . }}{{ end -}}
+      {{- else if intersect .tags $tags -}}
+        {{- $selected = . -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- with $selected }}
+{{ partial (printf "ads/%s" .partial) $ }}
+{{- end }}
