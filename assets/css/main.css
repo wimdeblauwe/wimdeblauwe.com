@@ -722,6 +722,7 @@ table.tableblock > .title, .verseblock > .title, .videoblock > .title,
 
 .imageblock { text-align: center; }
 .imageblock img { border-radius: 10px; }
+.imageblock a.image[data-fslightbox] { cursor: zoom-in; }
 .image-border > div > img, .imageblock.image-border img { box-shadow: 0 10px 30px -18px rgba(19,32,47,.5); border: 1px solid var(--hairline); }
 img.align-left, .imageblock.text-left > div > img { margin: 10px auto 10px 10px; }
 

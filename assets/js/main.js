@@ -7,6 +7,11 @@ if (progressBar) {
   }, { passive: true });
 }
 
+// Images that link to an image file open full screen (fslightbox, loaded after this script)
+document.querySelectorAll('.imageblock a.image').forEach(a => {
+  if (/\.(png|jpe?g|gif|webp|svg)$/i.test(a.getAttribute('href'))) a.dataset.fslightbox = 'images';
+});
+
 // Search (Pagefind) — homepage only
 const searchInput = document.getElementById('search');
 if (searchInput) {
