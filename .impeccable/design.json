@@ -1,0 +1,403 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-03T15:00:00Z",
+  "title": "Design System: wimdeblauwe.com",
+  "extensions": {
+    "colorMeta": {
+      "copper": {
+        "role": "primary",
+        "displayName": "Workbench Copper",
+        "canonical": "#c2702e",
+        "tonalRamp": [
+          "#180500",
+          "#3c1b00",
+          "#63340b",
+          "#8e4f1b",
+          "#bb6b2b",
+          "#db925d",
+          "#f8ba8f",
+          "#ffe3c1"
+        ]
+      },
+      "copper-bright": {
+        "role": "primary",
+        "displayName": "Bright Copper",
+        "canonical": "#e08a4e"
+      },
+      "copper-soft": {
+        "role": "primary",
+        "displayName": "Copper Wash",
+        "canonical": "#f6e8da"
+      },
+      "navy": {
+        "role": "secondary",
+        "displayName": "Cover Navy",
+        "canonical": "#13202f",
+        "tonalRamp": [
+          "#030c17",
+          "#192635",
+          "#384351",
+          "#59626e",
+          "#7b838c",
+          "#a0a6ac",
+          "#c5cacf",
+          "#eaeff4"
+        ]
+      },
+      "navy-soft": {
+        "role": "secondary",
+        "displayName": "Lifted Navy",
+        "canonical": "#1c2d40"
+      },
+      "navy-deep": {
+        "role": "secondary",
+        "displayName": "Deep Harbour",
+        "canonical": "#27405a"
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Warm Paper",
+        "canonical": "#faf9f5",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#252524",
+          "#424241",
+          "#616160",
+          "#838281",
+          "#a5a5a3",
+          "#cac9c6",
+          "#efeeeb"
+        ]
+      },
+      "paper-soft": {
+        "role": "neutral",
+        "displayName": "Paper Shade",
+        "canonical": "#f1efe8"
+      },
+      "card": {
+        "role": "neutral",
+        "displayName": "Card White",
+        "canonical": "#ffffff"
+      },
+      "code-paper": {
+        "role": "neutral",
+        "displayName": "Code Paper",
+        "canonical": "#fdfdfb"
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#1b2531",
+        "tonalRamp": [
+          "#050c14",
+          "#1c2632",
+          "#3a434e",
+          "#5a626c",
+          "#7d838b",
+          "#a1a5ab",
+          "#c6c9cd",
+          "#ebeff3"
+        ]
+      },
+      "ink-soft": {
+        "role": "neutral",
+        "displayName": "Soft Ink",
+        "canonical": "#5d6673"
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#e6e2d9",
+        "tonalRamp": [
+          "#0c0b0a",
+          "#262523",
+          "#434240",
+          "#62615e",
+          "#84827d",
+          "#a7a59e",
+          "#ccc9c1",
+          "#f2eee5"
+        ]
+      },
+      "cream-on-navy": {
+        "role": "neutral",
+        "displayName": "Cream on Navy",
+        "canonical": "#f0ece5"
+      },
+      "mist-on-navy": {
+        "role": "neutral",
+        "displayName": "Mist on Navy",
+        "canonical": "#b8c2cd"
+      },
+      "code-copper": {
+        "role": "neutral",
+        "displayName": "Rust Code",
+        "canonical": "#9a5a24"
+      },
+      "note-tint": {
+        "role": "neutral",
+        "displayName": "Note Tint",
+        "canonical": "#eef1f5"
+      },
+      "warning-tint": {
+        "role": "neutral",
+        "displayName": "Warning Tint",
+        "canonical": "#f9ebe9"
+      },
+      "warning": {
+        "role": "tertiary",
+        "displayName": "Signal Red",
+        "canonical": "#b3261e"
+      },
+      "copper-ink": {
+        "role": "primary",
+        "displayName": "Copper Ink",
+        "canonical": "#965722"
+      },
+      "copper-fill": {
+        "role": "primary",
+        "displayName": "Copper Fill",
+        "canonical": "#a85f25"
+      },
+      "copper-fill-hover": {
+        "role": "primary",
+        "displayName": "Copper Fill Hover",
+        "canonical": "#8f511d"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Homepage hero headline only."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Article and page h1."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Article h2 and section heads; copper diamond anchor on hover."
+      },
+      "title-sm": {
+        "displayName": "Title Small",
+        "purpose": "Article h3, post-list titles, card and book titles, buttons."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Article prose in a 740px column."
+      },
+      "body-sm": {
+        "displayName": "Body Small",
+        "purpose": "Summaries, card copy, admonition content."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Uppercase mono kickers, badges, TOC title; dates, tags and counts in mono."
+      },
+      "code": {
+        "displayName": "Code",
+        "purpose": "Code listings and inline code."
+      }
+    },
+    "shadows": [
+      {
+        "name": "rest-lift",
+        "value": "0 1px 2px rgba(19,32,47,.04), 0 8px 24px -18px rgba(19,32,47,.25)",
+        "purpose": "Search box and newsletter card at rest."
+      },
+      {
+        "name": "code-lift",
+        "value": "0 14px 34px -28px rgba(19,32,47,.4)",
+        "purpose": "Code blocks."
+      },
+      {
+        "name": "copper-hover",
+        "value": "0 14px 30px -22px rgba(194,112,46,.55)",
+        "purpose": "Card hover response, paired with translateY(-3px)."
+      },
+      {
+        "name": "navy-panel",
+        "value": "0 20px 44px -28px rgba(19,32,47,.65)",
+        "purpose": "Book ad and feature card."
+      },
+      {
+        "name": "focus-ring",
+        "value": "0 0 0 3px #f6e8da",
+        "purpose": "Focus on search box and inputs, with a copper border."
+      }
+    ],
+    "motion": [
+      {
+        "name": "fade-up",
+        "value": "fadeUp .5s–.6s ease both, staggered .08–.1s",
+        "purpose": "Entrance of page-head elements only (hero, article head, book ad)."
+      },
+      {
+        "name": "hover-fast",
+        "value": "all .15s ease",
+        "purpose": "Colour and border changes on links, chips, buttons."
+      },
+      {
+        "name": "hover-lift",
+        "value": "all .18s ease",
+        "purpose": "Card lift with copper shadow."
+      },
+      {
+        "name": "cursor-blink",
+        "value": "blink 1.1s steps(1) infinite",
+        "purpose": "Search prompt block cursor."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "xs",
+        "value": "480px"
+      },
+      {
+        "name": "sm",
+        "value": "680px"
+      },
+      {
+        "name": "md",
+        "value": "720px"
+      },
+      {
+        "name": "lg",
+        "value": "800px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Solid copper call to action: book pages, book ad, newsletter submit.",
+      "html": "<a class=\"ds-btn-primary\" href=\"#\">Read more about the book</a>",
+      "css": ".ds-btn-primary { display: inline-block; font-family: \"Barlow\", sans-serif; font-weight: 700; font-size: .9rem; text-decoration: none; background: var(--copper-fill, #a85f25); color: #fff; border: none; border-radius: 10px; padding: .7rem 1.5rem; cursor: pointer; transition: background .15s ease; } .ds-btn-primary:hover { background: var(--copper-fill-hover, #8f511d); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--copper-soft, #f6e8da); }"
+    },
+    {
+      "name": "Ghost Button on Navy",
+      "kind": "button",
+      "refersTo": "button-ghost-on-navy",
+      "description": "Secondary action inside a navy panel only.",
+      "html": "<div class=\"ds-navy-bg\"><a class=\"ds-btn-ghost\" href=\"#\">Table of contents</a></div>",
+      "css": ".ds-navy-bg { background: #13202f; padding: 1.2rem; border-radius: 12px; } .ds-btn-ghost { display: inline-block; font-family: \"Barlow\", sans-serif; font-weight: 700; font-size: .88rem; text-decoration: none; background: transparent; color: #d8dee5; border: 1px solid rgba(216,222,229,.35); border-radius: 10px; padding: .65rem 1.4rem; transition: all .15s ease; } .ds-btn-ghost:hover, .ds-btn-ghost:focus-visible { outline: none; border-color: #e08a4e; color: #e08a4e; }"
+    },
+    {
+      "name": "Tag Chip",
+      "kind": "chip",
+      "refersTo": "tag-chip",
+      "description": "Article meta tags; links to the tag page.",
+      "html": "<span class=\"ds-tags\"><a class=\"ds-tag\" href=\"#\">spring-boot</a><a class=\"ds-tag\" href=\"#\">thymeleaf</a></span>",
+      "css": ".ds-tags { display: flex; gap: .45rem; flex-wrap: wrap; } .ds-tag { font-family: \"Geist Mono\", monospace; font-size: .68rem; text-decoration: none; color: var(--copper-ink, #965722); background: var(--copper-soft, #f6e8da); border-radius: 99px; padding: .2rem .7rem; transition: all .15s ease; } .ds-tag:hover, .ds-tag:focus-visible { outline: none; background: var(--copper-fill, #a85f25); color: #fff; }"
+    },
+    {
+      "name": "Search Prompt",
+      "kind": "input",
+      "refersTo": "search-prompt",
+      "description": "Terminal-style homepage search with copper chevron and blinking block cursor.",
+      "html": "<label class=\"ds-search\"><span class=\"ds-search-chevron\">❯</span><span class=\"ds-search-cursor\"></span><input type=\"search\" placeholder=\"search 130 posts…\" aria-label=\"Search posts\"></label>",
+      "css": "@keyframes ds-blink { 50% { opacity: 0; } } .ds-search { display: flex; align-items: center; gap: .65rem; background: #fff; border: 1px solid var(--hairline, #e6e2d9); border-radius: 14px; padding: 1rem 1.3rem; box-shadow: 0 1px 2px rgba(19,32,47,.04), 0 8px 24px -18px rgba(19,32,47,.25); transition: border-color .15s ease, box-shadow .15s ease; cursor: text; } .ds-search:focus-within { border-color: var(--copper, #c2702e); box-shadow: 0 0 0 3px var(--copper-soft, #f6e8da), 0 8px 24px -18px rgba(19,32,47,.25); } .ds-search-chevron { font-family: \"Geist Mono\", monospace; color: var(--copper, #c2702e); font-weight: 500; } .ds-search-cursor { width: .58em; height: 1.2em; flex-shrink: 0; background: var(--copper, #c2702e); animation: ds-blink 1.1s steps(1) infinite; } .ds-search:focus-within .ds-search-cursor { display: none; } .ds-search input { flex: 1; border: none; background: none; outline: none; font-family: \"Geist Mono\", monospace; font-size: .95rem; color: var(--ink, #1b2531); caret-color: var(--copper, #c2702e); } .ds-search input::placeholder { color: #b3aca0; }"
+    },
+    {
+      "name": "Masthead Navigation",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "Sticky translucent masthead with diamond wordmark and copper active underline.",
+      "html": "<header class=\"ds-top\"><a class=\"ds-wordmark\" href=\"#\">Wim Deblauwe</a><nav class=\"ds-nav\"><a class=\"active\" href=\"#\">Blog</a><a href=\"#\">Projects</a><a href=\"#\">Books</a><a href=\"#\">Conferences</a><a href=\"#\">About</a></nav></header>",
+      "css": ".ds-top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: 1.05rem 1.6rem; background: rgba(250,247,241,.9); backdrop-filter: blur(8px); border-bottom: 1px solid var(--hairline, #e6e2d9); } .ds-wordmark { font-family: \"Barlow\", sans-serif; font-weight: 700; font-size: 1.12rem; letter-spacing: -0.02em; color: var(--ink, #1b2531); text-decoration: none; display: flex; align-items: center; gap: .6rem; } .ds-wordmark::before { content: \"\"; width: 12px; height: 12px; background: var(--copper, #c2702e); border-radius: 3px; transform: rotate(45deg); } .ds-nav { display: flex; gap: .9rem 1.5rem; flex-wrap: wrap; } .ds-nav a { font-family: \"Hanken Grotesk\", sans-serif; font-weight: 500; font-size: .9rem; color: var(--ink-soft, #5d6673); text-decoration: none; padding-bottom: 2px; border-bottom: 2px solid transparent; transition: color .15s ease, border-color .15s ease; } .ds-nav a:hover, .ds-nav a:focus-visible { outline: none; color: var(--ink, #1b2531); } .ds-nav a.active { color: var(--ink, #1b2531); border-bottom-color: var(--copper, #c2702e); }"
+    },
+    {
+      "name": "Post Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Prev/next and related-post card: flat at rest, copper lift on hover.",
+      "html": "<a class=\"ds-card\" href=\"#\"><span class=\"ds-card-dir\">Next post</span><span class=\"ds-card-title\">Writing a Thymeleaf component library - part 2</span></a>",
+      "css": ".ds-card { display: flex; flex-direction: column; gap: .35rem; background: #fff; border: 1px solid var(--hairline, #e6e2d9); border-radius: 14px; padding: 1.15rem 1.3rem; text-decoration: none; transition: all .18s ease; } .ds-card:hover, .ds-card:focus-visible { outline: none; border-color: var(--copper, #c2702e); transform: translateY(-3px); box-shadow: 0 14px 30px -22px rgba(194,112,46,.55); } .ds-card-dir { font-family: \"Geist Mono\", monospace; font-size: .66rem; letter-spacing: .12em; text-transform: uppercase; color: var(--copper-ink, #965722); } .ds-card-title { font-family: \"Barlow\", sans-serif; font-weight: 700; font-size: .95rem; line-height: 1.3; letter-spacing: -0.015em; color: var(--navy, #13202f); }"
+    },
+    {
+      "name": "Code Block",
+      "kind": "custom",
+      "refersTo": "code-block",
+      "description": "Light listing with navy title bar; the only dark touch on code.",
+      "html": "<div class=\"ds-code\"><div class=\"ds-code-title\">src/main/java/com/example/MyAutoConfiguration.java</div><pre><code>@AutoConfiguration\npublic class MyAutoConfiguration {\n}</code></pre></div>",
+      "css": ".ds-code { border: 1px solid var(--hairline, #e6e2d9); border-top: 3px solid var(--navy, #13202f); border-radius: 14px; background: #fdfdfb; box-shadow: 0 14px 34px -28px rgba(19,32,47,.4); overflow: hidden; } .ds-code-title { background: var(--navy-soft, #1c2d40); padding: .55rem 1.2rem; font-family: \"Geist Mono\", monospace; font-size: .68rem; color: #c9d2dc; } .ds-code pre { margin: 0; padding: 1.25rem 1.4rem; overflow-x: auto; font-family: \"Geist Mono\", monospace; font-size: .85rem; line-height: 1.7; color: var(--ink, #1b2531); }"
+    },
+    {
+      "name": "Book Ad",
+      "kind": "custom",
+      "refersTo": "navy-panel",
+      "description": "The single navy panel on a post: tag-driven book/course ad above the article body.",
+      "html": "<aside class=\"ds-ad\"><span class=\"ds-ad-badge\">From the author</span><div class=\"ds-ad-copy\"><h3>Taming Thymeleaf</h3><p>Server-side rendering with <b>Spring Boot</b>, step by step.</p><a class=\"ds-ad-cta\" href=\"#\">Get the book</a></div></aside>",
+      "css": ".ds-ad { position: relative; margin-top: 1.2rem; background: linear-gradient(115deg, #13202f 0%, #1c2d40 75%, #27405a 100%); color: #e8e4dc; border-radius: 16px; box-shadow: 0 20px 44px -28px rgba(19,32,47,.65); padding: 1.6rem 1.8rem; } .ds-ad::before { content: \"\"; position: absolute; inset: 0; border-radius: 16px; pointer-events: none; background: radial-gradient(ellipse 70% 120% at 85% 0%, rgba(224,138,78,.16), transparent 60%); } .ds-ad-badge { position: absolute; top: -0.85rem; left: 1.5rem; font-family: \"Geist Mono\", monospace; font-size: .64rem; letter-spacing: .14em; text-transform: uppercase; background: #a85f25; color: #fff; border-radius: 99px; padding: .3rem .9rem; transform: rotate(-1.5deg); box-shadow: 0 4px 10px -4px rgba(194,112,46,.6); } .ds-ad-copy { position: relative; } .ds-ad-copy h3 { margin: 0; font-family: \"Barlow\", sans-serif; font-weight: 700; font-size: 1.12rem; letter-spacing: -0.01em; color: #fff; } .ds-ad-copy p { margin: .3rem 0 0; font-family: \"Hanken Grotesk\", sans-serif; font-size: .9rem; color: #b8c2cd; } .ds-ad-copy p b { color: #e08a4e; font-weight: 600; } .ds-ad-cta { display: inline-block; margin-top: .75rem; font-family: \"Barlow\", sans-serif; font-weight: 700; font-size: .82rem; text-decoration: none; background: #a85f25; color: #fff; border-radius: 10px; padding: .5rem 1.2rem; transition: background .15s ease; } .ds-ad-cta:hover, .ds-ad-cta:focus-visible { outline: none; background: #8f511d; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Workshop Bench",
+    "overview": "The site is a craftsman's well-kept bench: warm paper underfoot, navy steel for the heavy parts, copper for the fittings you reach for. Everything on it is there because it gets used. Nothing is there for show. The palette comes from the Crafting Spring Boot Starters cover, so the books and the blog read as work from the same bench.\n\nReaders mostly arrive from search, looking for one answer. The system serves that reader first. Prose and code sit on a calm, light surface in a single centred column. Navy is reserved for heavy structural pieces: the footer, the code-block title bar, and the one book ad. Copper appears only in small, purposeful marks: links, tags, buttons, the reading-progress bar, the heading diamonds, and the search prompt's block cursor. A few small terminal touches (the ❯ prompt, mono labels, the blinking cursor) mark the site as a developer's without becoming a costume.\n\nThe site is not a SaaS landing page. There are no purple gradients, no glassmorphism, and no stock-template hero sections. It doesn't push sales either: no popups, no sticky banners, no ads inside the article body. It is light-only.",
+    "keyCharacteristics": [
+      "Warm off-white paper (never pure white as the page) with white cards for lift.",
+      "Navy + copper duo; copper is always a small accent, never a large fill.",
+      "Barlow display at heavy weight with tight negative tracking, Hanken Grotesk for reading, Geist Mono for labels, dates, tags and code.",
+      "Soft, generous radii (10–20px) and hairline borders; shadows are low, navy-tinted, and pulled under the element.",
+      "Code blocks are light and legible, with a navy top edge or title bar.",
+      "Short fadeUp entrance motion on page heads only; hover lifts of 2–3px on cards."
+    ],
+    "rules": [
+      {
+        "name": "The Small Marks Rule",
+        "body": "Copper is for marks, not surfaces: text, underlines, chips, buttons, bars of 3px or less, diamonds, cursors. It never fills a section, a panel or a hero. When something big needs weight, it is navy.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Dark Panel Rule",
+        "body": "On a blog post, at most one navy panel (the book ad) appears above the content; everything else in the article column is light.",
+        "section": "colors"
+      },
+      {
+        "name": "The Three Coppers Rule",
+        "body": "Copper for marks, Copper Ink for small text, Copper Fill behind white text. Never put small text in plain copper, and never lighten a button on hover; it darkens to Copper Fill Hover.",
+        "section": "colors"
+      },
+      {
+        "name": "The Paper, Not White Rule",
+        "body": "The page is always Warm Paper. Pure white is reserved for raised surfaces sitting on it.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mono Means Metadata Rule",
+        "body": "Geist Mono is for things a machine would print: dates, tags, counts, paths, labels, code, the search prompt. Never for headings or prose.",
+        "section": "typography"
+      },
+      {
+        "name": "The Heavy Display Rule",
+        "body": "Headings use Barlow at 700 or 800 with negative tracking (-0.01em to -0.035em), always in navy. No light or regular-weight headings.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-At-Rest Rule",
+        "body": "Cards rest flat on a hairline border. Lift and copper shadow arrive only on hover.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do set every page on Warm Paper and lift content onto Card White with a 1px Hairline border.",
+      "Do keep copper to small marks: links, chips, buttons, 3px bars, diamonds, focus rings.",
+      "Do use navy for headings and for the few heavy structural surfaces (footer, code title bar, the one book ad).",
+      "Do use Geist Mono for dates, tags, counts, labels and code, and Barlow 700–800 with negative tracking for headings.",
+      "Do keep code blocks light with the navy top edge or title bar, and let them scroll horizontally inside the column.",
+      "Do keep motion short and purposeful: fadeUp (0.5–0.6s) on page heads, 0.15–0.18s hover transitions, 2–3px card lifts.",
+      "Do check every change at ~390px as well as desktop; nothing may cause a horizontal page scroll."
+    ],
+    "donts": [
+      "Don't fill large areas with copper; when something needs weight, use navy.",
+      "Don't add dark code themes; listings stay light.",
+      "Don't add popups, sticky promo banners, or ads inside the article body; one ad at most, above the content.",
+      "Don't reach for the generic SaaS look: purple or rainbow gradients, glassmorphism cards, stock template heroes.",
+      "Don't add dark-mode variants unless explicitly asked; the system is light-only.",
+      "Don't use pure white as the page background or hard black for text.",
+      "Don't introduce new accent hues; Signal Red is reserved for warnings only."
+    ]
+  }
+}
