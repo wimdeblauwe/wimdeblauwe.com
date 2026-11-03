@@ -3,7 +3,7 @@
 <section class="hero frame">
     <div class="kicker">Java · Spring · Thymeleaf · Htmx</div>
     <h1>Production-ready Spring Boot, <em>crafted</em> carefully.</h1>
-    <img class="portrait" src="/images/wim-deblauwe.jpg" alt="Wim Deblauwe" width="240" height="240">
+    {{ partial "img.html" (dict "src" "/images/wim-deblauwe.jpg" "alt" "Wim Deblauwe" "width" 240 "fill" true "sizes" "(max-width: 720px) 96px, 240px" "class" "portrait" "eager" true) }}
     <p class="standfirst">
         I'm Wim Deblauwe, a software developer specialized in Java and Spring. I write
         <a href="/books/">books</a>, maintain open-source projects like
@@ -34,7 +34,7 @@
 <div class="frame books-strip">
     {{ if not .Site.Params.featureNewBook }}
     <a class="book-card" href="/books/crafting-spring-boot-starters/">
-        <img src="/images/crafting-spring-boot-starters/cover-small.png" alt="Crafting Spring Boot Starters cover">
+        {{ partial "img.html" (dict "src" "/images/crafting-spring-boot-starters/cover-small.png" "alt" "Crafting Spring Boot Starters cover" "width" 66) }}
         <div>
             <h3>Crafting Spring Boot Starters</h3>
             <p>Design, build, test and publish auto-configuration libraries on Spring Boot.</p>
@@ -42,14 +42,14 @@
     </a>
     {{ end }}
     <a class="book-card" href="/books/taming-thymeleaf/">
-        <img src="/images/taming-thymeleaf-cover-3D-transparent.png" alt="Taming Thymeleaf cover">
+        {{ partial "img.html" (dict "src" "/images/taming-thymeleaf-cover-3D-transparent.png" "alt" "Taming Thymeleaf cover" "width" 66) }}
         <div>
             <h3>Taming Thymeleaf</h3>
             <p>Server-side rendering with Spring Boot, step by step.</p>
         </div>
     </a>
     <a class="book-card" href="/books/modern-frontends-with-htmx/">
-        <img src="/images/modern-frontends-with-htmx/cover-small.jpg" alt="Modern frontends with htmx cover">
+        {{ partial "img.html" (dict "src" "/images/modern-frontends-with-htmx/cover-small.jpg" "alt" "Modern frontends with htmx cover" "width" 66) }}
         <div>
             <h3>Modern frontends with htmx</h3>
             <p>Hypermedia-driven UIs with Spring Boot &amp; Thymeleaf.</p>

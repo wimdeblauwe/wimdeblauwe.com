@@ -85,3 +85,15 @@ getenv = ['^HUGO_']
 [security.http]
 methods = ['(?i)GET|POST']
 urls = ['.*']
+
+# Make static/images available to Hugo Pipes (resources.Get) so templates can
+# resize them and read their dimensions. Declaring an assets mount replaces the
+# default one, so assets/ is mounted explicitly too. static/ itself still
+# publishes as-is.
+[module]
+  [[module.mounts]]
+    source = 'assets'
+    target = 'assets'
+  [[module.mounts]]
+    source = 'static/images'
+    target = 'assets/images'

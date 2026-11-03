@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "layouts/partials/img.html"
+        ],
+        "createdAt": "2026-11-03T15:14:23.459Z",
+        "reason": "Claude: Hugo template partial; src is set from a processed resource at build time, verified in built HTML"
+      },
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "layouts/partials/post-content.html"
+        ],
+        "createdAt": "2026-11-03T15:14:53.061Z",
+        "reason": "Claude: Hugo template; the match is a regex pattern string, not markup"
+      }
+    ]
+  }
+}

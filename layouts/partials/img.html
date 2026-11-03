@@ -1,0 +1,40 @@
+{{- /*
+  Responsive, size-correct <img> for a fixed-size image from static/images
+  (mounted into assets, see config.toml). Emits WebP at 1x and 2x of the
+  display width (never upscaled), with width/height set so nothing shifts.
+
+  Params (dict):
+    src    "/images/…"  path as used in static/ (required)
+    alt    alt text (required)
+    width  display width in CSS px (required)
+    fill   true → square crop (width x width), e.g. the portrait
+    sizes  optional sizes attribute when the display width changes per breakpoint
+    class  optional class
+    eager  true → load eagerly with high priority (above the fold); default lazy
+*/ -}}
+{{- $p := . }}
+{{- $w := $p.width }}
+{{- with resources.Get (strings.TrimPrefix "/" $p.src) }}
+  {{- $res := . }}
+  {{- $max := cond (eq $p.fill true) (math.Min $res.Width $res.Height) $res.Width | int }}
+  {{- $targets := slice $w (mul $w 2) }}
+  {{- with $p.sizes }}{{ $targets = slice 192 $w (mul $w 2) }}{{ end }}
+  {{- $srcset := slice }}
+  {{- $src := "" }}
+  {{- range $targets }}
+    {{- $tw := math.Min . $max | int }}
+    {{- $img := "" }}
+    {{- if eq $p.fill true }}
+      {{- $img = $res.Fill (printf "%dx%d Center webp q82" $tw $tw) }}
+    {{- else }}
+      {{- $img = $res.Resize (printf "%dx webp q85" $tw) }}
+    {{- end }}
+    {{- $srcset = $srcset | append (printf "%s %dw" $img.RelPermalink $tw) }}
+    {{- $src = $img.RelPermalink }}
+  {{- end }}
+  {{- $h := $w }}
+  {{- if ne $p.fill true }}{{ $h = math.Round (div (mul $w $res.Height) (float $res.Width)) | int }}{{ end -}}
+  <img src="{{ $src }}" srcset="{{ delimit (uniq $srcset) ", " }}" sizes="{{ $p.sizes | default (printf "%dpx" $w) }}" width="{{ $w }}" height="{{ $h }}" alt="{{ $p.alt }}"{{ with $p.class }} class="{{ . }}"{{ end }} {{ if eq $p.eager true }}fetchpriority="high"{{ else }}loading="lazy"{{ end }} decoding="async">
+{{- else }}
+  {{- errorf "img partial: %q not found under assets (static/images is mounted there)" $p.src }}
+{{- end }}

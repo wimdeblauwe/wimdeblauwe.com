@@ -126,7 +126,7 @@ body {
 }
 body > main { flex: 1; }
 a { color: inherit; }
-img { max-width: 100%; }
+img { max-width: 100%; height: auto; }
 .frame { max-width: 960px; margin: 0 auto; padding: 0 1.6rem; }
 .prose-frame { max-width: 740px; margin: 0 auto; padding: 0 1.6rem; }
 /* while searching, collapse the book banners so results sit next to the search box */
