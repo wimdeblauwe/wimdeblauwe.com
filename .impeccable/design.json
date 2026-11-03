@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-03T15:20:00Z",
+  "generatedAt": "2026-11-03T15:40:00Z",
   "title": "Design System: wimdeblauwe.com",
   "extensions": {
     "colorMeta": {
@@ -129,11 +129,6 @@
         "displayName": "Mist on Navy",
         "canonical": "#b8c2cd"
       },
-      "code-copper": {
-        "role": "neutral",
-        "displayName": "Rust Code",
-        "canonical": "#9a5a24"
-      },
       "note-tint": {
         "role": "neutral",
         "displayName": "Note Tint",
@@ -163,6 +158,76 @@
         "role": "primary",
         "displayName": "Copper Fill Hover",
         "canonical": "#8f511d"
+      },
+      "frost-on-navy": {
+        "role": "neutral",
+        "displayName": "Frost on Navy",
+        "canonical": "#c9d2dc"
+      },
+      "paper-glow": {
+        "role": "neutral",
+        "displayName": "Paper Glow",
+        "canonical": "#fffefc"
+      },
+      "ink-faint": {
+        "role": "neutral",
+        "displayName": "Faint Ink",
+        "canonical": "#756e62"
+      },
+      "quote-ink": {
+        "role": "neutral",
+        "displayName": "Quote Ink",
+        "canonical": "#6e4521"
+      },
+      "syntax-string": {
+        "role": "tertiary",
+        "displayName": "Syntax String",
+        "canonical": "#9a3a1c"
+      },
+      "syntax-regex": {
+        "role": "tertiary",
+        "displayName": "Syntax Regex",
+        "canonical": "#2a6a3a"
+      },
+      "syntax-symbol": {
+        "role": "tertiary",
+        "displayName": "Syntax Symbol",
+        "canonical": "#8a3d78"
+      },
+      "syntax-value": {
+        "role": "tertiary",
+        "displayName": "Syntax Value",
+        "canonical": "#0f6b6b"
+      },
+      "syntax-type": {
+        "role": "tertiary",
+        "displayName": "Syntax Type",
+        "canonical": "#2c4f86"
+      },
+      "syntax-tag": {
+        "role": "tertiary",
+        "displayName": "Syntax Tag",
+        "canonical": "#1f5f8b"
+      },
+      "syntax-function": {
+        "role": "tertiary",
+        "displayName": "Syntax Function",
+        "canonical": "#a12b2b"
+      },
+      "syntax-annotation": {
+        "role": "tertiary",
+        "displayName": "Syntax Annotation",
+        "canonical": "#6b4fa0"
+      },
+      "syntax-deleted": {
+        "role": "tertiary",
+        "displayName": "Syntax Deleted",
+        "canonical": "#fbe9e7"
+      },
+      "syntax-inserted": {
+        "role": "tertiary",
+        "displayName": "Syntax Inserted",
+        "canonical": "#e6f2e6"
       }
     },
     "typographyMeta": {
@@ -282,7 +347,7 @@
       "refersTo": "button-ghost-on-navy",
       "description": "Secondary action inside a navy panel only.",
       "html": "<div class=\"ds-navy-bg\"><a class=\"ds-btn-ghost\" href=\"#\">Table of contents</a></div>",
-      "css": ".ds-navy-bg { background: #13202f; padding: 1.2rem; border-radius: 12px; } .ds-btn-ghost { display: inline-block; font-family: \"Barlow\", sans-serif; font-weight: 700; font-size: .88rem; text-decoration: none; background: transparent; color: #d8dee5; border: 1px solid rgba(216,222,229,.35); border-radius: 10px; padding: .65rem 1.4rem; transition: all .15s ease; } .ds-btn-ghost:hover, .ds-btn-ghost:focus-visible { outline: none; border-color: #e08a4e; color: #e08a4e; }"
+      "css": ".ds-navy-bg { background: #13202f; padding: 1.2rem; border-radius: 12px; } .ds-btn-ghost { display: inline-block; font-family: \"Barlow\", sans-serif; font-weight: 700; font-size: .88rem; text-decoration: none; background: transparent; color: var(--frost-on-navy, #c9d2dc); border: 1px solid rgba(216,222,229,.35); border-radius: 10px; padding: .65rem 1.4rem; transition: all .15s ease; } .ds-btn-ghost:hover, .ds-btn-ghost:focus-visible { outline: none; border-color: #e08a4e; color: #e08a4e; }"
     },
     {
       "name": "Tag Chip",
@@ -322,7 +387,7 @@
       "refersTo": "code-block",
       "description": "Light listing with navy title bar; the only dark touch on code.",
       "html": "<div class=\"ds-code\"><div class=\"ds-code-title\">src/main/java/com/example/MyAutoConfiguration.java</div><pre><code>@AutoConfiguration\npublic class MyAutoConfiguration {\n}</code></pre></div>",
-      "css": ".ds-code { border: 1px solid var(--hairline, #e6e2d9); border-top: 3px solid var(--navy, #13202f); border-radius: 14px; background: #fdfdfb; box-shadow: 0 14px 34px -28px rgba(19,32,47,.4); overflow: hidden; } .ds-code-title { background: var(--navy-soft, #1c2d40); padding: .55rem 1.2rem; font-family: \"Geist Mono\", monospace; font-size: .68rem; color: #c9d2dc; } .ds-code pre { margin: 0; padding: 1.25rem 1.4rem; overflow-x: auto; font-family: \"Geist Mono\", monospace; font-size: .85rem; line-height: 1.7; color: var(--ink, #1b2531); }"
+      "css": ".ds-code { border: 1px solid var(--hairline, #e6e2d9); border-top: 3px solid var(--navy, #13202f); border-radius: 14px; background: #fdfdfb; box-shadow: 0 14px 34px -28px rgba(19,32,47,.4); overflow: hidden; } .ds-code-title { background: var(--navy-soft, #1c2d40); padding: .55rem 1.2rem; font-family: \"Geist Mono\", monospace; font-size: .68rem; color: var(--frost-on-navy, #c9d2dc); } .ds-code pre { margin: 0; padding: 1.25rem 1.4rem; overflow-x: auto; font-family: \"Geist Mono\", monospace; font-size: .85rem; line-height: 1.7; color: var(--ink, #1b2531); }"
     },
     {
       "name": "Book Ad",
@@ -330,7 +395,7 @@
       "refersTo": "navy-panel",
       "description": "The single navy panel on a post: tag-driven book/course ad above the article body.",
       "html": "<aside class=\"ds-ad\"><span class=\"ds-ad-badge\">From the author</span><div class=\"ds-ad-copy\"><h3>Taming Thymeleaf</h3><p>Server-side rendering with <b>Spring Boot</b>, step by step.</p><a class=\"ds-ad-cta\" href=\"#\">Get the book</a></div></aside>",
-      "css": ".ds-ad { position: relative; margin-top: 1.2rem; background: linear-gradient(115deg, #13202f 0%, #1c2d40 75%, #27405a 100%); color: #e8e4dc; border-radius: 16px; box-shadow: 0 20px 44px -28px rgba(19,32,47,.65); padding: 1.6rem 1.8rem; } .ds-ad::before { content: \"\"; position: absolute; inset: 0; border-radius: 16px; pointer-events: none; background: radial-gradient(ellipse 70% 120% at 85% 0%, rgba(224,138,78,.16), transparent 60%); } .ds-ad-badge { position: absolute; top: -0.85rem; left: 1.5rem; font-family: \"Geist Mono\", monospace; font-size: .64rem; letter-spacing: .14em; text-transform: uppercase; background: #a85f25; color: #fff; border-radius: 99px; padding: .3rem .9rem; transform: rotate(-1.5deg); box-shadow: 0 4px 10px -4px rgba(194,112,46,.6); } .ds-ad-copy { position: relative; } .ds-ad-copy h3 { margin: 0; font-family: \"Barlow\", sans-serif; font-weight: 700; font-size: 1.12rem; letter-spacing: -0.01em; color: #fff; } .ds-ad-copy p { margin: .3rem 0 0; font-family: \"Hanken Grotesk\", sans-serif; font-size: .9rem; color: #b8c2cd; } .ds-ad-copy p b { color: #e08a4e; font-weight: 600; } .ds-ad-cta { display: inline-block; margin-top: .75rem; font-family: \"Barlow\", sans-serif; font-weight: 700; font-size: .82rem; text-decoration: none; background: #a85f25; color: #fff; border-radius: 10px; padding: .5rem 1.2rem; transition: background .15s ease; } .ds-ad-cta:hover, .ds-ad-cta:focus-visible { outline: none; background: #8f511d; }"
+      "css": ".ds-ad { position: relative; margin-top: 1.2rem; background: linear-gradient(115deg, #13202f 0%, #1c2d40 75%, var(--navy-deep, #27405a) 100%); color: var(--cream-on-navy, #f0ece5); border-radius: 16px; box-shadow: 0 20px 44px -28px rgba(19,32,47,.65); padding: 1.6rem 1.8rem; } .ds-ad::before { content: \"\"; position: absolute; inset: 0; border-radius: 16px; pointer-events: none; background: radial-gradient(ellipse 70% 120% at 85% 0%, rgba(224,138,78,.16), transparent 60%); } .ds-ad-badge { position: absolute; top: -0.85rem; left: 1.5rem; font-family: \"Geist Mono\", monospace; font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; background: #a85f25; color: #fff; border-radius: 99px; padding: .3rem .9rem; transform: rotate(-1.5deg); box-shadow: 0 4px 10px -4px rgba(194,112,46,.6); } .ds-ad-copy { position: relative; } .ds-ad-copy h3 { margin: 0; font-family: \"Barlow\", sans-serif; font-weight: 700; font-size: 1.12rem; letter-spacing: -0.01em; color: #fff; } .ds-ad-copy p { margin: .3rem 0 0; font-family: \"Hanken Grotesk\", sans-serif; font-size: .9rem; color: var(--mist-on-navy, #b8c2cd); } .ds-ad-copy p b { color: #e08a4e; font-weight: 600; } .ds-ad-cta { display: inline-block; margin-top: .75rem; font-family: \"Barlow\", sans-serif; font-weight: 700; font-size: .82rem; text-decoration: none; background: #a85f25; color: #fff; border-radius: 10px; padding: .5rem 1.2rem; transition: background .15s ease; } .ds-ad-cta:hover, .ds-ad-cta:focus-visible { outline: none; background: #8f511d; }"
     }
   ],
   "narrative": {
@@ -345,6 +410,11 @@
       "Short fadeUp entrance motion on page heads only; hover lifts of 2–3px on cards."
     ],
     "rules": [
+      {
+        "name": "The Tokens Only Rule",
+        "body": "Every colour in `main.css` comes from a `:root` token. The only literal is `#fff` for text on Copper Fill; shadows keep their `rgba()` values from the shadow vocabulary.",
+        "section": "colors"
+      },
       {
         "name": "The Small Marks Rule",
         "body": "Copper is for marks, not surfaces: text, underlines, chips, buttons, bars of 3px or less, diamonds, cursors. It never fills a section, a panel or a hero. When something big needs weight, it is navy.",

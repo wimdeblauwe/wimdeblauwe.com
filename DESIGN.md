@@ -20,7 +20,20 @@ colors:
   hairline: "#e6e2d9"
   cream-on-navy: "#f0ece5"
   mist-on-navy: "#b8c2cd"
-  code-copper: "#9a5a24"
+  frost-on-navy: "#c9d2dc"
+  paper-glow: "#fffefc"
+  ink-faint: "#756e62"
+  quote-ink: "#6e4521"
+  syntax-string: "#9a3a1c"
+  syntax-regex: "#2a6a3a"
+  syntax-symbol: "#8a3d78"
+  syntax-value: "#0f6b6b"
+  syntax-type: "#2c4f86"
+  syntax-tag: "#1f5f8b"
+  syntax-function: "#a12b2b"
+  syntax-annotation: "#6b4fa0"
+  syntax-deleted: "#fbe9e7"
+  syntax-inserted: "#e6f2e6"
   note-tint: "#eef1f5"
   warning-tint: "#f9ebe9"
   warning: "#b3261e"
@@ -179,9 +192,13 @@ A warm-neutral paper ground, a deep navy for structure, and a single copper acce
 - **Code Paper** (`code-paper`): code block body; whiter than paper, warmer than card.
 - **Ink** (`ink`): body text. **Soft Ink** (`ink-soft`): dates, summaries, meta, secondary text.
 - **Hairline** (`hairline`): every 1px border and divider.
-- **Cream on Navy** (`cream-on-navy`) and **Mist on Navy** (`mist-on-navy`): primary and secondary text on navy panels.
-- **Rust Code** (`code-copper`): inline `code` text colour, a darker copper so it stays readable.
+- **Cream on Navy** (`cream-on-navy`) and **Mist on Navy** (`mist-on-navy`): primary and secondary text on navy panels. **Frost on Navy** (`frost-on-navy`) sits between them: the code title bar and the ghost button.
+- **Paper Glow** (`paper-glow`): the faint radial highlight at the top of the page.
+- **Faint Ink** (`ink-faint`): input placeholders (4.5:1 on white). **Quote Ink** (`quote-ink`): blockquote text on Copper Wash.
+- **Syntax colours** (`syntax-*`): one token per Rouge token group (strings, regex, symbols, values, types, tags, functions, annotations, diff backgrounds); every one clears 4.5:1 on Code Paper.
 - **Note Tint** (`note-tint`), **Warning Tint** (`warning-tint`) with **Signal Red** (`warning`): admonition panels and their chips. Signal Red appears nowhere else.
+
+**The Tokens Only Rule.** Every colour in `main.css` comes from a `:root` token. The only literal is `#fff` for text on Copper Fill; shadows keep their `rgba()` values from the shadow vocabulary.
 
 ### Named Rules
 **The Small Marks Rule.** Copper is for marks, not surfaces: text, underlines, chips, buttons, bars of 3px or less, diamonds, cursors. It never fills a section, a panel or a hero. When something big needs weight, it is navy.
@@ -208,7 +225,7 @@ A warm-neutral paper ground, a deep navy for structure, and a single copper acce
 - **Body** (`body`): article prose at 1.05rem / 1.65, in a 740px column (~70ch). The lead paragraph steps up to 1.13rem.
 - **Body-sm** (`body-sm`): summaries, card copy, admonition content (0.85–0.95rem), usually Soft Ink.
 - **Label** (`label`): uppercase mono with wide tracking (0.12–0.18em) for kickers, badges, TOC title, "Related" and prev/next directions; non-uppercase mono at 0.7–0.78rem for dates, counts, tags, breadcrumbs.
-- **Code** (`code`): listings at 0.85rem / 1.7; inline code at 0.84em on Paper Shade in Rust Code.
+- **Code** (`code`): listings at 0.85rem / 1.7; inline code at 0.84em on Paper Shade in Copper Ink.
 
 ### Named Rules
 **The Mono Means Metadata Rule.** Geist Mono is for things a machine would print: dates, tags, counts, paths, labels, code, the search prompt. Never for headings or prose.
