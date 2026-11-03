@@ -1,0 +1,37 @@
+{{- /*
+  Renders a post's content with every local <img> (src="/images/…") made
+  layout-stable and lighter:
+    - width/height from the actual file, so the page doesn't jump while loading
+    - loading="lazy" decoding="async"
+    - raster images wider than 1400px (2x the article column) are served
+      resized, same format; the lightbox link still opens the original
+
+  Asciidoctor has no image render hook, so this post-processes its HTML.
+  Images that already set a width (image::x.png[width=…]) keep their sizing
+  and only get lazy loading.
+*/ -}}
+{{- $content := .Content }}
+{{- range findRE `<img [^>]*>` $content | uniq }}
+  {{- $tag := . }}
+  {{- $src := replaceRE `^.*\ssrc="([^"]+)".*$` "$1" $tag }}
+  {{- if and (hasPrefix $src "/images/") (not (strings.Contains $tag "loading=")) }}
+    {{- $attrs := `loading="lazy" decoding="async"` }}
+    {{- $newSrc := $src }}
+    {{- /* src is URL-encoded (e.g. %20 for spaces); asset lookup needs the file name */ -}}
+    {{- with resources.Get (strings.TrimPrefix "/" (replace $src "%20" " ")) }}
+      {{- if and (eq .ResourceType "image") (in (slice "png" "jpeg" "gif" "webp") .MediaType.SubType) }}
+        {{- $img := . }}
+        {{- if and (gt .Width 1400) (ne .MediaType.SubType "gif") }}
+          {{- $img = .Resize "1400x" }}
+          {{- $newSrc = $img.RelPermalink }}
+        {{- end }}
+        {{- if not (strings.Contains $tag " width=") }}
+          {{- $attrs = printf `width="%d" height="%d" %s` $img.Width $img.Height $attrs }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+    {{- $new := replace $tag (printf `src="%s"` $src) (printf `src="%s" %s` $newSrc $attrs) }}
+    {{- $content = replace $content $tag $new }}
+  {{- end }}
+{{- end }}
+{{- $content | safeHTML }}
