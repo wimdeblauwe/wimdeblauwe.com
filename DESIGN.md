@@ -293,7 +293,8 @@ A 3px copper bar fixed at the very top of blog posts, growing with scroll.
 - **Do** use navy for headings and for the few heavy structural surfaces (footer, code title bar, the one book ad).
 - **Do** use Geist Mono for dates, tags, counts, labels and code, and Barlow 700–800 with negative tracking for headings.
 - **Do** keep code blocks light with the navy top edge or title bar, and let them scroll horizontally inside the column.
-- **Do** keep motion short and purposeful: `fadeUp` (0.5–0.6s) on page heads, 0.15–0.18s hover transitions, 2–3px card lifts.
+- **Do** keep motion short and purposeful: `fadeUp` (0.5–0.6s) on page heads, 0.15–0.18s hover transitions, 2–3px card lifts. Under `prefers-reduced-motion`, page heads only fade, cards don't lift or tilt (colour, border and shadow feedback stays), and the search cursor is solid.
+- **Do** stop anything that blinks within 5 seconds: the search cursor blinks 4 times, then stays solid.
 - **Do** check every change at ~390px as well as desktop; nothing may cause a horizontal page scroll.
 
 ### Don't:

@@ -265,7 +265,8 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
 .search-box .block-cursor {
   width: .58em; height: 1.2em; flex-shrink: 0;
   background: var(--copper);
-  animation: blink 1.1s steps(1) infinite;
+  /* 4 blinks (4.4s) then solid: stays under WCAG 2.2.2's 5-second limit */
+  animation: blink 1.1s steps(1) 4;
 }
 .search-box:focus-within .block-cursor, .search-box.has-value .block-cursor { display: none; }
 .search-box input {
@@ -1258,4 +1259,20 @@ h3.summary a:hover { color: var(--copper-ink); }
   .pagination a.next { text-align: left; }
   .book-ad { flex-direction: column; text-align: center; }
   .book-ad .badge { left: 50%; transform: translateX(-50%) rotate(-1.5deg); }
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion: no sliding, lifting or tilting; keep fades and the
+   colour/border/shadow feedback that confirms hover and focus.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  /* page-head entrance becomes a short fade in place */
+  @keyframes fadeUp { from { opacity: 0; } to { opacity: 1; } }
+  .hero .kicker, .hero h1, .hero p.standfirst, .hero .portrait, .search-wrap,
+  .breadcrumb, .article-head h1, .meta-row, .book-ad { animation-duration: .3s; }
+  .search-box .block-cursor { animation: none; }
+  .book-card:hover, .pagination a:hover, .related a:hover,
+  .featured-project:hover, .book-ad:hover img { transform: none; }
+  .feature-card .cover:hover img { transform: rotate(2deg); }
 }

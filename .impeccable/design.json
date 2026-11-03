@@ -230,7 +230,7 @@
       {
         "name": "fade-up",
         "value": "fadeUp .5s–.6s ease both, staggered .08–.1s",
-        "purpose": "Entrance of page-head elements only (hero, article head, book ad)."
+        "purpose": "Entrance of page-head elements only (hero, article head, book ad). Reduced motion: opacity-only, 0.3s."
       },
       {
         "name": "hover-fast",
@@ -244,8 +244,8 @@
       },
       {
         "name": "cursor-blink",
-        "value": "blink 1.1s steps(1) infinite",
-        "purpose": "Search prompt block cursor."
+        "value": "blink 1.1s steps(1) 4",
+        "purpose": "Search prompt block cursor: 4 blinks then solid; none under reduced motion."
       }
     ],
     "breakpoints": [
@@ -387,7 +387,8 @@
       "Do use navy for headings and for the few heavy structural surfaces (footer, code title bar, the one book ad).",
       "Do use Geist Mono for dates, tags, counts, labels and code, and Barlow 700–800 with negative tracking for headings.",
       "Do keep code blocks light with the navy top edge or title bar, and let them scroll horizontally inside the column.",
-      "Do keep motion short and purposeful: fadeUp (0.5–0.6s) on page heads, 0.15–0.18s hover transitions, 2–3px card lifts.",
+      "Do keep motion short and purposeful: `fadeUp` (0.5–0.6s) on page heads, 0.15–0.18s hover transitions, 2–3px card lifts. Under `prefers-reduced-motion`, page heads only fade, cards don't lift or tilt (colour, border and shadow feedback stays), and the search cursor is solid.",
+      "Do stop anything that blinks within 5 seconds: the search cursor blinks 4 times, then stays solid.",
       "Do check every change at ~390px as well as desktop; nothing may cause a horizontal page scroll."
     ],
     "donts": [
