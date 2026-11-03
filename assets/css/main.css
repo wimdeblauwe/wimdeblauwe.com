@@ -161,6 +161,17 @@ nav.primary a {
 }
 nav.primary a:hover { color: var(--ink); }
 nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
+/* Phones: wordmark on top, all five links on one full-width row below it,
+   with taller tap targets. Keeps the sticky header compact (~90px, was 159px). */
+@media (max-width: 720px) {
+  .top-inner { padding-block: .7rem .15rem; row-gap: .25rem; }
+  nav.primary { flex-basis: 100%; flex-wrap: nowrap; justify-content: space-between; gap: .5rem; }
+  nav.primary a { padding-block: .5rem calc(.5rem - 2px); }
+}
+/* Very narrow screens (≤340px): let the links wrap rather than overflow */
+@media (max-width: 340px) {
+  nav.primary { flex-wrap: wrap; justify-content: flex-start; column-gap: 1rem; }
+}
 
 /* Reading progress bar (blog posts) */
 .progress { position: fixed; top: 0; left: 0; height: 3px; background: var(--copper); width: 0; z-index: 30; transition: width .1s linear; }
@@ -582,6 +593,8 @@ article.prose > * + .listingblock, article.prose > * + .literalblock { margin-to
   padding: .55rem 1.2rem;
   font-family: var(--mono); font-size: .68rem; color: #c9d2dc;
   font-style: normal;
+  /* long file paths / class names break instead of spilling out of the bar */
+  overflow-wrap: anywhere;
 }
 .listingblock pre, .literalblock pre {
   padding: 1.25rem 1.4rem; overflow-x: auto;

@@ -217,7 +217,7 @@ A warm-neutral paper ground, a deep navy for structure, and a single copper acce
 
 ## Layout
 
-Single-column, centred. Two containers: `frame` (960px) for the homepage, lists and pages, and `prose-frame` (740px) for articles; both with a 1.6rem side gutter. The masthead is sticky, translucent paper with an 8px backdrop blur and a hairline bottom border.
+Single-column, centred. Two containers: `frame` (960px) for the homepage, lists and pages, and `prose-frame` (740px) for articles; both with a 1.6rem side gutter. The masthead is sticky, translucent paper with an 8px backdrop blur and a hairline bottom border. At 720px and below it stacks: wordmark on top, all five links spread across one full-width row beneath it with 42px-tall tap targets (about 93px total); below 340px the links may wrap.
 
 Vertical rhythm inside articles is a uniform 1.35rem gap between blocks, widening to 1.5rem before code blocks and 2.7rem before an `h2`. Sections breathe generously: hero 4.2rem top, article head 3.8rem, post list bottom 4.5rem, newsletter 3rem/4rem margins.
 
