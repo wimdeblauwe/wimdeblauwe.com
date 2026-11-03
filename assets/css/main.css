@@ -460,7 +460,7 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
 /* External course logo is dark; give it a light backdrop on the navy panel */
 .book-ad.course-ad img { background: #fff; padding: .5rem; }
 .book-ad .copy { position: relative; z-index: 1; }
-.book-ad .copy h3 { font-family: var(--display); font-weight: 700; font-size: 1.12rem; letter-spacing: -0.01em; color: #fff; }
+.book-ad .copy h2 { font-family: var(--display); font-weight: 700; font-size: 1.12rem; letter-spacing: -0.01em; color: #fff; }
 .book-ad .copy p { margin-top: .3rem; font-size: .9rem; color: #b8c2cd; max-width: 52ch; }
 .book-ad .copy p b { color: var(--copper-bright); font-weight: 600; }
 .book-ad .copy a.cta {
@@ -854,7 +854,7 @@ img.align-left, .imageblock.text-left > div > img { margin: 10px auto 10px 10px;
   border-radius: 99px; padding: .3rem .9rem;
   white-space: nowrap;
 }
-.newsletter h3 { font-family: var(--display); font-weight: 800; font-size: 1.4rem; letter-spacing: -0.025em; color: var(--navy); }
+section.newsletter h2 { margin: 0; font-family: var(--display); font-weight: 800; font-size: 1.4rem; letter-spacing: -0.025em; color: var(--navy); }
 .newsletter p { margin-top: .5rem; color: var(--ink-soft); font-size: .94rem; }
 .newsletter form { margin-top: 1.4rem; display: flex; gap: .6rem; justify-content: center; flex-wrap: wrap; }
 .newsletter input[type="email"] {

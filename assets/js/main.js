@@ -107,9 +107,15 @@ if (searchInput) {
     }, 150);
   });
 
+  // Keyboard shortcuts. '/' jumps to search from anywhere outside a field.
+  // Type-anywhere only kicks in when nothing has focus, and only for letters
+  // and digits: Space keeps scrolling the page, and keys pressed on a focused
+  // link or button keep doing what they normally do (WCAG 2.1.4).
   document.addEventListener('keydown', e => {
+    if (e.isComposing || e.metaKey || e.ctrlKey || e.altKey) return;
     const active = document.activeElement;
-    const editing = ['INPUT', 'TEXTAREA'].includes(active.tagName);
+    const editing = active && (active.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(active.tagName));
+    const nothingFocused = !active || active === document.body || active === document.documentElement;
     if (e.key === '/' && !editing) {
       e.preventDefault();
       searchInput.focus();
@@ -117,7 +123,7 @@ if (searchInput) {
       searchInput.value = '';
       searchInput.dispatchEvent(new Event('input'));
       searchInput.blur();
-    } else if (e.key.length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey && !editing) {
+    } else if (nothingFocused && /^[\p{L}\p{N}]$/u.test(e.key)) {
       searchInput.focus();
     }
   });
