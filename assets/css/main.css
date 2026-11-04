@@ -169,6 +169,11 @@ nav.primary a {
   padding-bottom: 2px; border-bottom: 2px solid transparent;
   transition: color .15s ease, border-color .15s ease;
 }
+/* Phones: the nav gets its own full-width row and spreads the five links
+   across it, instead of letting the last one wrap (257px of text in 336px). */
+@media (max-width: 520px) {
+  nav.primary { width: 100%; justify-content: space-between; column-gap: .6rem; }
+}
 nav.primary a:hover { color: var(--ink); }
 nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
 
