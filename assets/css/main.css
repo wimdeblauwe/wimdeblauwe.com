@@ -101,7 +101,12 @@
   --copper: #c2702e;
   --copper-bright: #e08a4e;
   --copper-soft: #f6e8da;
+  /* AA-safe variants: --copper is ~3.7:1 on white, too low for small text and white-on-fill */
+  --copper-ink: #a85c20;          /* 5.0:1 on white, 4.7:1 on paper */
+  --copper-ink-on-soft: #a05621;  /* text on --copper-soft chips: 4.5:1 (--copper-ink is 4.1 there) */
+  --copper-deep: #8a4a1a;
   --hairline: #e6e2d9;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --display: "Barlow", sans-serif;
   --body: "Hanken Grotesk", sans-serif;
   --mono: "Geist Mono", monospace;
@@ -123,14 +128,22 @@ body {
 }
 body > main { flex: 1; }
 a { color: inherit; }
+:focus-visible { outline: 2px solid var(--copper-ink); outline-offset: 3px; border-radius: 4px; }
+.search-box input:focus-visible, .newsletter input:focus-visible { outline: none; } /* own focus ring on the wrapper / border */
+.feature-card :focus-visible, .book-ad :focus-visible, footer :focus-visible { outline-color: var(--copper-bright); }
 img { max-width: 100%; }
 .frame { max-width: 960px; margin: 0 auto; padding: 0 1.6rem; }
 .prose-frame { max-width: 740px; margin: 0 auto; padding: 0 1.6rem; }
 /* while searching, collapse the book banners so results sit next to the search box */
 body.searching .feature, body.searching .books-strip { display: none; }
 
-@keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes blink { 50% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation: none !important; transition-duration: 0.01ms !important; }
+}
 
 /* --------------------------------------------------------------------------
    Masthead
@@ -179,8 +192,8 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
 .hero .kicker {
   grid-area: kicker;
   font-family: var(--mono); font-size: .72rem; letter-spacing: .18em; text-transform: uppercase;
-  color: var(--copper);
-  animation: fadeUp .6s ease both;
+  color: var(--copper-ink);
+  animation: fadeUp .35s var(--ease-out) both;
 }
 .hero h1 {
   grid-area: title;
@@ -190,20 +203,20 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
   line-height: 1.08; letter-spacing: -0.035em;
   color: var(--navy);
   max-width: 19ch;
-  animation: fadeUp .6s .1s ease both;
+  animation: fadeUp .35s .05s var(--ease-out) both;
 }
 .hero h1 em { font-style: normal; color: var(--copper); }
 .hero p.standfirst {
   grid-area: standfirst;
   margin-top: 1.4rem; max-width: 54ch;
   font-size: 1.08rem; color: var(--ink-soft);
-  animation: fadeUp .6s .2s ease both;
+  animation: fadeUp .35s .1s var(--ease-out) both;
 }
 .hero p.standfirst a {
   color: var(--ink); font-weight: 500;
   text-decoration-color: var(--copper); text-decoration-thickness: 1.5px; text-underline-offset: 3px;
 }
-.hero p.standfirst a:hover { color: var(--copper); }
+.hero p.standfirst a:hover { color: var(--copper-ink); }
 .hero .portrait {
   grid-area: portrait;
   width: 240px; height: 240px;
@@ -214,7 +227,7 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
     0 0 0 6px var(--paper),
     0 0 0 7px var(--copper),
     0 24px 40px -24px rgba(19,32,47,.45);
-  animation: fadeUp .6s .3s ease both;
+  animation: fadeUp .35s .15s var(--ease-out) both;
 }
 @media (max-width: 720px) {
   .hero {
@@ -243,7 +256,7 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
 /* --------------------------------------------------------------------------
    Search prompt
    -------------------------------------------------------------------------- */
-.search-wrap { padding-block: 0 .6rem; animation: fadeUp .6s .4s ease both; }
+.search-wrap { padding-block: 0 .6rem; animation: fadeUp .35s .2s var(--ease-out) both; }
 .search-box {
   display: flex; align-items: center; gap: .65rem;
   background: var(--card);
@@ -257,7 +270,7 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
   border-color: var(--copper);
   box-shadow: 0 0 0 3px var(--copper-soft), 0 8px 24px -18px rgba(19,32,47,.25);
 }
-.search-box .chevron { font-family: var(--mono); color: var(--copper); font-weight: 500; font-size: 1rem; }
+.search-box .chevron { font-family: var(--mono); color: var(--copper-ink); font-weight: 500; font-size: 1rem; }
 /* terminal-style block cursor: sits right after the prompt, where typing starts */
 .search-box .block-cursor {
   width: .58em; height: 1.2em; flex-shrink: 0;
@@ -275,10 +288,10 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
   margin-top: .6rem; font-family: var(--mono); font-size: .7rem; color: var(--ink-soft);
   padding-left: .4rem; min-height: 1.2em;
 }
-.search-hint b { color: var(--copper); font-weight: 500; }
+.search-hint b { color: var(--copper-ink); font-weight: 500; }
 .no-results { display: none; padding: 2.5rem .6rem; font-family: var(--mono); font-size: .85rem; color: var(--ink-soft); }
-.no-results b { color: var(--copper); font-weight: 500; }
-#search-results mark { background: var(--copper-soft); color: var(--copper); font-weight: 500; border-radius: 2px; padding: 0 1px; }
+.no-results b { color: var(--copper-ink); font-weight: 500; }
+#search-results mark { background: var(--copper-soft); color: var(--copper-ink-on-soft); font-weight: 500; border-radius: 2px; padding: 0 1px; }
 
 /* --------------------------------------------------------------------------
    New book feature card (behind featureNewBook flag)
@@ -301,7 +314,7 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
 .feature-card .badge {
   position: absolute; top: 1.4rem; left: 2.8rem;
   font-family: var(--mono); font-size: .64rem; letter-spacing: .16em; text-transform: uppercase;
-  background: var(--copper); color: #fff;
+  background: var(--copper-ink); color: #fff;
   border-radius: 99px; padding: .3rem .9rem;
   transform: rotate(-1.5deg);
 }
@@ -318,11 +331,11 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
 .feature-card .cta {
   font-family: var(--display); font-weight: 700; font-size: .88rem;
   text-decoration: none;
-  background: var(--copper); color: #fff;
+  background: var(--copper-ink); color: #fff;
   border-radius: 10px; padding: .65rem 1.4rem;
-  transition: all .15s ease;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
 }
-.feature-card .cta:hover { background: var(--copper-bright); color: #fff; }
+.feature-card .cta:hover { background: var(--copper-deep); color: #fff; }
 .feature-card .cta.ghost {
   background: transparent; color: #d8dee5;
   border: 1px solid rgba(216,222,229,.35);
@@ -335,7 +348,9 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
   transform: rotate(2deg);
   transition: transform .25s ease;
 }
-.feature-card .cover:hover img { transform: rotate(0deg) scale(1.03); }
+@media (hover: hover) and (pointer: fine) {
+  .feature-card .cover:hover img { transform: rotate(0deg) scale(1.015); }
+}
 
 /* --------------------------------------------------------------------------
    Book cards (homepage strip)
@@ -347,9 +362,10 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
   border: 1px solid var(--hairline); border-radius: 14px;
   padding: 1.2rem 1.4rem;
   text-decoration: none;
-  transition: all .18s ease;
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
-.book-card:hover { border-color: var(--copper); transform: translateY(-3px); box-shadow: 0 14px 30px -20px rgba(194,112,46,.5); }
+.book-card:hover { border-color: var(--copper); box-shadow: 0 14px 30px -20px rgba(194,112,46,.5); }
+@media (hover: hover) and (pointer: fine) { .book-card:hover { transform: translateY(-3px); } }
 .book-card img { width: 66px; flex-shrink: 0; filter: drop-shadow(0 6px 12px rgba(19,32,47,.2)); }
 .book-card h3 { font-family: var(--display); font-weight: 700; font-size: 1rem; letter-spacing: -0.01em; color: var(--navy); }
 .book-card p { font-size: .85rem; color: var(--ink-soft); margin-top: .25rem; }
@@ -386,19 +402,19 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
   border-radius: 99px; padding: .14rem .6rem;
   white-space: nowrap;
 }
-.post-list a:hover .tags span { background: var(--copper-soft); color: var(--copper); }
+.post-list a:hover .tags span { background: var(--copper-soft); color: var(--copper-ink-on-soft); }
 .all-posts { margin-top: 1.8rem; }
-.all-posts a { font-family: var(--mono); font-size: .78rem; color: var(--copper); text-decoration: none; }
+.all-posts a { font-family: var(--mono); font-size: .78rem; color: var(--copper-ink); text-decoration: none; }
 .all-posts a:hover { text-decoration: underline; text-underline-offset: 3px; }
 
 /* --------------------------------------------------------------------------
    Article header (blog single)
    -------------------------------------------------------------------------- */
 .article-head { padding-block: 3.8rem 0; }
-.breadcrumb { font-family: var(--mono); font-size: .72rem; color: var(--ink-soft); animation: fadeUp .5s ease both; }
-.breadcrumb .chevron { color: var(--copper); }
+.breadcrumb { font-family: var(--mono); font-size: .72rem; color: var(--ink-soft); animation: fadeUp .3s var(--ease-out) both; }
+.breadcrumb .chevron { color: var(--copper-ink); }
 .breadcrumb a { color: inherit; text-decoration: none; }
-.breadcrumb a:hover { color: var(--copper); text-decoration: underline; text-underline-offset: 3px; }
+.breadcrumb a:hover { color: var(--copper-ink); text-decoration: underline; text-underline-offset: 3px; }
 .article-head h1 {
   margin-top: 1.1rem;
   font-family: var(--display); font-weight: 800;
@@ -406,19 +422,19 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
   line-height: 1.1; letter-spacing: -0.03em;
   color: var(--navy);
   max-width: 22ch;
-  animation: fadeUp .5s .08s ease both;
+  animation: fadeUp .3s .04s var(--ease-out) both;
 }
-.meta-row { margin-top: 1.3rem; display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap; animation: fadeUp .5s .16s ease both; }
+.meta-row { margin-top: 1.3rem; display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap; animation: fadeUp .3s .08s var(--ease-out) both; }
 .meta-row .date { font-family: var(--mono); font-size: .76rem; color: var(--ink-soft); }
 .meta-row .tags { display: flex; gap: .45rem; flex-wrap: wrap; }
 .meta-row .tags a {
   font-family: var(--mono); font-size: .68rem;
   text-decoration: none;
-  color: var(--copper); background: var(--copper-soft);
+  color: var(--copper-ink-on-soft); background: var(--copper-soft);
   border-radius: 99px; padding: .2rem .7rem;
-  transition: all .15s ease;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
 }
-.meta-row .tags a:hover { background: var(--copper); color: #fff; }
+.meta-row .tags a:hover { background: var(--copper-ink); color: #fff; }
 
 /* --------------------------------------------------------------------------
    Book ads (tag-driven, navy panel)
@@ -433,7 +449,7 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
   padding: 1.6rem 1.8rem;
   display: flex; gap: 1.6rem; align-items: center;
   overflow: visible;
-  animation: fadeUp .5s .24s ease both;
+  animation: fadeUp .3s .12s var(--ease-out) both;
 }
 .book-ad::before {
   content: ""; position: absolute; inset: 0; border-radius: 16px; pointer-events: none;
@@ -442,7 +458,7 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
 .book-ad .badge {
   position: absolute; top: -0.85rem; left: 1.5rem;
   font-family: var(--mono); font-size: .64rem; letter-spacing: .14em; text-transform: uppercase;
-  background: var(--copper); color: #fff;
+  background: var(--copper-ink); color: #fff;
   border-radius: 99px; padding: .3rem .9rem;
   transform: rotate(-1.5deg);
   box-shadow: 0 4px 10px -4px rgba(194,112,46,.6);
@@ -453,7 +469,7 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
   transition: transform .25s ease;
   position: relative; z-index: 1;
 }
-.book-ad:hover img { transform: translateY(-4px) rotate(-2deg); }
+@media (hover: hover) and (pointer: fine) { .book-ad:hover img { transform: translateY(-4px) rotate(-2deg); } }
 /* External course logo is dark; give it a light backdrop on the navy panel */
 .book-ad.course-ad img { background: #fff; padding: .5rem; }
 .book-ad .copy { position: relative; z-index: 1; }
@@ -464,11 +480,11 @@ nav.primary a.active { color: var(--ink); border-bottom-color: var(--copper); }
   display: inline-block; margin-top: .75rem;
   font-family: var(--display); font-weight: 700; font-size: .82rem;
   text-decoration: none;
-  background: var(--copper); color: #fff;
+  background: var(--copper-ink); color: #fff;
   border-radius: 10px; padding: .5rem 1.2rem;
-  transition: all .15s ease;
+  transition: background-color .15s ease;
 }
-.book-ad .copy a.cta:hover { background: var(--copper-bright); color: #fff; }
+.book-ad .copy a.cta:hover { background: var(--copper-deep); color: #fff; }
 
 /* --------------------------------------------------------------------------
    Article body
@@ -479,7 +495,7 @@ article.prose p a, article.prose li a {
   font-weight: 500;
   text-decoration-color: var(--copper); text-decoration-thickness: 1.5px; text-underline-offset: 3px;
 }
-article.prose p a:hover, article.prose li a:hover { color: var(--copper); }
+article.prose p a:hover, article.prose li a:hover { color: var(--copper-ink); }
 article.prose h2 {
   font-family: var(--display); font-weight: 800;
   font-size: 1.45rem; letter-spacing: -0.025em; line-height: 1.2;
@@ -734,14 +750,14 @@ img.align-left, .imageblock.text-left > div > img { margin: 10px auto 10px 10px;
 }
 #toctitle {
   font-family: var(--mono); font-size: .68rem; letter-spacing: .14em; text-transform: uppercase;
-  color: var(--copper); font-style: normal;
+  color: var(--copper-ink); font-style: normal;
   margin-bottom: .5rem; display: block;
 }
 .toc ul { list-style: none; padding-left: 0; }
 .toc ul ul { padding-left: 1.1rem; }
 .toc ul li { margin: .25rem 0; }
 .toc a { text-decoration: none; color: var(--ink-soft); }
-.toc a:hover { color: var(--copper); }
+.toc a:hover { color: var(--copper-ink); }
 
 /* --------------------------------------------------------------------------
    Prev / next post cards
@@ -752,18 +768,19 @@ img.align-left, .imageblock.text-left > div > img { margin: 10px auto 10px 10px;
   border: 1px solid var(--hairline); border-radius: 14px;
   padding: 1.15rem 1.3rem; text-decoration: none;
   display: flex; flex-direction: column; gap: .35rem;
-  transition: all .18s ease;
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
-.pagination a:hover { border-color: var(--copper); transform: translateY(-3px); box-shadow: 0 14px 30px -22px rgba(194,112,46,.55); }
+.pagination a:hover { border-color: var(--copper); box-shadow: 0 14px 30px -22px rgba(194,112,46,.55); }
+@media (hover: hover) and (pointer: fine) { .pagination a:hover { transform: translateY(-3px); } }
 .pagination a.next { text-align: right; }
-.pagination .dir { font-family: var(--mono); font-size: .66rem; letter-spacing: .12em; text-transform: uppercase; color: var(--copper); }
+.pagination .dir { font-family: var(--mono); font-size: .66rem; letter-spacing: .12em; text-transform: uppercase; color: var(--copper-ink); }
 .pagination .title { font-family: var(--display); font-weight: 700; font-size: .95rem; line-height: 1.3; letter-spacing: -0.015em; color: var(--navy); }
 
 /* Related posts (matched on tags) */
 .related { margin-top: 3.5rem; }
 .related h2 {
   font-family: var(--mono); font-size: .66rem; letter-spacing: .12em;
-  text-transform: uppercase; color: var(--copper); margin: 0 0 1.1rem;
+  text-transform: uppercase; color: var(--copper-ink); margin: 0 0 1.1rem;
 }
 .related ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .7rem; }
 .related a {
@@ -771,9 +788,10 @@ img.align-left, .imageblock.text-left > div > img { margin: 10px auto 10px 10px;
   border: 1px solid var(--hairline); border-radius: 14px;
   padding: .95rem 1.2rem; text-decoration: none;
   display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
-  transition: all .18s ease;
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
-.related a:hover { border-color: var(--copper); transform: translateY(-3px); box-shadow: 0 14px 30px -22px rgba(194,112,46,.55); }
+.related a:hover { border-color: var(--copper); box-shadow: 0 14px 30px -22px rgba(194,112,46,.55); }
+@media (hover: hover) and (pointer: fine) { .related a:hover { transform: translateY(-3px); } }
 .related .title {
   font-family: var(--display); font-weight: 700; font-size: .95rem;
   line-height: 1.3; letter-spacing: -0.015em; color: var(--navy);
@@ -791,8 +809,8 @@ img.align-left, .imageblock.text-left > div > img { margin: 10px auto 10px 10px;
   padding: .4rem .85rem; text-decoration: none; color: var(--ink-soft);
   background: var(--card);
 }
-.paginator a:hover { border-color: var(--copper); color: var(--copper); }
-.paginator .current { background: var(--copper); border-color: var(--copper); color: #fff; }
+.paginator a:hover { border-color: var(--copper); color: var(--copper-ink); }
+.paginator .current { background: var(--copper-ink); border-color: var(--copper); color: #fff; }
 
 /* Tag cloud (/tags/) */
 .tag-cloud { display: flex; flex-wrap: wrap; gap: .6rem; padding-block: .4rem 2rem; }
@@ -801,10 +819,10 @@ img.align-left, .imageblock.text-left > div > img { margin: 10px auto 10px 10px;
   color: var(--ink-soft); background: var(--card);
   border: 1px solid var(--hairline); border-radius: 99px;
   padding: .3rem .9rem;
-  transition: all .15s ease;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
 }
-.tag-cloud a:hover { border-color: var(--copper); color: var(--copper); background: var(--copper-soft); }
-.tag-cloud a .count { color: var(--copper); margin-left: .45rem; }
+.tag-cloud a:hover { border-color: var(--copper); color: var(--copper-ink-on-soft); background: var(--copper-soft); }
+.tag-cloud a .count { color: var(--copper-ink); margin-left: .45rem; }
 
 /* --------------------------------------------------------------------------
    Newsletter
@@ -820,7 +838,7 @@ img.align-left, .imageblock.text-left > div > img { margin: 10px auto 10px 10px;
 .newsletter .badge {
   position: absolute; top: -0.85rem; left: 50%; transform: translateX(-50%) rotate(-1deg);
   font-family: var(--mono); font-size: .64rem; letter-spacing: .14em; text-transform: uppercase;
-  background: var(--copper); color: #fff;
+  background: var(--copper-ink); color: #fff;
   border-radius: 99px; padding: .3rem .9rem;
   white-space: nowrap;
 }
@@ -828,7 +846,7 @@ img.align-left, .imageblock.text-left > div > img { margin: 10px auto 10px 10px;
 .newsletter p { margin-top: .5rem; color: var(--ink-soft); font-size: .94rem; }
 .newsletter form { margin-top: 1.4rem; display: flex; gap: .6rem; justify-content: center; flex-wrap: wrap; }
 .newsletter input[type="email"] {
-  font-family: var(--mono); font-size: .88rem;
+  font-family: var(--mono); font-size: max(16px, .88rem); /* >=16px: iOS zooms smaller inputs on focus */
   border: 1px solid var(--hairline); border-radius: 10px;
   padding: .7rem 1.1rem; width: min(300px, 100%);
   background: var(--paper); color: var(--ink);
@@ -836,19 +854,19 @@ img.align-left, .imageblock.text-left > div > img { margin: 10px auto 10px 10px;
 .newsletter input[type="email"]:focus { outline: none; border-color: var(--copper); box-shadow: 0 0 0 3px var(--copper-soft); }
 .newsletter button, .newsletter input[type="submit"] {
   font-family: var(--display); font-weight: 700; font-size: .9rem;
-  background: var(--copper); color: #fff;
+  background: var(--copper-ink); color: #fff;
   border: none; border-radius: 10px;
   padding: .7rem 1.5rem; cursor: pointer;
-  transition: all .15s ease;
+  transition: background-color .15s ease;
 }
-.newsletter button:hover, .newsletter input[type="submit"]:hover { background: var(--copper-bright); color: #fff; }
+.newsletter button:hover, .newsletter input[type="submit"]:hover { background: var(--copper-deep); color: #fff; }
 .newsletter .small-note { font-size: .72rem; margin-top: .8rem; font-style: italic; color: var(--ink-soft); }
 .newsletter-status {
   flex-basis: 100%; margin-top: .4rem;
   font-family: var(--mono); font-size: .8rem; line-height: 1.5;
 }
 .newsletter-status[hidden] { display: none; }
-.newsletter-status.is-success { color: var(--copper); }
+.newsletter-status.is-success { color: var(--copper-ink); }
 .newsletter-status.is-error { color: #a33a2a; }
 
 /* --------------------------------------------------------------------------
@@ -890,7 +908,7 @@ footer.site-footer { background: var(--navy); color: #aeb9c5; margin-top: 4rem; 
   font-weight: 500;
   text-decoration-color: var(--copper); text-decoration-thickness: 1.5px; text-underline-offset: 3px;
 }
-.page-content a:hover { color: var(--copper); }
+.page-content a:hover { color: var(--copper-ink); }
 .page-content ul, .page-content ol { padding-left: 1.4rem; margin-top: 1rem; }
 
 /* About page header image */
@@ -947,15 +965,15 @@ img.book-cover { max-height: 400px; display: inline; }
 
 a.book-read-more-link {
   font-family: var(--display); font-weight: 700; font-size: 1rem;
-  background: var(--copper); color: #fff;
+  background: var(--copper-ink); color: #fff;
   border-radius: 10px;
   display: inline-flex; align-items: center;
   cursor: pointer;
   padding: .7rem 1.5rem;
   text-decoration: none;
-  transition: all .15s ease;
+  transition: background-color .15s ease;
 }
-a.book-read-more-link:hover { background: var(--copper-bright); color: #fff; }
+a.book-read-more-link:hover { background: var(--copper-deep); color: #fff; }
 .book-read-more-link-arrow { width: 1em; height: 1em; margin-left: .5em; }
 
 .bundle-announcement { margin-top: 1rem; display: flex; gap: 1rem; justify-content: center; align-items: center; }
@@ -1059,7 +1077,7 @@ a.book-read-more-link:hover { background: var(--copper-bright); color: #fff; }
 .project .project-description a { overflow-wrap: anywhere; }
 .project-badge {
   width: 2.5rem; height: 2.5rem; border-radius: 12px; flex-shrink: 0;
-  background: var(--copper-soft); color: var(--copper);
+  background: var(--copper-soft); color: var(--copper-ink-on-soft);
   display: grid; place-items: center; margin-top: .2rem;
 }
 .project-badge svg { width: 1.25rem; height: 1.25rem; }
@@ -1069,7 +1087,7 @@ a.book-read-more-link:hover { background: var(--copper-bright); color: #fff; }
   font-weight: 400; text-decoration: none; margin-top: .3rem;
   overflow-wrap: anywhere;
 }
-.page-content .project a.repo:hover { color: var(--copper); }
+.page-content .project a.repo:hover { color: var(--copper-ink); }
 .project .project-description { margin-top: .55rem; }
 
 /* Projects page — section headings */
@@ -1104,7 +1122,7 @@ a.book-read-more-link:hover { background: var(--copper-bright); color: #fff; }
 .featured-flag {
   align-self: flex-start;
   font-family: var(--mono); font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
-  color: var(--copper); background: var(--copper-soft);
+  color: var(--copper-ink-on-soft); background: var(--copper-soft);
   border-radius: 99px; padding: .25rem .65rem;
   margin-bottom: .9rem;
 }
@@ -1123,7 +1141,7 @@ a.book-read-more-link:hover { background: var(--copper-bright); color: #fff; }
   text-decoration: none; overflow-wrap: anywhere;
 }
 .featured-project a.repo svg { width: .9rem; height: .9rem; flex-shrink: 0; }
-.page-content .featured-project a.repo:hover { color: var(--copper); }
+.page-content .featured-project a.repo:hover { color: var(--copper-ink); }
 
 /* Projects page — compact grid */
 .projects-grid {
@@ -1156,7 +1174,7 @@ a.book-read-more-link:hover { background: var(--copper-bright); color: #fff; }
   display: inline-block; font-family: var(--mono); font-size: .72rem; color: var(--ink-soft);
   text-decoration: none; overflow-wrap: anywhere;
 }
-.page-content .project-compact a.repo:hover { color: var(--copper); }
+.page-content .project-compact a.repo:hover { color: var(--copper-ink); }
 
 @media only screen and (max-width: 900px) {
   .featured-projects { grid-template-columns: 1fr; }

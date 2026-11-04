@@ -109,7 +109,9 @@ if (searchInput) {
 
   document.addEventListener('keydown', e => {
     const active = document.activeElement;
-    const editing = ['INPUT', 'TEXTAREA'].includes(active.tagName);
+    const editing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(active.tagName) || active.isContentEditable;
+    // Space activates buttons/links and scrolls the page; don't steal it
+    const interactive = ['A', 'BUTTON', 'SUMMARY'].includes(active.tagName);
     if (e.key === '/' && !editing) {
       e.preventDefault();
       searchInput.focus();
@@ -117,7 +119,7 @@ if (searchInput) {
       searchInput.value = '';
       searchInput.dispatchEvent(new Event('input'));
       searchInput.blur();
-    } else if (e.key.length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey && !editing) {
+    } else if (e.key.length === 1 && e.key !== ' ' && !e.metaKey && !e.ctrlKey && !e.altKey && !editing && !interactive) {
       searchInput.focus();
     }
   });
