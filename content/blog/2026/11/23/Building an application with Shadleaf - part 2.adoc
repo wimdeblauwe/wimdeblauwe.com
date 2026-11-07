@@ -1,0 +1,588 @@
+---
+title: "Building an application with Shadleaf - part 2"
+date: 2026-11-23
+draft: true
+tags: ["thymeleaf", "spring-boot"]
+keywords: []
+description: "Part 2 of the Shadleaf component library tutorial showing tables with paging and sorting"
+---
+:source-highlighter: rouge
+:rouge-css: style
+:rouge-style: github
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+In part 1 of Building an application with Shadleaf, we set up the project and added the application shell.
+In this part, we will build a table with sorting and pagination.
+
+<!--more-->
+
+== The expense data model
+
+Before we can show a table, we need some data to show.
+I added an `Expense` entity that is stored in PostgreSQL using Spring Data JPA.
+Flyway creates the database table, and the Spring Boot Docker Compose support starts PostgreSQL when the application starts.
+
+This is all standard Spring Boot, so I will not go over it in detail here.
+See the https://github.com/wimdeblauwe/blog-example-code/tree/part-2/spendleaf[part-2 sources] on GitHub for the dependencies, the repository and the database migration.
+If you want to know more about how I structure the backend code, see https://www.wimdeblauwe.com/blog/2025/06/24/how-i-write-production-ready-spring-boot-applications/[How I write production-ready Spring Boot applications].
+
+There are a few pieces of the data model that matter for the UI, so let's look at those.
+
+An expense has these fields:
+
+[source,java]
+.src/main/java/com/wimdeblauwe/examples/spendleaf/expense/Expense.java
+----
+@Entity
+public class Expense extends AbstractEntity<ExpenseId> {
+    private String description;
+    private Amount amount;
+    private LocalDate date;
+    @Enumerated(EnumType.STRING)
+    private ExpenseCategory category;
+    private @Nullable String project;
+    private boolean billable;
+    private @Nullable String notes;
+    @Enumerated(EnumType.STRING)
+    private ExpenseStatus status;
+
+    // constructors, getters and setters omitted
+}
+----
+
+The names of the fields are important, as those are the names the sortable table columns will use to tell Spring Data how to sort the expenses.
+
+Each expense goes through an approval flow, which is modeled by the `ExpenseStatus` enum:
+
+[source,java]
+.src/main/java/com/wimdeblauwe/examples/spendleaf/expense/ExpenseStatus.java
+----
+public enum ExpenseStatus {
+    DRAFT,
+    SUBMITTED,
+    APPROVED,
+    REJECTED
+}
+----
+
+We will show each status with a badge in its own color.
+
+Finally, the amount of an expense is not a plain `BigDecimal`, but an `Amount` value object:
+
+[source,java]
+.src/main/java/com/wimdeblauwe/examples/spendleaf/expense/Amount.java
+----
+public record Amount(BigDecimal value) {
+    public Amount {
+        Assert.notNull(value, "The Amount value should not be null");
+        Assert.isTrue(value.signum() > 0, "The Amount value should be greater than zero");
+        value = value.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    public static Amount ofEuros(String euros) {
+        return new Amount(new BigDecimal(euros));
+    }
+}
+----
+
+To keep things simple, all amounts in Spendleaf are in euros.
+We will format them as a currency in the table.
+
+== Getting the expenses
+
+The controller does not use the repository directly, but goes through a use case.
+You can write a service as well if you prefer, but I like to have individual use case classes.
+
+Retrieving the expenses is about as simple as a use case gets:
+
+[source,java]
+.src/main/java/com/wimdeblauwe/examples/spendleaf/expense/usecase/GetExpenses.java
+----
+@UseCase(readOnly = true)
+public class GetExpenses {
+    private final ExpenseRepository repository;
+
+    public GetExpenses(ExpenseRepository repository) {
+        this.repository = repository;
+    }
+
+    public Page<Expense> execute(Pageable pageable) {
+        return repository.findAll(pageable);
+    }
+}
+----
+
+We just pass the `Pageable` to the repository and return the `Page<Expense>` result.
+
+The `Pageable` object contains what page number we want, the size of the page and what sorting we want to apply to the data.
+If you use pagination, always add at least one sort field so the paging is deterministic.
+
+The `Page` result has a list of `Expense` objects, along with metadata like the total number of expenses and the total number of pages that are available in the database.
+
+[NOTE]
+====
+`@UseCase` is a custom annotation that combines `@Component` and `@Transactional`.
+====
+
+== Demo data
+
+A table with paging and sorting is not very interesting with only a handful of rows.
+To have some realistic-looking data to work with, I added a `DemoDataSeeder` that uses https://www.datafaker.net/[Datafaker] to create 120 expenses when the database is empty:
+
+[source,java]
+.src/main/java/com/wimdeblauwe/examples/spendleaf/infrastructure/demo/DemoDataSeeder.java
+----
+@Component
+@Profile("init")
+class DemoDataSeeder implements ApplicationRunner {
+    private static final int NUMBER_OF_EXPENSES = 120;
+
+    private final ExpenseRepository repository;
+    // A fixed seed gives the same demo data on every start
+    private final Faker faker = new Faker(new Random(42));
+
+    // ...
+
+    @Override
+    public void run(ApplicationArguments args) {
+        if (!repository.findAll(PageRequest.of(0, 1)).isEmpty()) {
+            return;
+        }
+
+        for (int i = 0; i < NUMBER_OF_EXPENSES; i++) {
+            repository.save(createExpense());
+        }
+    }
+
+    private String description(ExpenseCategory category) {
+        return switch (category) {
+            case TRAVEL -> faker.options().option(
+                    "Hotel %s, %d nights".formatted(faker.address().city(), faker.number().numberBetween(1, 5)),
+                    "Train to " + faker.address().city(),
+                    "Taxi to the airport",
+                    "Parking at the client");
+            case MEALS -> faker.options().option("Lunch at ", "Dinner at ", "Team lunch at ")
+                          + faker.restaurant().name();
+            // ...
+        };
+    }
+}
+----
+
+The seeder only runs with the `init` profile.
+You could also bind it to the `local` profile we are already using for the live reload, but an explicit Spring profile allows you to start the application empty as well.
+This is important when we design the empty states.
+
+Run the application with that profile from your IDE, or from the command line:
+
+[source]
+----
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local,init
+----
+
+== Controller
+
+We can now update the `ExpenseController` from part 1 so it gets the expenses from the `GetExpenses` use case:
+
+[source,java]
+----
+package com.wimdeblauwe.examples.spendleaf.expense.web;
+
+import com.wimdeblauwe.examples.spendleaf.expense.usecase.GetExpenses;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.SortDefault;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+@Controller
+@RequestMapping("/expenses")
+class ExpenseController {
+    private final GetExpenses getExpenses;
+
+    ExpenseController(GetExpenses getExpenses) { //<.>
+        this.getExpenses = getExpenses;
+    }
+
+    @GetMapping
+    public String index(@SortDefault(sort = "date", direction = Sort.Direction.DESC) Pageable pageable,
+                        Model model) { //<.>
+        model.addAttribute("page", getExpenses.execute(pageable)); //<.>
+        return "expenses/index";
+    }
+}
+----
+
+<.> Inject the `GetExpenses` use case into the constructor of the controller.
+<.> Add `Pageable` and `Model` as method parameters.
+<.> Add `page` as a model variable so we can use the information in our Thymeleaf template.
+
+The `Pageable` object is constructed by Spring automatically.
+Spring MVC reads the URL parameters `page`, `size` and `sort` and populates the `Pageable` object with those.
+
+With pagination, we always want to have a default sort so that going through the pages one by one gives us something deterministic.
+Use `@SortDefault` to force the default sorting.
+The `sort` parameter needs to be a field from our `Expense` entity so the database can sort on it.
+
+== Empty table
+
+With the controller in place, we can turn our attention to the frontend code.
+We will start with the empty state.
+If there are no expenses yet, an empty table is quite ugly and not very user-friendly.
+Using the https://shadleaf.dev/current/components/card/[`<sl:card>`] and https://shadleaf.dev/current/components/empty/[`<sl:empty>`] components, we can build something nice:
+
+[source,html]
+----
+<div id="page-content">
+    <!--/*@thymesVar id="page" type="org.springframework.data.domain.Page<com.wimdeblauwe.examples.spendleaf.expense.Expense>"*/-->
+    <sl:card id="no-expenses" th:if="${page.totalElements == 0}"> <!--.-->
+        <sl:card-content>
+            <sl:empty> <!--.-->
+                <sl:empty-header> <!--.-->
+                    <sl:empty-media variant="icon"> <!--.-->
+                        <sl:icon name="receipt"/>
+                    </sl:empty-media>
+                    <sl:empty-title level="2">No expenses yet</sl:empty-title> <!--.-->
+                    <sl:empty-description>Add your first expense.</sl:empty-description> <!--.-->
+                </sl:empty-header>
+                <sl:empty-content> <!--.-->
+                    <sl:button as="a" th:href="@{/expenses/create}">New expense</sl:button>
+                </sl:empty-content>
+            </sl:empty>
+        </sl:card-content>
+    </sl:card>
+</div>
+----
+
+<.> Render the `<sl:card>`, but only if there are no expenses at all (`totalElements` is the total number of elements, not just of the current page).
+<.> Use the `<sl:empty>` component inside the card's content.
+<.> Inside the `<sl:empty-header>`, we render an icon, a title and a description.
+<.> The `<sl:empty-media>` component places an icon on a muted square using the `icon` variant.
+<.> `<sl:empty-title>` shows the text bold and a little bigger.
+The `level` prop does not change anything visually; it sets `aria-level` for screen readers.
+<.> The last part of the header is the `<sl:empty-description>`, which shows its text in a muted gray.
+<.> The main content of the empty state is the call to action button that lets users add their first expense.
+This does not work yet; we will add it later.
+
+This renders to:
+
+image::2026/11/shadleaf-part-02-01-empty-state.webp[link=/images/2026/11/shadleaf-part-02-01-empty-state.webp]
+
+== Table
+
+In case we do have data, we want to show a table.
+To better understand what exactly we are building, this is what it will look like:
+
+image::2026/11/shadleaf-part-02-02-table.webp[link=/images/2026/11/shadleaf-part-02-02-table.webp]
+
+The part of the Thymeleaf template that builds it uses the https://shadleaf.dev/current/components/table/[`<sl:table>`] component:
+
+[source,html]
+.src/main/resources/templates/expenses/index.html
+----
+<th:block th:unless="${page.totalElements == 0}"> <!--.-->
+        <sl:table id="expenses-table" th:page="${page}"> <!--.-->
+            <thead> <!--.-->
+            <tr>
+                <sl:table-head sort="description">Description</sl:table-head>
+                <sl:table-head sort="date">Date</sl:table-head>
+                <sl:table-head sort="category">Category</sl:table-head>
+                <sl:table-head sort="project">Project</sl:table-head>
+                <sl:table-head sort="amount" align="end">Amount</sl:table-head>
+                <sl:table-head sort="status">Status</sl:table-head>
+            </tr>
+            </thead>
+            <tbody th:with="statusVariants=${ {DRAFT:'outline', SUBMITTED:'secondary', APPROVED:'default', REJECTED:'destructive'} }"> <!--.-->
+            <tr th:each="expense : ${page}" th:id="|expense-${expense.id.asString()}|"> <!--.-->
+                <td th:text="${expense.description}">Hotel Ghent, 2 nights</td>
+                <td th:text="${#temporals.format(expense.date, 'd MMM yyyy')}">10 Nov 2026</td> <!--.-->
+                <td th:text="#{|ExpenseCategory.${expense.category}|}">Travel</td> <!--.-->
+                <td th:text="${expense.project} ?: '—'">Atlas</td> <!--.-->
+                <td data-align="end"
+                    th:text="|€${#numbers.formatDecimal(expense.amount.value, 1, 'DEFAULT', 2, 'DEFAULT')}|">€238.00</td> <!--.-->
+                <td> <!--.-->
+                    <sl:badge th:variant="${statusVariants[expense.status.name()]}">[[#{|ExpenseStatus.${expense.status}|}]]</sl:badge>
+                </td>
+            </tr>
+            </tbody>
+        </sl:table>
+
+        ...
+    </th:block>
+----
+
+<.> We used `th:if` for the empty state.
+Here, we use `th:unless` with the same expression to declare our "else" block.
+<.> Bind the `page` model attribute to the `th:page` prop.
+This ensures the table headers will show the correct sort state.
+<.> Inside the `<thead>` section, we add all table headers using the `<sl:table-head>` component.
+The `sort` property has to match a field from the entity to sort on.
+If you have a column that can't be sorted, just leave out the `sort` prop.
+<.> An expense has a state defined by the `ExpenseStatus` enum.
+https://shadleaf.dev/current/components/badge/#variants[`<sl:badge>`] supports several variants, each with its own color.
+We map each status onto one of them with the `statusVariants` map, created using `th:with`.
+We could have built this map in the controller and added it to the model, but here it sits nice and close to the markup.
+<.> Iterate over every element of the `page` and create a `<tr>` for each.
+Also set an `id` on each row.
+This will be convenient later in case htmx wants to swap an edited row.
+<.> Format the date of the expense to the `d MMM yyyy` format.
+<.> Render the expense category via the translations (see below).
+<.> Render the optional project name.
+If it is `null`, render `—`.
+<.> Render the amount of the expense.
+We use `#numbers.formatDecimal` to properly format the number.
+In a real application, I would probably create a `NumberFormatter` bean in the Spring context so this kind of formatting code lives in a single place and I can use it from any Thymeleaf page.
+The result would change what we have here to `<td data-align="end"
+th:text="${@numberFormatter.formatAmount(expense.amount)}">`.
+<.> On the final column, we render an `<sl:badge>` using the `statusVariants` mapping from `ExpenseStatus` to a `variant` prop value.
+
+That last column might need a bit of explanation for the text it shows in the badge.
+
+The Thymeleaf expression is this:
+
+[source,html]
+----
+[[#{|ExpenseStatus.${expense.status}|}]]
+----
+
+To understand it, break it down like this:
+
+1. `${expense.status}` is the `ExpenseStatus` enum value, so for example `REJECTED`.
+2. `|ExpenseStatus.${expense.status}|` is the string concatenation of `ExpenseStatus.` with that value.
+So we get `ExpenseStatus.REJECTED`.
+3. `#{..}` reads from the `messages.properties` translation file which has these entries:
++
+[source,properties]
+----
+ExpenseStatus.DRAFT=Draft
+ExpenseStatus.SUBMITTED=Submitted
+ExpenseStatus.APPROVED=Approved
+ExpenseStatus.REJECTED=Rejected
+----
++
+So now we get `Rejected` from the expression `#{|ExpenseStatus.${expense.status}|}`.
+4. Finally, the `[[ .. ]]` syntax lets you inline a Thymeleaf expression into the HTML.
+
+
+=== Translations
+
+Even though Spendleaf only speaks English for now, I don't put the labels of the enums in the template or in the Java code.
+They go into a messages file, so the template only needs to know the key.
+
+Spring Boot automatically configures a `MessageSource` that reads `messages.properties` from the root of the classpath.
+I prefer to keep the translation files together in a folder, so I point Spring Boot to `src/main/resources/i18n` instead:
+
+[source,properties]
+.src/main/resources/application.properties
+----
+spring.messages.basename=i18n/messages
+----
+
+The file itself has an entry for each category and each status:
+
+[source,properties]
+.src/main/resources/i18n/messages.properties
+----
+ExpenseCategory.TRAVEL=Travel
+ExpenseCategory.MEALS=Meals
+ExpenseCategory.TRAINING=Training
+ExpenseCategory.EQUIPMENT=Equipment
+ExpenseCategory.OTHER=Other
+
+ExpenseStatus.DRAFT=Draft
+ExpenseStatus.SUBMITTED=Submitted
+ExpenseStatus.APPROVED=Approved
+ExpenseStatus.REJECTED=Rejected
+----
+
+Using the name of the enum followed by the name of the constant as the key is a convention that makes it easy to build the key in the template, as we did for the category and the status.
+
+[TIP]
+====
+Shadleaf has its own texts as well, such as the "Rows per page" label of the pagination we will add next.
+Those are messages too, with keys that start with `sl.`.
+Shadleaf adds them behind the messages of the application, so they work without any configuration, and you can still override any of them by adding the same key to your own `messages.properties`.
+====
+
+If we actually wanted to translate the application fully, we would need to add keys for every English word and sentence we currently use as well, and add a messages file per language with the translations, such as `messages_nl.properties` for Dutch.
+I skipped this here to keep things simple, but in a real application, do it from the very start.
+That way, you don't have to hunt down all texts later to add translation keys for them.
+If you want to learn more about Thymeleaf and translations, my https://www.wimdeblauwe.com/books/taming-thymeleaf/[Taming Thymeleaf] book has a whole section on this which also shows how to follow the locale of the browser, or of the user.
+
+Below the table, we add pagination controls so the user can see how many pages there are, and navigate through them:
+
+[source,html]
+.src/main/resources/templates/expenses/index.html
+----
+<th:block th:unless="${page.totalElements == 0}">
+        <sl:table id="expenses-table" th:page="${page}">
+            ...
+        </sl:table>
+
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-4"> <!--.-->
+            <sl:pagination-summary th:page="${page}"/> <!--.-->
+            <div class="flex flex-wrap items-center gap-6">
+                <sl:pagination-size th:page="${page}"/> <!--.-->
+                <sl:pagination th:page="${page}" class="m-0 w-auto"/> <!--.-->
+            </div>
+        </div>
+    </th:block>
+----
+
+<.> A flex container with the Tailwind CSS utility classes that puts the summary at the start and the controls at the end.
+On a narrow screen, the controls wrap to a line of their own.
+<.> https://shadleaf.dev/current/components/pagination/[`<sl:pagination-summary>`] shows which expenses are visible, for example "1–10 of 120".
+The text comes from the `sl.pagination.summary` message, and the numbers are formatted for the locale of the user.
+Use `format="page"` if you prefer "Page 1 of 12".
+<.> `<sl:pagination-size>` renders "Rows per page" with a dropdown menu to pick another page size.
+Each size in the menu is a link to the same URL with another `size` parameter.
+The other parameters, like the sort order, are kept, but the page number is dropped so the user starts again on the first page.
+The default sizes are 10, 20 and 50, which can be changed with the `sizes` prop.
+<.> `<sl:pagination>` renders the links to the other pages: Previous, the first and the last page, the current page with one page on each side, an ellipsis for the pages in between, and Next.
+Like the sort links of the table headers, every link keeps the other parameters of the request, so going to the next page keeps the sort order and the page size.
+By default, the pagination centers itself across the full width.
+The `m-0 w-auto` classes undo that, so it sits next to the page size menu.
+
+Users can edit the page size using the `<sl:pagination-size>` control in the UI, but they could also manipulate the URL and put in any size they want.
+To prevent users from asking for an excessive size that overloads the database, we can set the `spring.data.web.pageable.max-page-size` property:
+
+[source,properties]
+----
+spring.data.web.pageable.default-page-size=10
+spring.data.web.pageable.max-page-size=50
+----
+
+== Robust sorting
+
+The sort links of the table headers and the pagination links put the sort order in the URL, for example `/expenses?sort=amount,desc`.
+That is great for bookmarks and the back button, but it also means anybody can edit it.
+With the controller as it is now, `/expenses?sort=password` is passed on to Spring Data, which fails because `Expense` has no such property, and the user gets an error page.
+
+There is a second, more subtle problem.
+Our default sort is on the date, and many expenses share the same date.
+The database does not guarantee in which order it returns rows with the same value, and that order is not necessarily the same for each page.
+So while paging through the expenses, an expense might show up on two pages, or on none at all.
+
+We can fix both in the controller, before we call the use case:
+
+[source,java]
+.src/main/java/com/wimdeblauwe/examples/spendleaf/expense/web/ExpenseController.java
+----
+@Controller
+@RequestMapping("/expenses")
+class ExpenseController {
+    // The properties of the <sl:table-head sort="..."> columns
+    private static final Set<String> SORTABLE = Set.of("description", "date", "category", "project", "amount", "status"); //<.>
+    private static final Sort DEFAULT_SORT = Sort.by(Sort.Direction.DESC, "date");
+
+    private final GetExpenses getExpenses;
+
+    ExpenseController(GetExpenses getExpenses) {
+        this.getExpenses = getExpenses;
+    }
+
+    @GetMapping
+    public String index(@SortDefault(sort = "date", direction = Sort.Direction.DESC) Pageable pageable,
+                        Model model) {
+        model.addAttribute("page", getExpenses.execute(sortable(pageable))); //<.>
+        return "expenses/index";
+    }
+
+    private static Pageable sortable(Pageable pageable) {
+        Sort sort = pageable.getSort().stream().allMatch(order -> SORTABLE.contains(order.getProperty())) //<.>
+                ? pageable.getSort()
+                : DEFAULT_SORT;
+        return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort.and(Sort.by("id"))); //<.>
+    }
+}
+----
+
+<.> The properties the user is allowed to sort on.
+These are exactly the values of the `sort` props of the `<sl:table-head>` components in the template.
+<.> Pass the `Pageable` through the `sortable` method before we give it to the use case.
+<.> If every property in the requested sort is one of the allowed ones, we keep the sort as requested.
+Otherwise, we ignore it and fall back to the default sort on the date.
+<.> Add the id of the expense as the last sort key.
+Because the id is unique, two expenses with the same date (or amount, or status) now always come back in the same order, and each expense shows up on exactly one page.
+
+The id only matters to the database.
+The table headers only look at the first sort key to show which column is sorted, and the sort links are built from the request, not from the `Sort` of the page.
+So the id never shows up in the UI or in the URL.
+
+With this in place, `/expenses?sort=password` shows the expenses sorted by date, and paging through all 12 pages shows each of the 120 expenses exactly once.
+
+We now avoid the error page, but the URL still shows the invalid sort option the user typed.
+We can make this better by redirecting to a valid URL instead, and the code becomes simpler too:
+
+[source,java]
+.src/main/java/com/wimdeblauwe/examples/spendleaf/expense/web/ExpenseController.java
+----
+@Controller
+@RequestMapping("/expenses")
+class ExpenseController {
+    // The properties of the <sl:table-head sort="..."> columns
+    private static final Set<String> SORTABLE = Set.of("description", "date", "category", "project", "amount", "status");
+
+    private final GetExpenses getExpenses;
+
+    ExpenseController(GetExpenses getExpenses) {
+        this.getExpenses = getExpenses;
+    }
+
+    @GetMapping
+    public String index(@SortDefault(sort = "date", direction = Sort.Direction.DESC) Pageable pageable,
+                        Model model) {
+        if (!isSortable(pageable.getSort())) { //<.>
+            return "redirect:" + ServletUriComponentsBuilder.fromCurrentRequest()
+                    .replaceQueryParam("sort") //<.>
+                    .replaceQueryParam("page") //<.>
+                    .build()
+                    .toUriString();
+        }
+        model.addAttribute("page", getExpenses.execute(withStableOrder(pageable))); //<.>
+        return "expenses/index";
+    }
+
+    private static boolean isSortable(Sort sort) {
+        return sort.stream().allMatch(order -> SORTABLE.contains(order.getProperty()));
+    }
+
+    private static Pageable withStableOrder(Pageable pageable) {
+        return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
+                              pageable.getSort().and(Sort.by("id")));
+    }
+}
+----
+
+<.> If the requested sort uses a property that is not allowed, we don't render the page, but redirect the browser to a corrected URL.
+`ServletUriComponentsBuilder.fromCurrentRequest()` starts from the URL of the current request, so the other query parameters, like the page size, are kept.
+<.> Calling `replaceQueryParam` without any values removes the parameter.
+<.> Also remove the page number, as a new sort order starts on the first page.
+<.> A valid sort only needs the id added as the last sort key, so `sortable` became the simpler `withStableOrder`.
+
+Using the redirect, we can now rely on the `@SortDefault` annotation: without a `sort` parameter in the URL, Spring applies it.
+So we only need to define the default sort once, and the `DEFAULT_SORT` constant is gone.
+
+If you now open `/expenses?sort=password&size=20&page=3`, the browser ends up on `/expenses?size=20`, showing the first page sorted by date.
+The extra round trip only happens when somebody edits the URL by hand, so there is no extra work for the controller during normal operation.
+
+
+== Conclusion
+
+In this second part, we added the first real page to Spendleaf: a table of expenses backed by Spring Data JPA.
+We used `<sl:card>` and `<sl:empty>` for the empty state, and `<sl:table>` with sortable `<sl:table-head>` columns and `<sl:badge>` for the status.
+The pagination summary, the page size menu and the pagination links all work from the same `Page` object, and they keep the other parameters of the request, so sorting, paging and the page size work together without any extra code.
+On the server side, we only allow sorting on the columns of the table, redirect to a clean URL when the sort is invalid, and add the id as a tie-breaker so paging is stable.
+
+In the next part, we will build the form to create and edit an expense, with server-side validation, all without JavaScript.
+
+See https://github.com/wimdeblauwe/blog-example-code/tree/part-2/spendleaf[spendleaf] on GitHub for the full sources of this part.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
