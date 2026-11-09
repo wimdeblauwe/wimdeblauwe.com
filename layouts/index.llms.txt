@@ -1,0 +1,29 @@
+{{- $posts := where (where .Site.RegularPages "Section" "blog") "Params.hidden" "ne" true -}}
+# {{ .Site.Title }}
+
+> Blog of Wim Deblauwe, a software developer specialized in Java and Spring Boot. Practical articles on Spring Boot, Thymeleaf, htmx, testing and related topics.
+
+Wim is the author of the books Taming Thymeleaf, Modern frontends with htmx and Crafting Spring Boot Starters, and maintains open-source projects such as error-handling-spring-boot-starter.
+
+## Programmatic access
+
+Agents and automated tools can read this blog as clean Markdown, without the HTML chrome:
+
+- [llms.txt]({{ "llms.txt" | absURL }}): this index, linking to the Markdown version of every article.
+- Every article and page URL has a Markdown twin: replace the trailing `/` with `.md` (e.g. `/blog/2026/08/03/my-post/` becomes `/blog/2026/08/03/my-post.md`). Requests with `Accept: text/markdown` to the article URL get the Markdown directly, and each HTML page links to it with `<link rel="alternate" type="text/markdown">`.
+
+## Pages
+
+{{- range slice "about" "books" "books/crafting-spring-boot-starters" "books/modern-frontends-with-htmx" "books/taming-thymeleaf" "projects" "conferences" }}
+{{- with site.GetPage . }}
+- [{{ .Title }}]({{ partial "agents/markdown-url.html" . | default .Permalink }})
+{{- end }}
+{{- end }}
+
+## Articles
+{{ range $posts.GroupByDate "2006" }}
+### {{ .Key }}
+{{ range .Pages -}}
+- [{{ .Title }}]({{ partial "agents/markdown-url.html" . | default .Permalink }}){{ with .Params.tags }}: {{ delimit . ", " }}{{ end }}
+{{ end }}
+{{- end }}

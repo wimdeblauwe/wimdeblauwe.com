@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ block "title" . }}{{ if .IsHome }}{{ .Site.Title }}{{ else }}{{ .Title }} - {{ .Site.Title }}{{ end }}{{ end }}</title>
     <link rel="canonical" href="{{ .Permalink }}">
+    {{- with partial "agents/markdown-url.html" . }}
+    <link rel="alternate" type="text/markdown" href="{{ . }}" title="{{ $.Title }} (Markdown)">
+    {{- end }}
+    <link rel="alternate" type="text/plain" href="{{ "llms.txt" | absURL }}" title="llms.txt (index for AI agents)">
     {{- $desc := .Description }}
     {{- if not $desc }}{{ $desc = .Summary | plainify | htmlUnescape | replaceRE `\s+` " " | replaceRE `^ +| +$` "" | truncate 160 }}{{ end }}
     {{- with $desc }}
@@ -34,6 +38,11 @@
     <script src="/js/fslightbox.js" defer></script>
 </head>
 <body>
+{{- if .IsHome }}
+<noscript>
+    <p>Machine-readable versions of this site: <a href="{{ "llms.txt" | absURL }}">llms.txt</a>, <a href="{{ "sitemap.xml" | absURL }}">sitemap.xml</a>.</p>
+</noscript>
+{{- end }}
 {{ partial "site-header.html" . }}
 <main>
 {{ block "main" . }}{{ end }}

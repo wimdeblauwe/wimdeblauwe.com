@@ -1,0 +1,12 @@
+{
+  "name": "wimdeblauwe.com",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "markdown": "node scripts/html-to-markdown.mjs public"
+  },
+  "dependencies": {
+    "turndown": "^7.2.5",
+    "turndown-plugin-gfm": "^1.0.2"
+  }
+}

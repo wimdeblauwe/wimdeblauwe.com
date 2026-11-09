@@ -1,0 +1,6 @@
+{{- /* URL of the page's Markdown twin (/blog/.../slug.md), or "" if it has none. */ -}}
+{{- $url := "" -}}
+{{- if .OutputFormats.Get "markdown" -}}
+  {{- $url = printf "%s.md" (strings.TrimSuffix "/" .Permalink) -}}
+{{- end -}}
+{{- return $url -}}

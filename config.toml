@@ -4,6 +4,7 @@ title = "Wim Deblauwe"
 copyright = "© 2022 Wim Deblauwe"
 googleAnalytics = "G-VJZ8LM94JG"
 mainSections = ["blog"]
+enableRobotsTXT = true
 
 [params]
     images = ['images/wim-deblauwe.jpg']
@@ -34,6 +35,37 @@ weight = 4
 name = "About"
 url = "/about"
 weight = 5
+
+# Markdown for AI agents: llms.txt on the homepage, and a
+# Markdown twin of every blog post. Hugo writes the twin as <slug>/index.md;
+# scripts/html-to-markdown.mjs converts it and moves it to <slug>.md, the URL
+# the templates link to (see partials/agents/markdown-url.html). uglyURLs is
+# not an option for that: it also changes the alias redirect paths of old posts.
+[outputFormats.llms]
+baseName = "llms"
+mediaType = "text/plain"
+isPlainText = true
+
+[outputs]
+home = ["html", "rss", "llms"]
+
+[[cascade]]
+outputs = ["html", "markdown"]
+[cascade.target]
+kind = "page"
+path = "{/blog,/blog/**}"
+
+[[cascade]]
+outputs = ["html", "markdown"]
+[cascade.target]
+kind = "page"
+path = "{/about,/books/**,/projects,/conferences}"
+
+[[cascade]]
+outputs = ["html", "rss", "markdown"]
+[cascade.target]
+kind = "section"
+path = "/books"
 
 # Enable tags.
 [taxonomies]

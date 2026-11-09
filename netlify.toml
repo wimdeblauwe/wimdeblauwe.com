@@ -1,6 +1,6 @@
 [build]
     publish = "public"
-    command = "hugo && npx -y pagefind --site public"
+    command = "hugo && node scripts/html-to-markdown.mjs public && npx -y pagefind --site public"
 
 [build.environment]
     HUGO_VERSION = "0.163.0"
@@ -10,7 +10,14 @@
     HUGO_ENV = "production"
 
 [context.deploy-preview]
-    command = "hugo -D -F -b $DEPLOY_PRIME_URL/ && npx -y pagefind --site public"
+    command = "hugo -D -F -b $DEPLOY_PRIME_URL/ && node scripts/html-to-markdown.mjs public && npx -y pagefind --site public"
 
 [context.branch-deploy]
-    command = "hugo -D -F -b $DEPLOY_PRIME_URL/ && npx -y pagefind --site public"
+    command = "hugo -D -F -b $DEPLOY_PRIME_URL/ && node scripts/html-to-markdown.mjs public && npx -y pagefind --site public"
+
+# Markdown for AI agents (see scripts/html-to-markdown.mjs and
+# netlify/edge-functions/markdown.ts).
+[[headers]]
+    for = "/llms.txt"
+    [headers.values]
+        Content-Type = "text/plain; charset=utf-8"

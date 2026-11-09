@@ -8,10 +8,11 @@ Personal site/blog of Wim Deblauwe, built with Hugo (extended, ≥ 0.163). Posts
 
 ```sh
 bundle install                                     # first time: Asciidoctor + Rouge gems
+npm install                                        # first time: turndown (HTML → Markdown for the .md twins)
 hugo server                                        # dev server on :1313, no search index
 hugo server -D -F                                  # include drafts / future-dated posts
 hugo && npx pagefind --site public && hugo server --renderStaticToDisk   # dev with working search
-hugo && npx pagefind --site public                 # production build (what Netlify runs)
+hugo && node scripts/html-to-markdown.mjs public && npx pagefind --site public   # production build (what Netlify runs)
 ```
 
 There are no tests or linters. Verify changes by building (`hugo` must finish without errors) and inspecting output in `public/` or the running server. Build to a scratch directory with `hugo -d <dir>` if you don't want to touch `public/`.
@@ -39,6 +40,10 @@ Each post shows **at most one** ad. Rules live in `data/ads.toml`: an ordered li
 ### Newsletter signup
 
 The form (`layouts/partials/newsletter-signup-form.html`, also exposed as a shortcode) POSTs to `/api/subscribe`, a Netlify function in `netlify/functions/subscribe.mjs` that does bot/disposable-domain filtering and calls the EmailOctopus API (needs `EMAILOCTOPUS_API_KEY` / `EMAILOCTOPUS_LIST_ID` env vars on Netlify). It does not run under `hugo server`.
+
+### Markdown for AI agents
+
+Every blog post has a Markdown twin at `/blog/YYYY/MM/DD/<slug>.md`, as do the about, books, projects and conferences pages (`/books/<slug>.md`, `/about.md`, …; which pages is set by the `[[cascade]]` entries in `config.toml`), plus `/llms.txt` (index). Hugo renders them (`layouts/blog/single.md`, `layouts/_default/single.md` / `list.md`, `layouts/index.llms.txt`, `layouts/partials/agents/`) with the post HTML between `<!--html-to-markdown-->` markers; `scripts/html-to-markdown.mjs` converts that to Markdown after the build and moves `<slug>/index.md` to `<slug>.md`. Under plain `hugo server` the twins are unconverted. `netlify/edge-functions/markdown.ts` serves the twin for `Accept: text/markdown` requests; a new non-blog page with a twin must also be added to its `path` list and to `layouts/index.llms.txt`. Don't set `uglyURLs`: it changes the alias paths of old posts.
 
 ## Other
 
