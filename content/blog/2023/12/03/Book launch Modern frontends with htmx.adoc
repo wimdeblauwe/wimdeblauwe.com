@@ -6,9 +6,6 @@ tags: ["spring-boot", "thymeleaf", "alpine", "tailwindcss", "htmx"]
 ad: none
 keywords: []
 ---
-:source-highlighter: rouge
-:rouge-css: style
-:rouge-style: github
 :imagesdir: /images
 :icons: font
 :toc: macro

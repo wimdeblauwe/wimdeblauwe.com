@@ -4,9 +4,6 @@ date: 2013-01-10
 draft: false
 aliases: [/2013/01/10/Tooltips-in-detached-windows-with-Adobe-AIR]
 ---
-:source-highlighter: rouge
-:rouge-css: style
-:rouge-style: github
 :imagesdir: /images
 :icons: font
 

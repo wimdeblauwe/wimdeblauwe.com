@@ -90,8 +90,9 @@ tag = "tags"
 # copper diamond in CSS) without touching the per-post .adoc attributes.
 [markup.asciidocExt.attributes]
 sectanchors = ""
-# Rouge emits token classes instead of inline colours (overrides the
-# per-post `:rouge-css: style`). The colours live in assets/css/main.css.
+# Syntax highlighting for all posts. Rouge emits token classes instead of
+# inline colours; the colours live in assets/css/main.css.
+source-highlighter = "rouge"
 rouge-css = "class"
 
 [privacy.youtube]

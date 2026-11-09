@@ -5,9 +5,6 @@ draft: false
 tags: ["spring-boot"]
 aliases: [/2018/09/10/spring-boot-book-published-via-infoq/]
 ---
-:source-highlighter: rouge
-:rouge-css: style
-:rouge-style: github
 :imagesdir: /images
 :icons: font
 

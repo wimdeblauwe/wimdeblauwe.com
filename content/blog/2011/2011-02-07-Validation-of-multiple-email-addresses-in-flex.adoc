@@ -4,9 +4,6 @@ date: 2011-02-07
 draft: false
 aliases: [/2011/02/07/Validation-of-multiple-email-addresses-in-flex]
 ---
-:source-highlighter: rouge
-:rouge-css: style
-:rouge-style: github
 :imagesdir: /images
 :icons: font
 

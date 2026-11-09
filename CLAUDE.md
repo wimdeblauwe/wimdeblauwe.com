@@ -20,7 +20,7 @@ There are no tests or linters. Verify changes by building (`hugo` must finish wi
 ## Content
 
 - **Blog posts**: `content/blog/YYYY/MM/DD/<Title>.adoc` (2021+). Pre-2021 posts are flat files `content/blog/YYYY/YYYY-MM-DD-<Slug>.adoc` with `aliases:` to preserve old URLs. Public URLs are `/blog/YYYY/MM/DD/<urlized-filename>/` and must not change.
-- Front matter: `title`, `date`, `draft`, `tags`, `keywords`, optionally `ad` (see below) and `hidden: true` (excluded from the homepage list). Copy the AsciiDoc attribute header (`:source-highlighter: rouge`, `:rouge-css: style`, `:imagesdir: /images`, `:toc: macro`, …) from an existing recent post; new posts don't use the archetype.
+- Front matter: `title`, `date`, `draft`, `tags`, `keywords`, optionally `ad` (see below) and `hidden: true` (excluded from the homepage list). Copy the AsciiDoc attribute header (`:imagesdir: /images`, `:toc: macro`, …) from an existing recent post; new posts don't use the archetype. Syntax highlighting (Rouge, class-based, colours in `main.css`) is set globally in `config.toml`, so posts don't set `:source-highlighter:` or `:rouge-*:`.
 - Images referenced from posts live under `static/images/`.
 - **Non-blog pages** (about, books, projects, conferences, newsletter-confirmed) are `.html` content files with `type: "page"` — this is why `security.allowContent` is set in `config.toml`.
 - `newsletters/YYYY/` holds sent newsletter HTML; `newsletter.md` is a working log of the Mailchimp → EmailOctopus migration. Never commit subscriber email addresses — the repo is public.

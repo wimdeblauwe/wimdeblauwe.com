@@ -4,9 +4,6 @@ date: 2020-02-17
 draft: false
 tags: ["thymeleaf", "spring-boot", "css"]
 ---
-:source-highlighter: rouge
-:rouge-css: style
-:rouge-style: github
 :imagesdir: /images
 :icons: font
 

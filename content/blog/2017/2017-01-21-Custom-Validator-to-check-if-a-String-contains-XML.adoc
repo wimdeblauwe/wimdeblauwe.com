@@ -4,9 +4,6 @@ date: 2017-01-21
 draft: false
 aliases: [/2017/01/21/Custom-Validator-to-check-if-a-String-contains-XML/]
 ---
-:source-highlighter: rouge
-:rouge-css: style
-:rouge-style: github
 :imagesdir: /images
 :icons: font
 

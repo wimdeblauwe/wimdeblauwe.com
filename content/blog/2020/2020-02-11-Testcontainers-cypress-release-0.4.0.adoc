@@ -4,9 +4,6 @@ date: 2020-02-11
 draft: false
 tags: ["spring-boot", "junit", "testcontainers-cypress"]
 ---
-:source-highlighter: rouge
-:rouge-css: style
-:rouge-style: github
 :imagesdir: /images
 :icons: font
 

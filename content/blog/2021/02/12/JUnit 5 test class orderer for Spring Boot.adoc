@@ -4,9 +4,6 @@ date: 2021-02-12
 draft: false
 tags: ["spring-boot","junit"]
 ---
-:source-highlighter: rouge
-:rouge-css: style
-:rouge-style: github
 :imagesdir: /images
 :icons: font
 :toc: macro

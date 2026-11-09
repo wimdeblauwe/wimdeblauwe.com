@@ -5,9 +5,6 @@ draft: false
 tags: ["java"]
 aliases: [/2018/09/26/switching-between-jdk-8-and-11-using-sdkman/]
 ---
-:source-highlighter: rouge
-:rouge-css: style
-:rouge-style: github
 :imagesdir: /images
 :icons: font
 

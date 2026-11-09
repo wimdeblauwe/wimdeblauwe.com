@@ -4,9 +4,6 @@ date: 2021-03-01
 draft: false
 tags: ["JPA", "hibernate", "spring-boot"]
 ---
-:source-highlighter: rouge
-:rouge-css: style
-:rouge-style: github
 :imagesdir: /images
 :icons: font
 :toc: macro

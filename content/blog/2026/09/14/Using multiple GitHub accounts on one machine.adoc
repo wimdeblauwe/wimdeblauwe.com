@@ -6,9 +6,6 @@ tags: ["git", "github"]
 keywords: []
 description: "Set up Git for multiple GitHub accounts on one machine with includeIf and insteadOf: an SSH key and commit email per account, no special clone URLs."
 ---
-:source-highlighter: rouge
-:rouge-css: style
-:rouge-style: github
 :imagesdir: /images
 :icons: font
 :toc: macro

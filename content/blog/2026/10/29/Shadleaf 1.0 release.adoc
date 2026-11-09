@@ -7,9 +7,6 @@ keywords: []
 description: "Shadleaf 1.0 is out: an open-source library of accessible, themeable UI components for Thymeleaf, packaged as a Spring Boot starter."
 ad: none
 ---
-:source-highlighter: rouge
-:rouge-css: style
-:rouge-style: github
 :imagesdir: /images
 :icons: font
 :toc: macro

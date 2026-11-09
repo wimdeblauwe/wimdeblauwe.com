@@ -4,9 +4,6 @@ date: 2020-10-09
 draft: false
 tags: ["asciidoctor","groovy"]
 ---
-:source-highlighter: rouge
-:rouge-css: style
-:rouge-style: github
 :imagesdir: /images
 :icons: font
 :toc: macro

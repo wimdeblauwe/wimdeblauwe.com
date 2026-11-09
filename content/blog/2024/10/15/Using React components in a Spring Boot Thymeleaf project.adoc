@@ -5,9 +5,6 @@ draft: false
 tags: ["spring-boot", "thymeleaf", "vite", "react"]
 keywords: []
 ---
-:source-highlighter: rouge
-:rouge-css: style
-:rouge-style: github
 :imagesdir: /images
 :icons: font
 :toc: macro

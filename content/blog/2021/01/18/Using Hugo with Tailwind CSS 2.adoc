@@ -4,9 +4,6 @@ date: 2021-01-18
 draft: false
 tags: ["hugo","tailwindcss"]
 ---
-:source-highlighter: rouge
-:rouge-css: style
-:rouge-style: github
 :imagesdir: /images
 :icons: font
 :toc: macro

@@ -4,9 +4,6 @@ date: 2021-02-18
 draft: false
 tags: ["spring-boot"]
 ---
-:source-highlighter: rouge
-:rouge-css: style
-:rouge-style: github
 :imagesdir: /images
 :icons: font
 :toc: macro

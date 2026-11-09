@@ -4,9 +4,6 @@ date: 2015-09-29
 draft: false
 aliases: [/2015/09/29/EntryProcessors-and-EntryBackupProcessors-with-Hazelcast/]
 ---
-:source-highlighter: rouge
-:rouge-css: style
-:rouge-style: github
 :imagesdir: /images
 :icons: font
 

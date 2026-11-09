@@ -4,9 +4,6 @@ date: 2012-06-29
 draft: false
 aliases: [/2012/06/29/Restarting-an-Adobe-AIR-application-when-using-video/]
 ---
-:source-highlighter: rouge
-:rouge-css: style
-:rouge-style: github
 :imagesdir: /images
 :icons: font
 
