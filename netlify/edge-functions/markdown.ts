@@ -59,5 +59,4 @@ export const config: Config = {
     "/conferences/",
     "/conferences.md",
   ],
-  method: ["GET", "HEAD"],
 };
