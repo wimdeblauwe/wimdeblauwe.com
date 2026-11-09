@@ -3,7 +3,9 @@ GEM
   specs:
     asciidoctor (2.0.26)
     logger (1.7.0)
-    rouge (4.0.0)
+    rouge (5.1.0)
+      strscan (~> 3.1)
+    strscan (3.1.8)
 
 PLATFORMS
   ruby
