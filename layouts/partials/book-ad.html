@@ -7,7 +7,7 @@
 {{- $tags := .Params.tags | default slice -}}
 {{- $selected := false -}}
 {{- if ne $override "none" -}}
-  {{- range site.Data.ads.ads -}}
+  {{- range hugo.Data.ads.ads -}}
     {{- if not $selected -}}
       {{- if $override -}}
         {{- if eq .name $override }}{{ $selected = . }}{{ end -}}

@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Personal site/blog of Wim Deblauwe, built with Hugo (extended, ≥ 0.163). Posts are AsciiDoc, rendered by Hugo's external Asciidoctor converter (Ruby, Rouge highlighting). Search is Pagefind. Deployed on Netlify (`netlify.toml`).
+Personal site/blog of Wim Deblauwe, built with Hugo (extended, ≥ 0.169). Posts are AsciiDoc, rendered by Hugo's external Asciidoctor converter (Ruby, Rouge highlighting). Search is Pagefind. Deployed on Netlify (`netlify.toml`).
 
 ## Commands
 

@@ -1248,9 +1248,9 @@ image::{imagesdir}/2020/03/laravel-intermediate-task-list-10.png[]
 After doing that, the database table `task_user` should contain something like:
 [cols="m,m,m,m"]
 |===
-|id	|name	|email|	password
+|id |name |email |password
 
-|1	|User|	user|	{bcrypt}$2a$10$COEKwy8kLl.SkexLL.v9t.eRMqB9rQrgUnqwG7jPm5JxJBvlghf/i|
+|1 |User |user |{bcrypt}$2a$10$COEKwy8kLl.SkexLL.v9t.eRMqB9rQrgUnqwG7jPm5JxJBvlghf/i
 |===
 
 As a last step, we need to configure the authentication configuration to use the database user.

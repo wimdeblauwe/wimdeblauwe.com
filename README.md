@@ -4,7 +4,7 @@ Personal site built with [Hugo](https://gohugo.io/). Content is written in Ascii
 
 ## Prerequisites
 
-- **Hugo** (extended) ≥ 0.163 — `brew install hugo`
+- **Hugo** (extended) ≥ 0.169 — `brew install hugo`
 - **Ruby** ≥ 3.x — used by Asciidoctor
 - **Bundler** — `gem install bundler`
 - **Node.js** — needed to run Pagefind when developing with search

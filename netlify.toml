@@ -3,7 +3,7 @@
     command = "hugo && node scripts/html-to-markdown.mjs public && npx -y pagefind --site public"
 
 [build.environment]
-    HUGO_VERSION = "0.163.0"
+    HUGO_VERSION = "0.169.0"
     NODE_VERSION = "24"
 
 [context.production.environment]
