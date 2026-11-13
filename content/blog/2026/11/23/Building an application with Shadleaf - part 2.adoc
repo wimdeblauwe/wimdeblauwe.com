@@ -6,9 +6,6 @@ tags: ["thymeleaf", "spring-boot"]
 keywords: []
 description: "Part 2 of the Shadleaf component library tutorial showing tables with paging and sorting"
 ---
-:source-highlighter: rouge
-:rouge-css: style
-:rouge-style: github
 :imagesdir: /images
 :icons: font
 :toc: macro

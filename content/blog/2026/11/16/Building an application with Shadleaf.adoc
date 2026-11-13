@@ -6,9 +6,6 @@ tags: ["thymeleaf", "spring-boot"]
 keywords: []
 description: "Tutorial showing how to build an application with the Shadleaf component library"
 ---
-:source-highlighter: rouge
-:rouge-css: style
-:rouge-style: github
 :imagesdir: /images
 :icons: font
 :toc: macro
