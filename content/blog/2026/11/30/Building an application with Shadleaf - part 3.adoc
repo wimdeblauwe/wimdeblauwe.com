@@ -1,0 +1,718 @@
+---
+title: "Building an application with Shadleaf - part 3"
+date: 2026-11-30
+draft: true
+tags: ["thymeleaf", "spring-boot"]
+keywords: []
+description: "Part 3 of the Shadleaf component library tutorial showing forms with server-side validation"
+---
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+In part 2 of Building an application with Shadleaf, we built a table of expenses with sorting and pagination.
+In this part, we will build the form to create and edit an expense, with server-side validation, all without writing any JavaScript.
+
+<!--more-->
+
+The form uses most of Shadleaf's form components: an https://shadleaf.dev/current/components/input-group/[input group] with a currency addon for the amount, a https://shadleaf.dev/current/components/date-picker/[date picker], a https://shadleaf.dev/current/components/select/[select] for the category, a https://shadleaf.dev/current/components/combobox/[combobox] for the project, a https://shadleaf.dev/current/components/switch/[switch] and a https://shadleaf.dev/current/components/textarea/[textarea].
+Each of them sits in a https://shadleaf.dev/current/components/field/[field] that wires up the label, the description and the validation errors from a single `th:field`.
+When the expense is saved, we redirect back to the list and show a https://shadleaf.dev/current/components/toast/[toast].
+
+== Projects
+
+An expense can belong to a project.
+In the form, we will use a combobox to select the project.
+A combobox only allows choosing one of its options, so the form needs to know which projects exist.
+
+Until now, an expense just stored the name of its project.
+To prepare for the form, I made `Project` an entity of its own, with a database table, and an `Expense` now refers to its project by its id:
+
+[source,java]
+.src/main/java/com/wimdeblauwe/examples/spendleaf/expense/Expense.java
+----
+@Entity
+public class Expense extends AbstractEntity<ExpenseId> {
+    ...
+    private @Nullable ProjectId project;
+    ...
+}
+----
+
+The entity, the database migration and the repository query that sorts the expenses on the name of their project are standard Spring Boot.
+See the https://github.com/wimdeblauwe/blog-example-code/tree/part-3/spendleaf[part-3 sources] on GitHub for the details.
+
+For the HTML side, we need the projects in two places: as the options of the combobox in the form, and to show the name of the project in the table, as an expense only has the id of its project.
+A small class in the `infrastructure.web` package handles both:
+
+[source,java]
+.src/main/java/com/wimdeblauwe/examples/spendleaf/infrastructure/web/IdAndNameCollection.java
+----
+public class IdAndNameCollection implements Iterable<IdAndName> { //<.>
+    private final Map<UUID, IdAndName> values = new LinkedHashMap<>(); //<.>
+
+    public IdAndNameCollection(List<IdAndName> values) {
+        for (IdAndName value : values) {
+            this.values.put(value.id(), value);
+        }
+    }
+
+    public @Nullable String nameOf(@Nullable EntityId<UUID> id) { //<.>
+        if (id == null) {
+            return null;
+        }
+        IdAndName value = values.get(id.getId());
+        return value != null ? value.name() : null;
+    }
+
+    @Override
+    public Iterator<IdAndName> iterator() {
+        return values.values().iterator();
+    }
+}
+----
+
+<.> `IdAndName` is a record with a `UUID id` and a `String name`. Because the class is `Iterable`, a template can loop over it with `th:each`.
+<.> A `LinkedHashMap` keeps the order in which the values were given, so the options of the combobox will be sorted the same way as the list.
+<.> `EntityId` is the interface that JPearl's id classes implement, so this works for the id of any entity, not only for a `ProjectId`.
+
+The class is not tied to projects, so we can use it again for other entities that we need to show in a select or a combobox.
+
+The controller adds the projects to the model with a `@ModelAttribute` method:
+
+[source,java]
+.src/main/java/com/wimdeblauwe/examples/spendleaf/expense/web/ExpenseController.java
+----
+@ModelAttribute("projects")
+public IdAndNameCollection projects() {
+    return new IdAndNameCollection(getProjects.execute().stream()
+                                           .map(project -> new IdAndName(project.getId().getId(), project.getName()))
+                                           .toList());
+}
+----
+
+A `@ModelAttribute` method adds its result to the model of every request the controller handles, so the projects are available on the expenses page now, and in the form later.
+
+The table uses `nameOf` to show the name of the project:
+
+[source,html]
+.src/main/resources/templates/expenses/index.html
+----
+<td th:text="${projects.nameOf(expense.project)} ?: '—'">Atlas</td>
+----
+
+When an expense has no project, `nameOf` returns `null`, and the Elvis operator shows a dash instead.
+
+Sorting on the Project column keeps working as before: the column still sends `sort=project`, and the repository sorts on the name of the project.
+
+== The create expense page
+
+The empty state from part 2 already links to `/expenses/create`.
+Time to build the page behind that link.
+
+=== The form data
+
+The form does not bind directly to the `Expense` entity, but to a separate `CreateExpenseFormData` class.
+A form has to be able to hold invalid input, so it can show that input again next to the error message.
+The entity can't do that: an `Amount` of zero or less is rejected in its constructor, and the entity stores a `ProjectId`, not the `UUID` that the browser sends.
+
+[source,java]
+.src/main/java/com/wimdeblauwe/examples/spendleaf/expense/web/CreateExpenseFormData.java
+----
+public class CreateExpenseFormData {
+    @NotBlank
+    @Size(max = 200)
+    private @Nullable String description;
+    @NotNull
+    @Positive
+    @Digits(integer = 8, fraction = 2)
+    private @Nullable BigDecimal amount; //<.>
+    @NotNull
+    @PastOrPresent
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) //<.>
+    private @Nullable LocalDate date;
+    @NotNull
+    private @Nullable ExpenseCategory category;
+    private @Nullable UUID project; //<.>
+    private boolean billable;
+    @Size(max = 1000)
+    private @Nullable String notes;
+
+    public static CreateExpenseFormData withDefaults() { //<.>
+        CreateExpenseFormData formData = new CreateExpenseFormData();
+        formData.setDate(LocalDate.now());
+        return formData;
+    }
+
+    public CreateExpenseParameters toParameters() { //<.>
+        return new CreateExpenseParameters(description,
+                                           new Amount(amount),
+                                           date,
+                                           category,
+                                           project != null ? new ProjectId(project) : null,
+                                           billable,
+                                           notes);
+    }
+
+    // getters and setters omitted
+}
+----
+
+<.> The amount is a `BigDecimal`, as the form uses an input with `type="number"`.
+<.> The date picker submits ISO dates (`2026-11-30`), so we need `@DateTimeFormat` to tell Spring to use that format when binding the value.
+<.> The id of the selected project. When no project is selected, the combobox submits an empty string, which Spring converts to `null` for a `UUID`.
+<.> A new expense starts with today's date, as most expenses are entered on the day itself.
+<.> After validation, `toParameters()` converts the form data into the parameters of the `CreateExpense` use case, with the `Amount` and `ProjectId` value objects.
+
+NOTE: Bean Validation is not part of the web starter, so I added `spring-boot-starter-validation` to the `pom.xml`.
+
+A browser submits every field of a form as text, including the ones that the user left empty.
+When Spring binds the form, it converts that text to the type of the field in the form data class.
+For every type except `String`, like `BigDecimal`, `LocalDate`, an enum or `UUID`, Spring converts an empty value to `null`, as there is no number, date or id in an empty string.
+That is why those fields are objects that can be `null` (and not a primitive like `double`), and why the required ones have `@NotNull`.
+A `String` field is different: Spring keeps the empty string as it is.
+We will fix that in the controller.
+
+The `CreateExpense` use case creates the `Expense` entity and saves it.
+See the https://github.com/wimdeblauwe/blog-example-code/tree/part-3/spendleaf[part-3 sources] for the use case and its `CreateExpenseParameters`.
+
+=== The controller
+
+The controller gets a handler for showing the form and one for submitting it:
+
+[source,java]
+.src/main/java/com/wimdeblauwe/examples/spendleaf/expense/web/ExpenseController.java
+----
+@InitBinder
+void initBinder(WebDataBinder binder) {
+    // Trims text input, and turns an empty field into null
+    binder.registerCustomEditor(String.class, new StringTrimmerEditor(true)); //<.>
+}
+
+@ModelAttribute("categories")
+public List<ExpenseCategory> categories() { //<.>
+    return List.of(ExpenseCategory.values());
+}
+
+@GetMapping("/create")
+public String createExpenseForm(Model model) {
+    model.addAttribute("expense", CreateExpenseFormData.withDefaults()); //<.>
+    return "expenses/edit";
+}
+
+@PostMapping("/create")
+public String doCreateExpense(@Valid @ModelAttribute("expense") CreateExpenseFormData formData,
+                              BindingResult bindingResult) { //<.>
+    if (bindingResult.hasErrors()) {
+        return "expenses/edit"; //<.>
+    }
+
+    createExpense.execute(formData.toParameters());
+    return "redirect:/expenses"; //<.>
+}
+----
+
+<.> The `StringTrimmerEditor` removes the spaces around text input. With `true`, it also converts an empty `String` field to `null`, like Spring already does for the other types. Without it, empty notes would be stored as an empty string instead of `null`.
+<.> The options for the category select. Like the projects, they are a `@ModelAttribute`, so they are also available when the form is shown again with errors.
+<.> The form data is added to the model as `expense`. The template binds to that name, and Spring uses it in the message codes of the validation errors.
+<.> `@Valid` runs Bean Validation on the form data. The `BindingResult` must come directly after it, otherwise Spring throws an exception instead of handing us the errors.
+<.> With errors, we render the same template again. The form data still holds what the user entered, and the `BindingResult` holds the errors.
+<.> Without errors, we redirect to the list of expenses (post/redirect/get), so refreshing the page does not submit the form a second time.
+
+TIP: See https://www.youtube.com/watch?v=KrhANnaN-X0[Form handling with Thymeleaf] on YouTube for a video about the POST-REDIRECT-GET pattern.
+
+=== The template
+
+The template is `expenses/edit.html`.
+For now, it only creates expenses, but we will use the same template for editing an expense later in this post.
+
+Let's start with the form itself and its first field:
+
+[source,html]
+.src/main/resources/templates/expenses/edit.html
+----
+<form id="expense-form" th:object="${expense}" th:action="@{/expenses/create}" method="post" novalidate <!--.-->
+      class="max-w-2xl">
+    <sl:card>
+        <sl:card-content>
+            <sl:field-group> <!--.-->
+                <sl:field th:field="*{description}"> <!--.-->
+                    <sl:field-label>Description</sl:field-label>
+                    <sl:input placeholder="Hotel Ghent, 2 nights"/>
+                    <sl:field-error/>
+                </sl:field>
+
+                <!-- the other fields -->
+            </sl:field-group>
+        </sl:card-content>
+        <sl:card-footer class="justify-end gap-2">
+            <sl:button as="a" variant="outline" th:href="@{/expenses}">Cancel</sl:button>
+            <sl:button type="submit">Create expense</sl:button> <!--.-->
+        </sl:card-footer>
+    </sl:card>
+</form>
+----
+
+<.> `th:object` selects the form data, so `*{...}` expressions refer to its fields. `novalidate` turns off the validation of the browser, so all validation happens on the server.
+<.> `<sl:field-group>` stacks the fields with even spacing.
+<.> `th:field` goes on the `<sl:field>`, not on the input.
+<.> `<sl:button>` renders `type="button"` by default, so a button never submits a form by accident. The submit button has to say `type="submit"`.
+
+The `<sl:field>` is where Shadleaf does the work.
+It takes the `th:field`, and hands it to the parts inside it: the input gets the `name`, `id` and `value`, and the label gets a `for` that points at the input.
+The first time the page renders, this is the HTML for the description:
+
+[source,html]
+----
+<div class="field">
+  <label class="label field-label" for="description">Description</label>
+  <input class="input" type="text" placeholder="Hotel Ghent, 2 nights"
+         id="description" name="description" value="">
+</div>
+----
+
+When the form comes back with an error on the description, the same template renders this:
+
+[source,html]
+----
+<div class="field" data-invalid="true">
+  <label class="label field-label" for="description">Description</label>
+  <input class="input" type="text" aria-invalid="true" placeholder="Hotel Ghent, 2 nights"
+         id="description" aria-describedby="description-error" name="description" value="">
+  <div class="field-error" id="description-error">must not be blank</div>
+</div>
+----
+
+The field gets `data-invalid` and the input gets `aria-invalid`, which Shadleaf's CSS uses to show the error colors.
+The input's `aria-describedby` points at the error message, so a screen reader reads the message when the user reaches the input.
+
+`<sl:field-error>` renders the error messages of the field, or nothing at all if there are no errors.
+All of that comes from the single `th:field`, without a `th:if` or `#fields.hasErrors(...)` in our template.
+
+Navigate to http://localhost:8080/expenses/create to view the form:
+
+image::2026/11/shadleaf-part-03-01-create-expense.webp[link=/images/2026/11/shadleaf-part-03-01-create-expense.webp]
+
+Submitting with missing values shows the validation errors:
+
+image::2026/11/shadleaf-part-03-02-validation-errors.webp[link=/images/2026/11/shadleaf-part-03-02-validation-errors.webp]
+
+To reach the form from the list as well, and not only from the empty state, the expenses page gets a button above the table:
+
+[source,html]
+.src/main/resources/templates/expenses/index.html
+----
+<div class="mb-4 flex justify-end">
+    <sl:button as="a" th:href="@{/expenses/create}">New expense</sl:button>
+</div>
+----
+
+image::2026/11/shadleaf-part-03-03-button-on-list.webp[link=/images/2026/11/shadleaf-part-03-03-button-on-list.webp]
+
+
+== The other fields
+
+The `description` field showed how a `<sl:field>` works.
+All other fields follow the same pattern: `th:field` on the `<sl:field>`, and a control inside it.
+This section explains the other controls in more detail.
+
+=== Amount
+
+The amount is a number input with a euro sign in front of it.
+The https://shadleaf.dev/current/components/input-group/[`<sl:input-group>`] puts text, icons or buttons inside the border of an input:
+
+[source,html]
+----
+<sl:field th:field="*{amount}">
+    <sl:field-label>Amount</sl:field-label>
+    <sl:input-group>
+        <sl:input-group-input type="number" step="0.01" min="0.01" inputmode="decimal" <!--.-->
+                              placeholder="0.00"/>
+        <sl:input-group-addon><sl:input-group-text>€</sl:input-group-text></sl:input-group-addon> <!--.-->
+    </sl:input-group>
+    <sl:field-error/>
+</sl:field>
+----
+
+<.> The `<sl:input-group-input>` takes the `th:field` of the `<sl:field>`, like the `<sl:input>` of the description did. `inputmode="decimal"` shows a numeric keyboard with a decimal separator on phones.
+<.> The addon comes after the input in the HTML, so the input is first in the tab order, and a screen reader reads it first. The default `align` of the addon is `inline-start`, so it is still shown before the number.
+
+When the amount has an error, the red border goes around the whole input group, not only around the number.
+
+=== Two fields side by side
+
+The amount and the date are short fields, so we can put them side by side on a wider screen.
+Using Tailwind CSS, we create a two-column grid:
+
+[source,html]
+----
+<div class="grid gap-6 sm:grid-cols-2">
+    <sl:field th:field="*{amount}">...</sl:field>
+    <sl:field th:field="*{date}">...</sl:field>
+</div>
+----
+
+The category and the project use the same grid on the next row.
+As mentioned in part 1, Tailwind CSS utilities are for the markup of the application itself, like this layout.
+The Shadleaf components are configured with props instead.
+
+=== Date
+
+The https://shadleaf.dev/current/components/date-picker/[`<sl:date-picker>`] is a button that opens a calendar:
+
+[source,html]
+----
+<sl:field th:field="*{date}">
+    <sl:field-label>Date</sl:field-label>
+    <sl:date-picker/>
+    <sl:field-error/>
+</sl:field>
+----
+
+The value is kept in a date input inside the date picker.
+That input takes the `th:field`, and submits the date in the ISO format, which is why the form data has `@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)` on the date.
+
+The button shows the selected date in the locale of the page.
+The server renders that text, and the browser formats it again in the same way after the user picks another date.
+The `format` prop selects the style: `short`, `medium`, `long` (the default) or `full`.
+
+image::2026/11/shadleaf-part-03-04-date-picker.webp[link=/images/2026/11/shadleaf-part-03-04-date-picker.webp]
+
+=== Category
+
+For the category, we use a https://shadleaf.dev/current/components/select/[`<sl:select>`]:
+
+[source,html]
+----
+<sl:field th:field="*{category}">
+    <sl:field-label>Category</sl:field-label>
+    <sl:select placeholder="Select a category"> <!--.-->
+        <sl:select-item th:each="category : ${categories}"
+                        th:value="${category}">[[#{|ExpenseCategory.${category}|}]]</sl:select-item> <!--.-->
+    </sl:select>
+    <sl:field-error/>
+</sl:field>
+----
+
+<.> The `placeholder` is shown until the user selects a category. It is rendered as a hidden option with an empty value, so a form that is submitted without a category fails on `@NotNull`.
+<.> One item for each category from the `categories` model attribute, with the translated name of the category as its content. Use a Thymeleaf inline expression (`[[...]]`) here, and not `th:text`: `th:text` would replace the check mark that the selected item shows.
+
+The `<sl:select>` renders a real `<select>` element.
+`th:field` binds it as it binds any other select, and the form submits the selected value.
+Shadleaf only changes how it looks.
+
+Shadleaf has three components to choose one value from a list: `<sl:select>` for a short list, `<sl:native-select>` to leave the list to the operating system, which is nice on phones, and `<sl:combobox>` for a list that people would rather search.
+See https://shadleaf.dev/current/components/select/#select-native-select-or-combobox[Select, native select or combobox?] for when to use which one.
+
+=== Project
+
+The project uses a https://shadleaf.dev/current/components/combobox/[`<sl:combobox>`], so the user can type a few letters to find a project:
+
+[source,html]
+----
+<sl:field th:field="*{project}">
+    <sl:field-label>Project</sl:field-label>
+    <sl:combobox placeholder="No project" show-clear> <!--.-->
+        <sl:combobox-item th:each="project : ${projects}"
+                          th:value="${project.id}">[[${project.name}]]</sl:combobox-item> <!--.-->
+    </sl:combobox>
+    <sl:field-error/>
+</sl:field>
+----
+
+<.> The `placeholder` is the option with an empty value, which Spring binds as `null`: the expense has no project. `show-clear` adds a button to remove the project again.
+<.> The `IdAndNameCollection` from the beginning of this post is `Iterable`, so `th:each` can loop over it.
+
+Like the select, the combobox renders a real `<select>` element.
+JavaScript replaces it with a text input that filters the list while the user types.
+
+TIP: For lists that are too long to put in the page, the combobox can also load its options from the server while the user types, with https://shadleaf.dev/current/components/combobox/#options-from-the-server[the `search-url` prop].
+
+image::2026/11/shadleaf-part-03-05-combobox.webp[link=/images/2026/11/shadleaf-part-03-05-combobox.webp]
+
+=== Billable
+
+Whether the expense can be charged to the client is a yes or no question, so we use a https://shadleaf.dev/current/components/switch/[`<sl:switch>`]:
+
+[source,html]
+----
+<sl:field th:field="*{billable}" orientation="horizontal"> <!--.-->
+    <sl:switch/>
+    <sl:field-content> <!--.-->
+        <sl:field-label>Billable</sl:field-label>
+        <sl:field-description>Charge this expense to the client of the project.</sl:field-description>
+    </sl:field-content>
+</sl:field>
+----
+
+<.> With `orientation="horizontal"`, the switch comes first, and the label is shown next to it.
+<.> `<sl:field-content>` stacks the label and the description next to the switch.
+
+A switch is a checkbox, which comes with two details that Shadleaf and Spring handle for us:
+
+* A browser does not submit a checkbox that is turned off. `th:field` adds a hidden `_billable` input, so Spring knows the field was in the form and sets `billable` to `false`.
+* Spring gives a checkbox a numbered id (`billable1`), so that several checkboxes for one field get different ids. Inside a `<sl:field>`, the switch gets `billable` as its id, so the `for` of the label points at it.
+
+This is the HTML it renders:
+
+[source,html]
+----
+<div class="field" data-orientation="horizontal">
+  <input type="checkbox" role="switch" class="switch" id="billable"
+         aria-describedby="billable-description" name="billable" value="true">
+  <input type="hidden" name="_billable" value="on"/>
+  <div class="field-content">
+    <label class="label field-label" for="billable">Billable</label>
+    <p class="field-description" id="billable-description">Charge this expense to the client of the project.</p>
+  </div>
+</div>
+----
+
+=== Notes
+
+The last field is a https://shadleaf.dev/current/components/textarea/[`<sl:textarea>`] for notes:
+
+[source,html]
+----
+<sl:field th:field="*{notes}">
+    <sl:field-label>Notes</sl:field-label>
+    <sl:textarea rows="3"/>
+    <sl:field-description>Optional. Anything the approver should know.</sl:field-description>
+    <sl:field-error/>
+</sl:field>
+----
+
+The notes field has a description and an error message.
+The textarea's `aria-describedby` points at the description, and also at the error message when there is one, so a screen reader reads both.
+In browsers that support it, the textarea grows with its content, and `rows` sets its starting height.
+
+=== The complete form
+
+With all fields in place, the form looks like this:
+
+image::2026/11/shadleaf-part-03-06-complete-form.webp[link=/images/2026/11/shadleaf-part-03-06-complete-form.webp]
+
+Every control in the form is a real form element: an input, a select or a checkbox.
+The browser submits the form like any other HTML form, and Spring binds it to the form data.
+Shadleaf only adds JavaScript to make the controls nicer to use, like the calendar of the date picker and the filtering of the combobox.
+
+== Validation messages
+
+When we submitted the empty form before, the fields showed the default messages of Hibernate Validator:
+
+image::2026/11/shadleaf-part-03-02-validation-errors.webp[link=/images/2026/11/shadleaf-part-03-02-validation-errors.webp]
+
+"must not be null" is not something we want to show to the users of our application.
+Spring looks up the message of a validation error in `messages.properties` before it falls back to the default message.
+It tries a few message codes, from specific to generic.
+For the `@NotBlank` on the description of the `expense` form, the most specific one is `NotBlank.expense.description`: the name of the constraint, the name of the model attribute and the name of the field.
+
+So we add a message for each constraint on the form data:
+
+[source,properties]
+.src/main/resources/i18n/messages.properties
+----
+NotBlank.expense.description=Enter a description.
+Size.expense.description=The description can be at most {1} characters.
+NotNull.expense.amount=Enter an amount, like 12.50.
+Positive.expense.amount=The amount must be more than zero.
+Digits.expense.amount=The amount can have at most {1} decimals.
+NotNull.expense.date=Pick the date of the expense.
+PastOrPresent.expense.date=The date can't be in the future.
+NotNull.expense.category=Select a category.
+Size.expense.notes=The notes can be at most {1} characters.
+----
+
+The placeholders get the attributes of the constraint, in alphabetical order after the name of the field in `{0}`.
+So `{1}` is the `max` of `@Size`, and the `fraction` of `@Digits`.
+
+The amount uses an input with `type="number"`, and such an input never sends text that is not a number.
+When the user types something the browser can't read as a number, it sends an empty value instead, and the amount fails on `@NotNull`.
+So the message for `NotNull.expense.amount` has to make sense in that case as well, which is why it says how to enter an amount, and not only that the amount is missing.
+
+With these messages, the form looks a lot friendlier:
+
+image::2026/11/shadleaf-part-03-07-validation-messages.webp[link=/images/2026/11/shadleaf-part-03-07-validation-messages.webp]
+
+== Error summary
+
+On a long form, the user might not see all errors at once.
+The https://shadleaf.dev/current/components/form-errors/[`<sl:form-errors>`] component shows a summary of the errors at the top of the form.
+We add it as the first element of the `<sl:field-group>`:
+
+[source,html]
+.src/main/resources/templates/expenses/edit.html
+----
+<form id="expense-form" th:object="${expense}" th:action="@{/expenses/create}" method="post" novalidate
+      class="max-w-2xl">
+    <sl:card>
+        <sl:card-content>
+            <sl:field-group>
+                <sl:form-errors show="all" autofocus/> <!--.-->
+                <sl:field th:field="*{description}">
+                ...
+----
+
+<.> `<sl:form-errors>` reads the errors of the form data that `th:object` selects. It renders nothing while there are no errors.
+
+By default, `<sl:form-errors>` only shows the errors that belong to the whole form, and not to a single field, like an error from `bindingResult.reject(...)` in the controller.
+Our form has no such errors, so we use `show="all"` to list the errors of the fields as well.
+Each field still shows its own error next to its control.
+
+The summary lists the messages without the label of the field they belong to.
+That is another reason to write the messages as complete sentences, like "Enter a description.", and not as "must not be blank".
+
+`autofocus` moves the focus to the summary when the form comes back with errors, so a screen reader reads the summary right away.
+The user can then press the Tab key to continue to the fields.
+We only do this because the form is the only thing on the page.
+On a page with more content, moving the focus would skip the heading of the page.
+
+The title of the summary is "There is a problem" by default.
+To change it for all forms, add the `sl.form-errors.title` key to `messages.properties`, or use the `title` attribute to change it for a single form.
+
+image::2026/11/shadleaf-part-03-08-error-summary.webp[link=/images/2026/11/shadleaf-part-03-08-error-summary.webp]
+
+== A toast after saving
+
+When the form is valid, the controller saves the expense and redirects to the list of expenses.
+The new expense is somewhere in that list, but the user gets no confirmation that it was saved.
+A https://shadleaf.dev/current/components/toast/[toast] is a good fit for that: a short message in a corner of the page that goes away by itself.
+
+=== The toaster
+
+The toasts are shown in a `<sl:toaster>`.
+There is one for the whole application, so we add it to the layout, at the end of the `<body>`:
+
+[source,html]
+.src/main/resources/templates/layout/main.html
+----
+<body>
+...
+<sl:toaster>
+    <sl:toast th:each="toast : ${toasts}" th:title="${toast.title}" th:description="${toast.description}" <!--.-->
+              th:variant="${toast.variant}" th:duration="${toast.duration}"/>
+</sl:toaster>
+</body>
+----
+
+<.> The toaster renders a `<sl:toast>` for each toast in the `toasts` model attribute. Most pages don't have that attribute, and then the toaster is empty.
+
+=== The flash attribute
+
+The toast has to be shown on the page after the redirect, not on the page that handles the form submission.
+A model attribute does not survive a redirect, but a flash attribute does: Spring keeps it in the session, and adds it to the model of the next request.
+
+[source,java]
+.src/main/java/com/wimdeblauwe/examples/spendleaf/expense/web/ExpenseController.java
+----
+@PostMapping("/create")
+public String doCreateExpense(@Valid @ModelAttribute("expense") CreateExpenseFormData formData,
+                              BindingResult bindingResult,
+                              RedirectAttributes redirectAttributes) { //<.>
+    if (bindingResult.hasErrors()) {
+        return "expenses/edit";
+    }
+
+    Expense expense = createExpense.execute(formData.toParameters()); //<.>
+    redirectAttributes.addFlashAttribute("toasts", List.of( //<.>
+            Toast.success("Expense created").withDescription(expense.getDescription())));
+    return "redirect:/expenses";
+}
+----
+
+<.> Add `RedirectAttributes` as a parameter of the method to be able to add a flash attribute.
+<.> The use case returns the created expense, so we can use its description in the toast.
+<.> `Toast` is a record from Shadleaf with a title, an optional description, a variant and an optional duration. `Toast.success(...)` sets the `success` variant. The flash attribute is a list, so a single request can show more than one toast.
+
+After the redirect, the list of expenses renders the toast in the toaster, and the toast closes itself after 5 seconds.
+The toaster also has a live region, so a screen reader announces the toast without the user having to look for it.
+
+image::2026/11/shadleaf-part-03-09-toast.webp[link=/images/2026/11/shadleaf-part-03-09-toast.webp]
+
+In part 5, we will create and edit expenses with htmx, without a redirect.
+The same `Toast` record will then travel in a response header instead of a flash attribute, and the toaster in the layout shows it in the same way.
+
+== Editing an expense
+
+The last step is editing an existing expense.
+On the Java side, this follows the same pattern as creating one:
+
+* The fields and their validation annotations moved from `CreateExpenseFormData` to an `AbstractExpenseFormData`.
+`CreateExpenseFormData` and the new `EditExpenseFormData` extend it.
+`EditExpenseFormData` also has the id of the expense, and a static `fromExpense(Expense)` method that fills the form data from an existing expense.
+* The `GetExpense` and `EditExpense` use cases load and update the expense.
+* The controller handles `GET` and `POST` on `/expenses/{id}`, and redirects to the list with an "Expense updated" toast.
+* All handlers add an `editMode` attribute to the model: `EditMode.CREATE` for a new expense and `EditMode.UPDATE` for an existing one.
+
+See the https://github.com/wimdeblauwe/blog-example-code/tree/part-3/spendleaf[part-3 sources] for the details.
+
+=== Linking from the table
+
+The description in the table of expenses becomes a link to the edit page:
+
+[source,html]
+.src/main/resources/templates/expenses/index.html
+----
+<td>
+    <a th:href="@{/expenses/{id}(id=${expense.id.asString()})}" th:text="${expense.description}"
+       class="font-medium hover:underline">Hotel Ghent, 2 nights</a>
+</td>
+----
+
+=== One template for both
+
+The edit page uses the same `expenses/edit.html` template as the create page.
+Only a few things differ, and the template switches them on the `editMode`:
+
+[source,html]
+.src/main/resources/templates/expenses/edit.html
+----
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sl="https://shadleaf.dev/sl"
+      th:replace="~{layout/main :: layout(${editMode.name() == 'UPDATE'} ? 'Edit expense' : 'New expense', ~{::breadcrumb}, ~{::#page-content})}"> <!--.-->
+...
+<sl:breadcrumb-page>[[${editMode.name() == 'UPDATE'} ? 'Edit expense' : 'New expense']]</sl:breadcrumb-page> <!--.-->
+...
+<form id="expense-form" th:object="${expense}" method="post" novalidate
+      th:action="${editMode.name() == 'UPDATE'} ? @{/expenses/{id}(id=${expense.id})} : @{/expenses/create}" <!--.-->
+      class="max-w-2xl">
+    ...
+    <sl:button type="submit">[[${editMode.name() == 'UPDATE'} ? 'Save expense' : 'Create expense']]</sl:button> <!--.-->
+    ...
+</form>
+----
+
+<.> The title of the page, which the layout uses for the `<title>` and the heading.
+<.> The last item of the breadcrumb.
+<.> The form posts to `/expenses/{id}` when editing, and to `/expenses/create` when creating. `${expense.id}` only exists on `EditExpenseFormData`, but Thymeleaf only evaluates the branch of the condition that it needs.
+<.> The text of the submit button. Like the select items, the button gets its text as content.
+
+=== The fields show the current values
+
+The controller puts an `EditExpenseFormData` with the values of the expense in the model, and the `th:field` of each `<sl:field>` does the rest:
+
+* The inputs for the description, the amount and the notes get the current value.
+* The date picker shows the date of the expense on its button, formatted in the locale of the page.
+* The select and the combobox mark the option of the current category and project as selected.
+* The switch is turned on when the expense is billable.
+
+None of this needs any code in the template that is specific to editing.
+Because the components render real form elements, Spring's data binding works for them as it works for plain HTML.
+
+image::2026/11/shadleaf-part-03-10-edit-expense.webp[link=/images/2026/11/shadleaf-part-03-10-edit-expense.webp]
+
+When the user saves the form, the controller redirects to the list of expenses, and the toaster shows "Expense updated".
+
+== Conclusion
+
+In this part, we built a form to create and edit an expense.
+Thanks to `<sl:field>`, a single `th:field` wires up the label, the description, the error messages and the accessibility attributes of each control.
+And because every Shadleaf form component renders a real form element, Spring binds and validates the form like any other HTML form.
+
+In the next part, we will use htmx to make the table of expenses feel faster: live search, filters, and sorting and paging without reloading the whole page.
+
+See https://github.com/wimdeblauwe/blog-example-code/tree/part-3/spendleaf[spendleaf] on GitHub for the full sources of this part.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
