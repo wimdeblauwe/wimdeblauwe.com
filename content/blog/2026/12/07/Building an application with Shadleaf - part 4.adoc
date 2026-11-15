@@ -20,7 +20,8 @@ In this part, we will use https://four.htmx.org/[htmx] to make the expenses page
 
 We start by boosting the whole application, so following a link or posting a form no longer reloads the page.
 After that, we add a search field and filters above the table of expenses.
-The table updates while the user types, and sorting and paging swap only the table, while the URL stays in step for bookmarks and the back button.
+The table updates while the user types, and sorting and paging swap only the table.
+Through all of it, the URL stays in step for bookmarks and the back button.
 
 == Boosting the whole application
 
@@ -39,7 +40,8 @@ It also updates the `<title>`, and pushes the new URL into the browser's history
 
 Note the `:inherited` modifier.
 In htmx 2, every attribute was inherited by the elements inside it.
-htmx 4 made inheritance explicit: an attribute only applies to its children when you add `:inherited` to it.
+htmx 4 made inheritance explicit.
+An attribute only applies to its children when you add `:inherited` to it.
 Without it, `hx-boost` would only boost the `<body>` itself, which is neither a link nor a form, so nothing would happen.
 
 === What changes
@@ -70,7 +72,7 @@ In the next sections, the table will ask for only a part of the page, and the co
 [NOTE]
 ====
 While testing the boosted form, I noticed that the address bar showed `/expenses;jsessionid=8EC1…` after creating an expense.
-This has nothing to do with htmx: it happened without htmx as well, since part 3.
+This has nothing to do with htmx. It already happened in part 3, without htmx.
 
 The flash attribute with the toast is stored in the HTTP session.
 When the redirect after saving is the first response that creates a session, Tomcat does not know yet if the browser accepts cookies.
@@ -424,14 +426,14 @@ image::2026/12/shadleaf-part-04-03-filter.webp[link=/images/2026/12/shadleaf-par
 
 === Leaving out empty filters
 
-If you played close attention to the URL that the filter form builds, you will have noticed that searching for "hotel" turns the URL into `/expenses?q=hotel&category=&status=&from=&to=`.
+If you paid close attention to the URL that the filter form builds, you will have noticed that searching for "hotel" turns the URL into `/expenses?q=hotel&category=&status=&from=&to=`.
 
 It works, as the controller ignores empty parameters, but it is not nice to look at, or to share.
-We can avoid this and have a nice URL with just a little bit of JavaScript.
+A few lines of JavaScript give us a clean URL.
 
 htmx fires the `htmx:config:request` event before it sends a request.
 For a `GET`, the values of the form are still in a `FormData` JavaScript object at that point, and htmx only turns them into the query string after the event.
-A few lines of JavaScript remove the empty values there:
+That is where we remove the empty values:
 
 [source,javascript]
 .src/main/resources/static/js/application.js
@@ -500,8 +502,9 @@ We give the header of the table and the footer with the pagination the same thre
 `:inherited` makes the attributes apply to the links inside the element.
 A link still gets its `hx-boost` from the body, and now takes its target from the closest parent.
 
-So the boost still happens: when you click a sort link in the header, htmx requests that URL and pushes it into the address bar.
-For now, the server still answers with the whole page, but htmx only swaps in #expenses-results (the table, the pagination and the hidden inputs), and leaves the rest of the page alone.
+So the boost still happens.
+When you click a sort link in the header, htmx requests that URL and pushes it into the address bar.
+For now, the server still answers with the whole page, but htmx only swaps in `#expenses-results` (the table, the pagination and the hidden inputs), and leaves the rest of the page alone.
 
 [NOTE]
 .Why not on the whole results?
@@ -558,7 +561,7 @@ The results alone are 15 KB.
 </figure>
 ++++
 
-With a minimal amount of work, we can have the server only return the smaller fragment and save on bandwidth and processing.
+A few lines in the controller are enough to send only the fragment, so the server only renders and sends about a third of the HTML.
 
 === Rendering only the results
 
@@ -590,7 +593,7 @@ Because of the htmx 4 headers we saw at the start of this post, the controller c
 |The whole page
 |===
 
-So the rule is simple: only a request that targets `#expenses-results` gets the results alone.
+So only a request that targets `#expenses-results` gets the results alone.
 
 htmx-spring-boot gives the controller the htmx headers as an `HtmxRequest` parameter:
 
@@ -839,7 +842,8 @@ The footer with the pagination has nothing to say for an empty page, so it gets 
 
 The "Clear filters" link is inside `#expenses-results`, but not inside the `<thead>` or the footer.
 So it does not inherit their target, and is boosted by the body, like the edit links.
-That is exactly what we want here: clearing the filters must also reset the search field, the selects and the date picker, which are outside the results.
+That is what we want here.
+Clearing the filters must also reset the search field, the selects and the date picker, which are outside the results.
 A request for the whole of `/expenses` renders the form without any values.
 
 This is where opting in on the `<thead>` and the footer, from "Sorting and paging inside the table", pays off: we added a link to the results, and it works without any extra attributes.
@@ -848,7 +852,7 @@ image::2026/12/shadleaf-part-04-06-empty-results.webp[link=/images/2026/12/shadl
 
 == Page actions next to the title
 
-You might have noticed the "New expense" button is sitting now awkwardly wrapped on a new row because of the filter form.
+You might have noticed that the filter form pushes the "New expense" button onto a row of its own, where it looks a bit lost.
 We can move the button next to the page title, which is a common place for the main action of a page.
 That leaves the whole row below the title for the filters.
 
