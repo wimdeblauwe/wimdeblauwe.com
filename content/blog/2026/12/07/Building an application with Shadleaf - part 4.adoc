@@ -1,0 +1,942 @@
+---
+title: "Building an application with Shadleaf - part 4"
+date: 2026-12-07
+draft: true
+tags: ["thymeleaf", "spring-boot", "htmx"]
+keywords: []
+description: "Part 4 of the Shadleaf component library tutorial showing a live table of expenses with htmx"
+---
+:imagesdir: /images
+:icons: font
+:toc: macro
+:table-caption!:
+:2c: ::
+:underscore: _
+
+In part 3 of Building an application with Shadleaf, we built the form to create and edit an expense.
+In this part, we will use https://four.htmx.org/[htmx] to make the expenses page feel like a single-page application, while the server still renders all the HTML.
+
+<!--more-->
+
+We start by boosting the whole application, so following a link or posting a form no longer reloads the page.
+After that, we add a search field and filters above the table of expenses.
+The table updates while the user types, and sorting and paging swap only the table, while the URL stays in step for bookmarks and the back button.
+
+== Boosting the whole application
+
+In part 1, we already added htmx to the layout, but we did not use it yet.
+The quickest win is `hx-boost` on the `<body>`:
+
+[source,html]
+.src/main/resources/templates/layout/main.html
+----
+<body hx-boost:inherited="true">
+----
+
+With `hx-boost`, htmx takes over every link and every form inside the body.
+Instead of letting the browser load the next page, htmx fetches it with JavaScript and swaps the `<body>` of the response into the current page.
+It also updates the `<title>`, and pushes the new URL into the browser's history.
+
+Note the `:inherited` modifier.
+In htmx 2, every attribute was inherited by the elements inside it.
+htmx 4 made inheritance explicit: an attribute only applies to its children when you add `:inherited` to it.
+Without it, `hx-boost` would only boost the `<body>` itself, which is neither a link nor a form, so nothing would happen.
+
+=== What changes
+
+For the user, the application looks the same, but it feels faster.
+The browser no longer throws away the page on every click, so there is no white flash between pages, and the CSS and JavaScript are not evaluated again.
+
+Nothing changes for the server.
+It still renders the full page for each request, so the current menu item in the sidebar, the breadcrumb and the title are always right.
+
+=== How the server sees a boosted request
+
+A boosted request is an ordinary `GET` or `POST`, with a few extra headers.
+For a click on "My expenses" in the sidebar, htmx 4 sends:
+
+[source]
+----
+HX-Request: true
+HX-Boosted: true
+HX-Source: a
+HX-Target: body
+HX-Current-URL: http://localhost:8080/
+----
+
+For now, the controller ignores these headers and answers with the full page.
+In the next sections, the table will ask for only a part of the page, and the controller will need these headers to decide what to render.
+
+[NOTE]
+====
+While testing the boosted form, I noticed that the address bar showed `/expenses;jsessionid=8EC1…` after creating an expense.
+This has nothing to do with htmx: it happened without htmx as well, since part 3.
+
+The flash attribute with the toast is stored in the HTTP session.
+When the redirect after saving is the first response that creates a session, Tomcat does not know yet if the browser accepts cookies.
+To be safe, it adds the session id to the URL of the redirect.
+
+We only want to track the session with a cookie, so we tell Spring Boot:
+
+[source,properties]
+.src/main/resources/application.properties
+----
+server.servlet.session.tracking-modes=cookie
+----
+
+Putting the session id in the URL is a bad idea anyway: it ends up in bookmarks, in the browser history and in the logs of every server it passes.
+
+Note that Spring Security disables session ids in URLs by default, so once we add it in part 6, this property is no longer strictly needed. It does no harm to keep it.
+====
+
+
+== Filtering expenses
+
+Before we build the search form, the backend needs to be able to filter the expenses.
+The user can search for a text in the description or the name of the project, and filter on the category, the status and a range of dates.
+
+=== The filter
+
+A record in the `expense` package holds the criteria:
+
+[source,java]
+.src/main/java/com/wimdeblauwe/examples/spendleaf/expense/ExpenseFilter.java
+----
+public record ExpenseFilter(@Nullable String text,
+                            @Nullable ExpenseCategory category,
+                            @Nullable ExpenseStatus status,
+                            @Nullable LocalDate from,
+                            @Nullable LocalDate to) {
+    public ExpenseFilter {
+        text = text == null || text.isBlank() ? null : text.strip(); //<.>
+    }
+
+    public static ExpenseFilter none() { //<.>
+        return new ExpenseFilter(null, null, null, null, null);
+    }
+
+    public boolean isEmpty() { //<.>
+        return text == null && category == null && status == null && from == null && to == null;
+    }
+}
+----
+
+<.> A text with only spaces does not filter anything, so the record turns it into `null`.
+<.> A filter that lets every expense through.
+<.> We will need this at the end of this post, to tell "no expenses yet" apart from "no expenses match the filter".
+
+A criterion that is `null` does not filter.
+The same `ExpenseFilter` is used in the repository and in the use case:
+
+[source,java]
+.src/main/java/com/wimdeblauwe/examples/spendleaf/expense/repository/ExpenseRepository.java
+----
+Page<Expense> findAll(ExpenseFilter filter, Pageable pageable);
+----
+
+[source,java]
+.src/main/java/com/wimdeblauwe/examples/spendleaf/expense/usecase/GetExpenses.java
+----
+@UseCase(readOnly = true)
+public class GetExpenses {
+    private final ExpenseRepository repository;
+
+    public GetExpenses(ExpenseRepository repository) {
+        this.repository = repository;
+    }
+
+    public Page<Expense> execute(ExpenseFilter filter, Pageable pageable) {
+        return repository.findAll(filter, pageable);
+    }
+}
+----
+
+=== The query
+
+In part 3, we wrote a JPQL query that joins the project of each expense, so we could sort on the name of the project.
+We now add a `where` clause to it:
+
+[source,java]
+.src/main/java/com/wimdeblauwe/examples/spendleaf/expense/repository/SpringDataJpaExpenseRepository.java
+----
+interface SpringDataJpaExpenseRepository extends CrudRepository<Expense, ExpenseId>,
+        PagingAndSortingRepository<Expense, ExpenseId> {
+
+    String FROM_WHERE = """
+            from Expense e left join Project p on p.id = e.project
+            where (:pattern is null
+                   or lower(e.description) like :pattern escape '\\'
+                   or lower(p.name) like :pattern escape '\\')
+              and (:category is null or e.category = :category)
+              and (:status is null or e.status = :status)
+              and (cast(:from as LocalDate) is null or e.date >= :from)
+              and (cast(:to as LocalDate) is null or e.date <= :to)
+            """; //<.>
+
+    @Query(value = "select e " + FROM_WHERE,
+            countQuery = "select count(e) " + FROM_WHERE) //<.>
+    Page<Expense> findAllWithProject(@Nullable String pattern,
+                                     @Nullable ExpenseCategory category,
+                                     @Nullable ExpenseStatus status,
+                                     @Nullable LocalDate from,
+                                     @Nullable LocalDate to,
+                                     Pageable pageable);
+}
+----
+
+<.> Each criterion is written as `(:param is null or ...)`, so a parameter that is `null` does not filter.
+<.> The query and the count query share the same `from` and `where`. If the count query would not filter, the pagination below the table would show `1–4 of 124` for a search that finds 4 expenses.
+
+Two details are worth pointing out:
+
+* The `cast(... as LocalDate)` is needed for PostgreSQL.
+Without it, a query with a `from` date, but without a `to` date, fails with `could not determine data type of parameter $8`.
+PostgreSQL cannot tell the type of a `null` parameter in `? is null` on its own.
+* The join is a `left join`, so expenses without a project are still found.
+
+The repository turns the text to search for into a `like` pattern:
+
+[source,java]
+.src/main/java/com/wimdeblauwe/examples/spendleaf/expense/repository/JpaExpenseRepository.java
+----
+static @Nullable String likePattern(@Nullable String text) {
+    if (text == null) {
+        return null;
+    }
+    String escaped = text.toLowerCase(Locale.ROOT)
+            .replace("\\", "\\\\")
+            .replace("%", "\\%")
+            .replace("_", "\\_"); //<.>
+    return "%" + escaped + "%"; //<.>
+}
+----
+
+<.> `%` and `_` are wildcards in a `like` pattern. Without escaping them, a search for "50%" would also find "500 sheets of paper". The backslash is the escape character we declared with `escape '\'` in the query, so it needs to be escaped as well.
+<.> The text can be anywhere in the description or the name of the project. The query compares it with `lower(...)` of the column, so the search ignores case.
+
+Building the pattern in Java also avoids `concat('%', :text, '%')` in the query, which gives the same "could not determine data type" error on PostgreSQL when the text is `null`.
+
+NOTE: The search ignores case, but not accents: searching for "cafe" does not find "Café".
+If your users need that, have a look at PostgreSQL's https://www.postgresql.org/docs/current/unaccent.html[unaccent] extension, which removes the accents from a text before you compare it.
+
+The `JpaExpenseRepositoryTest` tests each criterion against a real PostgreSQL database with Testcontainers, including the wildcards and both ends of the date range.
+See the https://github.com/wimdeblauwe/blog-example-code/tree/part-4/spendleaf[part-4 sources] for the tests.
+
+=== The filter in the URL
+
+The controller reads the filter from the query string, so a URL like `/expenses?q=hotel&category=TRAVEL` shows the hotel expenses for travel.
+A record in the `web` package keeps the names of the parameters short:
+
+[source,java]
+.src/main/java/com/wimdeblauwe/examples/spendleaf/expense/web/ExpenseSearchFormData.java
+----
+public record ExpenseSearchFormData(@Nullable String q,
+                                    @Nullable ExpenseCategory category,
+                                    @Nullable ExpenseStatus status,
+                                    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @Nullable LocalDate from,
+                                    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @Nullable LocalDate to) {
+
+    public ExpenseFilter toFilter() {
+        return new ExpenseFilter(q, category, status, from, to);
+    }
+}
+----
+
+[source,java]
+.src/main/java/com/wimdeblauwe/examples/spendleaf/expense/web/ExpenseController.java
+----
+@GetMapping
+public String index(@ModelAttribute("search") ExpenseSearchFormData search, //<.>
+                    @SortDefault(sort = "date", direction = Sort.Direction.DESC) Pageable pageable,
+                    Model model) {
+    if (!isSortable(pageable.getSort())) {
+        ...
+    }
+    model.addAttribute("page", getExpenses.execute(search.toFilter(), withStableOrder(pageable)));
+    return "expenses/index";
+}
+----
+
+<.> Spring MVC creates the record through its constructor, with the values from the query string. It also puts it in the model as `search`, so the search form can show the current values later.
+
+Because of the `StringTrimmerEditor` from part 3, an empty parameter like `?q=` becomes `null`, and does not filter.
+An unknown value, like `?status=PAID`, gives a `400 Bad Request`.
+
+The filter now works without any change to the template.
+Try `/expenses?q=hotel` or `/expenses?status=APPROVED&from=2026-10-01&to=2026-10-31` in the browser: the table shows the matching expenses, and the pagination counts only those.
+The links to sort and to change the page keep the filter, as Shadleaf builds them from the current request.
+
+.Filtering the expenses via the `status` query parameter in the URL
+image::2026/12/shadleaf-part-04-02-filter-in-url.webp[link=/images/2026/12/shadleaf-part-04-02-filter-in-url.webp]
+
+There is one problem: a search that finds nothing, like `/expenses?q=zzz`, shows "No expenses yet" with a button to add the first expense.
+We will fix that later in this post.
+
+== A search form and a table that updates
+
+Typing a URL is not how users search, so we add a search form above the table.
+The page gets two parts:
+
+* The search form, which htmx never replaces.
+* The results: the table with its pagination, or the empty state. This is the part that htmx swaps after each search.
+
+Keeping the form out of the swapped part is important.
+If htmx replaced the search field while the user is typing, the field would lose the focus, the position of the cursor, and any characters typed while the request was on its way.
+
+=== The search form
+
+[source,html]
+.src/main/resources/templates/expenses/index.html
+----
+<div class="mb-4 flex flex-wrap items-center gap-3">
+    <form id="expenses-search" role="search" method="get" th:action="@{/expenses}" <!--.-->
+          hx:get="@{/expenses}" hx-trigger="input changed delay:300ms, search, submit" hx-sync="this:replace" <!--.-->
+          hx-target="#expenses-results" hx-select="#expenses-results" hx-swap="outerHTML show:none" <!--.-->
+          hx-push-url="true" <!--.-->
+          class="flex flex-wrap items-center gap-3">
+
+        <sl:input-group class="w-64">
+            <sl:input-group-input type="search" id="expenses-q" name="q" th:value="${search.q()}"
+                                  placeholder="Search expenses…" aria-label="Search expenses" autocomplete="off"/>
+            <sl:input-group-addon><sl:icon name="search"/></sl:input-group-addon>
+        </sl:input-group>
+
+        <sl:select id="expenses-category" name="category" aria-label="Category" class="w-44">
+            <sl:select-item value="">All categories</sl:select-item> <!--.-->
+            <sl:select-item th:each="category : ${categories}" th:value="${category}"
+                            th:selected="${category == search.category()}">[[#{|ExpenseCategory.${category}|}]]</sl:select-item>
+        </sl:select>
+
+        <sl:select id="expenses-status" name="status" aria-label="Status" class="w-44">
+            <sl:select-item value="">All statuses</sl:select-item>
+            <sl:select-item th:each="status : ${statuses}" th:value="${status}"
+                            th:selected="${status == search.status()}">[[#{|ExpenseStatus.${status}|}]]</sl:select-item>
+        </sl:select>
+
+        <sl:date-picker aria-label="Date range" format="medium" number-of-months="2" placeholder="Any date"> <!--.-->
+            <sl:input type="date" id="expenses-from" name="from" th:value="${search.from()}" aria-label="From"/>
+            <sl:input type="date" id="expenses-to" name="to" th:value="${search.to()}" aria-label="To"/>
+        </sl:date-picker>
+    </form>
+    <sl:button as="a" th:href="@{/expenses/create}" class="ms-auto">New expense</sl:button>
+</div>
+----
+
+<.> A plain `GET` form to `/expenses`. This allows the search to work even with JavaScript disabled.
+<.> When to send the search, see below.
+<.> Where to put the answer, see below.
+<.> Put the search in the address bar, so a reload, a bookmark or a link that is shared shows the same results.
+<.> The category and status filters use an explicit item with an empty value for "no filter".
+This is needed to allow the user to go back to showing all values for that part of the search filter.
+You might think that using the `placeholder` of `<sl:select>` would also work.
+While that adds an option with an empty value, it hides that option from the list once something else is selected.
+After that, the user would not be able to go back to all categories.
+<.> A date picker with two date inputs is a date range. Each input submits its own parameter, `from` and `to`, which match the record components of `ExpenseSearchFormData`.
+
+The form does not use `th:object` and `th:field`, but sets the `name` and the value of each control.
+This keeps the form independent of how Spring reads the properties of a record.
+
+The controller also adds the statuses to the model, like it already does for the categories:
+
+[source,java]
+.src/main/java/com/wimdeblauwe/examples/spendleaf/expense/web/ExpenseController.java
+----
+@ModelAttribute("statuses")
+public List<ExpenseStatus> statuses() {
+    return List.of(ExpenseStatus.values());
+}
+----
+
+=== When to send the search
+
+`hx-trigger` lists the events that send the form:
+
+* `input changed delay:300ms`: the `input` event bubbles up to the form from every control in it: the search field, the selects and the date inputs of the date picker. `delay:300ms` waits until the user has stopped typing for 300 ms, so typing "hotel" sends one request instead of five. `changed` skips the event when the value did not change.
+* `search`: the browser fires this event when the user clears the search field with its clear button.
+* `submit`: pressing Enter submits the form. With this trigger, htmx sends the search at once, instead of letting the browser load the whole page.
+
+`hx-sync="this:replace"` aborts a request that is still on its way when the next one starts.
+Without it, a slow answer for "hot" could arrive after the answer for "hotel", and replace the right results with the wrong ones.
+
+=== Where to put the answer
+
+The form tells htmx where the answer goes:
+
+* `hx-target="#expenses-results"`: the element to update.
+* `hx-select="#expenses-results"`: the part of the answer to use. For now, the controller still answers with the full page, and htmx picks the results out of it. In "A fragment or the full page" below, the controller will only render the results for these requests.
+* `hx-swap="outerHTML show:none"`: replace the element itself, and don't scroll. A boosted request scrolls to the top by default, which we don't want here.
+
+The target is a `<div>` around the empty state, the table and the pagination:
+
+[source,html]
+.src/main/resources/templates/expenses/index.html
+----
+<div id="expenses-results" th:fragment="results">
+    <sl:card id="no-expenses" th:if="${page.totalElements == 0}">
+        ...
+    </sl:card>
+    <th:block th:unless="${page.totalElements == 0}">
+        <sl:table id="expenses-table" th:page="${page}">
+            ...
+        </sl:table>
+        ...
+    </th:block>
+</div>
+----
+
+The empty state is inside the `<div>` as well.
+A search that finds nothing still returns a `#expenses-results` to swap in, and a later search that finds something can replace it again.
+
+=== Keeping the order of the table
+
+A browser only sends the fields of the form.
+So after sorting the table on the amount, a search would forget the sort, and the size of the page.
+
+https://shadleaf.dev/current/components/query-params/[`<sl:query-params>`] solves this.
+We add it at the top of the results:
+
+[source,html]
+.src/main/resources/templates/expenses/index.html
+----
+<div id="expenses-results" th:fragment="results">
+    <sl:query-params except="q,category,status,from,to" form="expenses-search"/>
+    ...
+</div>
+----
+
+It renders a hidden input for each parameter of the current request, except the ones that the form already has (`except`) and the page number.
+For `/expenses?q=hotel&sort=amount,asc&size=20`, that gives:
+
+[source,html]
+----
+<input type="hidden" name="sort" value="amount,asc" form="expenses-search">
+<input type="hidden" name="size" value="20" form="expenses-search">
+----
+
+The `form` attribute ties the hidden inputs to the search form, even though they are not inside it.
+They are inside `#expenses-results` on purpose.
+When a sort link swaps the results, the swap brings new hidden inputs with the new sort.
+If the hidden inputs were inside the form, they would keep the sort from when the page first loaded.
+
+The page number is always left out, so a new search starts on the first page.
+
+image::2026/12/shadleaf-part-04-03-filter.webp[link=/images/2026/12/shadleaf-part-04-03-filter.webp]
+
+=== Leaving out empty filters
+
+If you played close attention to the URL that the filter form builds, you will have noticed that searching for "hotel" turns the URL into `/expenses?q=hotel&category=&status=&from=&to=`.
+
+It works, as the controller ignores empty parameters, but it is not nice to look at, or to share.
+We can avoid this and have a nice URL with just a little bit of JavaScript.
+
+htmx fires the `htmx:config:request` event before it sends a request.
+For a `GET`, the values of the form are still in a `FormData` JavaScript object at that point, and htmx only turns them into the query string after the event.
+A few lines of JavaScript remove the empty values there:
+
+[source,javascript]
+.src/main/resources/static/js/application.js
+----
+document.addEventListener('htmx:config:request', (event) => {
+    const request = event.detail.ctx.request;
+    if (request.method !== 'GET' || !(request.body instanceof FormData)) {
+        return;
+    }
+    for (const [name, value] of [...request.body]) { //<.>
+        if (value === '') {
+            request.body.delete(name);
+        }
+    }
+});
+----
+
+<.> The spread operator makes a copy of the entries first, so we don't remove entries from the `FormData` while we loop over it.
+
+The layout loads the file through Vite, next to the CSS:
+
+[source,html]
+.src/main/resources/templates/layout/main.html
+----
+<vite:vite>
+    <vite:entry value="/css/application.css"></vite:entry>
+    <vite:entry value="/js/application.js"></vite:entry>
+</vite:vite>
+----
+
+For the production build, the file also goes in the `input` of the `rollupOptions` in `vite.config.js`.
+
+Now a search for "hotel" asks for `/expenses?q=hotel`.
+
+== Sorting and paging inside the table
+
+The search form now swaps only the results.
+The links of the table don't do that yet: the column headers, the pagination and the rows-per-page menu are boosted by the body, so a click on one of them still replaces the whole body.
+
+=== Giving the links the same target
+
+We give the header of the table and the footer with the pagination the same three attributes as the search form:
+
+[source,html]
+.src/main/resources/templates/expenses/index.html
+----
+<sl:table id="expenses-table" th:page="${page}">
+    <thead hx-target:inherited="#expenses-results" hx-select:inherited="#expenses-results"
+           hx-swap:inherited="outerHTML show:none"> <!--.-->
+        ...
+    </thead>
+    ...
+</sl:table>
+
+<div class="mt-4 flex flex-wrap items-center justify-between gap-4"
+     hx-target:inherited="#expenses-results" hx-select:inherited="#expenses-results"
+     hx-swap:inherited="outerHTML show:none"> <!--.-->
+    <sl:pagination-summary th:page="${page}"/>
+    ...
+</div>
+----
+
+<.> Applies to the sort links in the column headers.
+<.> Applies to the page links and the rows-per-page menu.
+
+`:inherited` makes the attributes apply to the links inside the element.
+A link still gets its `hx-boost` from the body, and now takes its target from the closest parent.
+
+So the boost still happens: when you click a sort link in the header, htmx requests that URL and pushes it into the address bar.
+For now, the server still answers with the whole page, but htmx only swaps in #expenses-results (the table, the pagination and the hidden inputs), and leaves the rest of the page alone.
+
+[NOTE]
+.Why not on the whole results?
+====
+The Shadleaf guide on https://shadleaf.dev/current/guides/tables-htmx/[tables with htmx] puts these attributes once, on the element around all the results.
+That would affect every link in the results, also the description in each row, which links to the edit page.
+htmx would then look for `#expenses-results` in the edit page, and find nothing to show.
+
+You can fix that by opting out with `hx-boost:inherited="false"` on the `<tbody>`.
+I prefer to opt in on the `<thead>` and the footer instead, for two reasons:
+
+* The edit links keep the boost of the body. With the opt-out, they become normal links that reload the whole page.
+* A link we add to the results later, like the "New expense" button in the empty state, works without extra attributes.
+====
+
+=== What you get
+
+* *The filter stays.* The links are built from the request, so sorting the search results sorts only the search results.
+* *The focus stays.* Shadleaf gives every link a stable `id`, like `sort-amount`, `page-next` or `page-size-trigger`. After a swap, htmx focuses the element with the same `id` as before. A keyboard user can press Enter on "Next", and press Enter again for the following page.
+* *Back and forward work.* htmx 4 asks the server for the page at the previous URL, which renders the search form and the results for that URL.
+
+image::2026/12/shadleaf-part-04-04-filtering-in-action.gif[link=/images/2026/12/shadleaf-part-04-04-filtering-in-action.gif]
+
+== A fragment or the full page
+
+Everything works now, but the server does more than it needs to.
+For each search, sort or page link, it renders the whole page: the sidebar, the header, the search form, and the results.
+htmx then picks `#expenses-results` out of it with `hx-select`, and throws the rest away.
+
+For `/expenses?q=e`, the whole page is 44 KB of HTML.
+The results alone are 15 KB.
+
+++++
+<figure style="margin: 1.75rem 0; padding: 1.25rem 1.4rem 1.1rem; background: var(--card); border: 1px solid var(--hairline); border-radius: 12px; font-family: var(--body); color: var(--ink);">
+  <div style="margin-bottom: 1rem;">
+    <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin-bottom: .4rem;">
+      <span style="font-weight: 600;">Whole page</span>
+      <span style="font-family: var(--mono); font-size: .9rem;">43.9 KB</span>
+    </div>
+    <div style="height: 14px; background: var(--paper-soft); border-radius: 4px;" title="Whole page: 43.9 KB">
+      <div style="width: 100%; height: 100%; background: var(--ink-soft); border-radius: 4px;"></div>
+    </div>
+  </div>
+  <div>
+    <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin-bottom: .4rem;">
+      <span style="font-weight: 600;">Results fragment</span>
+      <span style="font-family: var(--mono); font-size: .9rem;"><span style="display: inline-block; margin-right: .5rem; padding: .1rem .45rem; border-radius: 100px; background: var(--copper-soft); color: var(--copper-ink-on-soft); font-size: .7rem; letter-spacing: .05em;">66% smaller</span>14.8 KB</span>
+    </div>
+    <div style="height: 14px; background: var(--paper-soft); border-radius: 4px;" title="Results fragment: 14.8 KB">
+      <div style="width: 33.7%; height: 100%; background: var(--copper); border-radius: 4px;"></div>
+    </div>
+  </div>
+  <figcaption style="margin-top: 1rem; font-size: .85rem; color: var(--ink-soft);">Size of the HTML for <code>/expenses?q=e</code>, 10 rows, before compression.</figcaption>
+</figure>
+++++
+
+With a minimal amount of work, we can have the server only return the smaller fragment and save on bandwidth and processing.
+
+=== Rendering only the results
+
+The `<div>` around the results already is a Thymeleaf fragment: `th:fragment="results"`.
+The controller can render only that fragment by returning `expenses/index :: results` as the view name.
+
+The question is when.
+The same `GET /expenses` is used by several kinds of requests, and only some of them want the results alone.
+Because of the htmx 4 headers we saw at the start of this post, the controller can tell them apart:
+
+[cols="2,2,1"]
+|===
+|Request |Headers |Wants
+
+|The search form, a sort or page link
+|`HX-Request: true`, `HX-Target: div#expenses-results`
+|The results
+
+|A link in the sidebar (boosted by the body)
+|`HX-Request: true`, `HX-Boosted: true`, `HX-Target: body`
+|The whole page
+
+|Back or forward
+|`HX-Request: true`, `HX-History-Restore-Request: true`, `HX-Target: body`
+|The whole page
+
+|A reload, a bookmark, or a browser without JavaScript
+|No htmx headers
+|The whole page
+|===
+
+So the rule is simple: only a request that targets `#expenses-results` gets the results alone.
+
+htmx-spring-boot gives the controller the htmx headers as an `HtmxRequest` parameter:
+
+[source,java]
+.src/main/java/com/wimdeblauwe/examples/spendleaf/expense/web/ExpenseController.java
+----
+@GetMapping
+public String index(@ModelAttribute("search") ExpenseSearchFormData search,
+                    @SortDefault(sort = "date", direction = Sort.Direction.DESC) Pageable pageable,
+                    HtmxRequest htmxRequest, //<.>
+                    Model model) {
+    ...
+    model.addAttribute("page", getExpenses.execute(search.toFilter(), withStableOrder(pageable)));
+    return wantsResults(htmxRequest) ? "expenses/index :: results" : "expenses/index"; //<.>
+}
+
+private static boolean wantsResults(HtmxRequest htmxRequest) {
+    return htmxRequest.isHtmxRequest() && "div#expenses-results".equals(htmxRequest.getTarget()); //<.>
+}
+----
+
+<.> htmx-spring-boot fills in the `HtmxRequest` from the request headers.
+<.> The same model, rendered as the fragment, or as the whole page.
+<.> htmx 4 sends the target as the tag name, followed by `#` and the `id`.
+
+Note that we check the target, and not only whether the request comes from htmx.
+A link in the sidebar and the back button also send `HX-Request: true`.
+If the controller answered those with the fragment, the sidebar would show a page with only the table, without the sidebar, the header or the search form.
+
+The search form and the links keep their `hx-select="#expenses-results"`.
+htmx finds the `<div>` in the fragment as well, so it doesn't hurt, and the page still works if a request would get the whole page anyway.
+
+
+[TIP]
+.The same URL, not a separate endpoint
+====
+It might be tempting to add a separate endpoint for the fragment, like `/expenses/table`.
+We don't, because Shadleaf builds the sort links in the column headers and the links of the pagination from the request that rendered them.
+If htmx asked for `/expenses/table?q=hotel`, every sort and page link in the answer would point to `/expenses/table` too.
+The next click on one of them would push that URL into the address bar, and a reload would show the table without the page around it.
+
+With one URL, the address bar, the links in the fragment and the page after a reload all agree.
+====
+
+[IMPORTANT]
+.Caching
+====
+The same URL now has two answers: the fragment and the whole page.
+A browser must not show the fragment from its cache when the user reloads the page.
+htmx-spring-boot takes care of this: it adds `Vary: HX-Request` to the response of every htmx request, so the browser caches both answers separately.
+====
+
+
+== A loading indicator
+
+On a local machine, the results come back before you notice.
+On a slow network, or with a slow query, the user types a search and nothing seems to happen for a while.
+A loading indicator tells them that the search is on its way.
+
+We use two indicators:
+
+* A spinner in the search field, while a search is on its way. The user is looking at the field while typing, so that is where they will notice it.
+* Faded results, for every request that will replace them: a search, but also a sort or a page link. This tells the user that the table they are looking at is about to change.
+
+=== How htmx shows an indicator
+
+While a request is on its way, htmx adds the `htmx-request` class to the element that made the request.
+htmx also comes with a bit of CSS for the `htmx-indicator` class: such an element is hidden, unless it is inside an element with `htmx-request`, or has that class itself.
+
+`hx-indicator` changes which elements get the `htmx-request` class.
+It takes one or more CSS selectors, separated by commas.
+
+=== A spinner in the search field
+
+The search field is an input group, so the spinner can go in an addon at the end of the field:
+
+[source,html]
+.src/main/resources/templates/expenses/index.html
+----
+<form id="expenses-search" ...
+      hx-indicator="#expenses-search, #expenses-results"> <!--.-->
+    <sl:input-group class="w-64">
+        <sl:input-group-input type="search" id="expenses-q" name="q" .../>
+        <sl:input-group-addon><sl:icon name="search"/></sl:input-group-addon>
+        <sl:input-group-addon align="inline-end">
+            <sl:spinner class="htmx-indicator" aria-label="Searching expenses"/> <!--.-->
+        </sl:input-group-addon>
+    </sl:input-group>
+    ...
+</form>
+----
+
+<.> During a search, both the form and the results get the `htmx-request` class.
+<.> The spinner is hidden by htmx's CSS, until the form has `htmx-request`. Shadleaf's spinner is a `role="status"` named "Loading". The `aria-label` replaces that name with something more specific.
+
+=== Fading the results
+
+The sort and page links in the `<thead>` and the footer get an `hx-indicator` as well, next to the attributes they already had:
+
+[source,html]
+.src/main/resources/templates/expenses/index.html
+----
+<thead hx-target:inherited="#expenses-results"
+       hx-select:inherited="#expenses-results"
+       hx-swap:inherited="outerHTML show:none"
+       hx-indicator:inherited="#expenses-results">
+----
+
+Without it, the link itself would get the `htmx-request` class.
+With it, only the results do, so a click on a sort link fades the results, but does not show the spinner in the search field.
+
+A few lines of CSS in `application.css` do the fading:
+
+[source,css]
+.src/main/resources/static/css/application.css
+----
+#expenses-results.htmx-request {
+  opacity: 0.5;
+  transition: opacity 200ms ease-in 150ms; <.>
+}
+----
+
+<.> The first time is the duration: 200 ms, the same speed at which htmx fades in the spinner. The second time is a delay: the results only start to fade after 150 ms. A fast answer replaces them before that, so they don't flicker on every keystroke.
+
+There is no CSS needed to undo the fading of the table.
+The server response replaces `#expenses-results` with a new `<div>`, which does not have the `htmx-request` class.
+
+TIP: To see the indicators locally, throttle the network in the developer tools of the browser, for example with the "Slow 4G" preset in Chrome.
+
+image::2026/12/shadleaf-part-04-05-loading-indicator.webp[link=/images/2026/12/shadleaf-part-04-05-loading-indicator.webp]
+
+
+== No results versus no expenses yet
+
+Earlier in this post, we saw that a search that finds nothing shows "No expenses yet", with a button to add the first expense.
+That is the empty state from part 2, for a user who has no expenses at all.
+It is the wrong message after a search: the user has expenses, just none that match.
+
+The two cases need a different empty state:
+
+[cols="1,2,2"]
+|===
+| |No expenses yet |No expenses found
+
+|When
+|The page is empty, and the user did not search or filter
+|The page is empty, because of the search or the filters
+
+|Shows
+|The card from part 2, without the search form
+|The table headers and the search form, with a message in the table
+
+|Action
+|Add the first expense
+|Clear the filters
+|===
+
+=== Knowing whether the user filtered
+
+The search record gets a method that tells whether the user searched or filtered:
+
+[source,java]
+.src/main/java/com/wimdeblauwe/examples/spendleaf/expense/web/ExpenseSearchFormData.java
+----
+public boolean isEmpty() {
+    return toFilter().isEmpty();
+}
+----
+
+It uses the `isEmpty()` of `ExpenseFilter`, which we wrote for this purpose at the start of the post.
+
+=== No expenses yet
+
+The template decides once, at the top of the results, which case it is:
+
+[source,html]
+.src/main/resources/templates/expenses/index.html
+----
+<div id="expenses-results" th:fragment="results"
+     th:with="noExpensesYet=${page.totalElements == 0 and search.isEmpty()}"> <!--.-->
+    <sl:query-params except="q,category,status,from,to" form="expenses-search"/>
+    <sl:card id="no-expenses" th:if="${noExpensesYet}">
+        ...
+    </sl:card>
+    <th:block th:unless="${noExpensesYet}">
+        <sl:table id="expenses-table" th:page="${page}">
+            ...
+        </sl:table>
+        ...
+    </th:block>
+</div>
+----
+
+<.> The `th:with` is on the fragment itself, so the variable also exists when the controller renders only the results.
+
+A user without any expenses has nothing to search for, so the search form is hidden as well:
+
+[source,html]
+.src/main/resources/templates/expenses/index.html
+----
+<div class="mb-4 flex flex-wrap items-center gap-3"
+     th:unless="${page.totalElements == 0 and search.isEmpty()}">
+    <form id="expenses-search" ...>
+        ...
+    </form>
+    <sl:button as="a" th:href="@{/expenses/create}" class="ms-auto">New expense</sl:button>
+</div>
+----
+
+The "New expense" button next to the form goes with it.
+The card has a button of its own, so the page does not show the same action twice.
+
+=== No expenses found
+
+When the search or the filters find nothing, the table stays, with its headers.
+The user keeps seeing what they were looking at, and can change the search or the filters right away.
+
+Inside the `<tbody>`, `<sl:table-empty>` adds a row that spans all the columns.
+Its default text is "No results.", but it can hold an empty state instead:
+
+[source,html]
+.src/main/resources/templates/expenses/index.html
+----
+<tbody>
+<tr th:each="expense : ${page}">
+    ...
+</tr>
+<sl:table-empty colspan="6" th:if="${page.empty}">
+    <sl:empty id="no-matching-expenses">
+        <sl:empty-header>
+            <sl:empty-media variant="icon"><sl:icon name="search-x"/></sl:empty-media>
+            <sl:empty-title level="2">No expenses found</sl:empty-title>
+            <sl:empty-description>No expenses match your search and filters.</sl:empty-description>
+        </sl:empty-header>
+        <sl:empty-content>
+            <sl:button as="a" variant="outline" th:href="@{/expenses}">Clear filters</sl:button> <!--.-->
+        </sl:empty-content>
+    </sl:empty>
+</sl:table-empty>
+</tbody>
+----
+
+<.> An outline button, as the user did nothing wrong: it is a way out, not the main action of the page.
+
+The footer with the pagination has nothing to say for an empty page, so it gets a `th:unless="${page.empty}"`.
+
+The "Clear filters" link is inside `#expenses-results`, but not inside the `<thead>` or the footer.
+So it does not inherit their target, and is boosted by the body, like the edit links.
+That is exactly what we want here: clearing the filters must also reset the search field, the selects and the date picker, which are outside the results.
+A request for the whole of `/expenses` renders the form without any values.
+
+This is where opting in on the `<thead>` and the footer, from "Sorting and paging inside the table", pays off: we added a link to the results, and it works without any extra attributes.
+
+image::2026/12/shadleaf-part-04-06-empty-results.webp[link=/images/2026/12/shadleaf-part-04-06-empty-results.webp]
+
+== Page actions next to the title
+
+You might have noticed the "New expense" button is sitting now awkwardly wrapped on a new row because of the filter form.
+We can move the button next to the page title, which is a common place for the main action of a page.
+That leaves the whole row below the title for the filters.
+
+=== An actions parameter in the layout
+
+The title is rendered by the layout from part 1, so the layout gets a new parameter for the actions:
+
+[source,html]
+.src/main/resources/templates/layout/main.html
+----
+<html ... th:fragment="layout(pageTitle, breadcrumb, actions, content)"> <!--.-->
+...
+<div class="px-4 pb-4">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
+        <h1 class="text-2xl font-semibold" th:text="${pageTitle}"></h1>
+        <th:block th:replace="${actions}"></th:block> <!--.-->
+    </div>
+    <div th:replace="${content}"></div>
+</div>
+----
+
+<.> The new `actions` parameter, next to the `breadcrumb` that we added in part 1.
+<.> The actions of the page, at the end of the row, thanks to `justify-between`.
+
+A page without actions passes `~{}`, the empty fragment.
+`th:replace` with an empty fragment renders nothing:
+
+[source,html]
+.src/main/resources/templates/approvals/index.html
+----
+<html ... th:replace="~{layout/main :: layout('Approvals', ~{::breadcrumb}, ~{}, ~{::#page-content})}">
+----
+
+The dashboard and the create and edit pages do the same.
+
+=== The expenses page
+
+The expenses page passes its button the same way it passes its breadcrumb, with `th:ref`:
+
+[source,html]
+.src/main/resources/templates/expenses/index.html
+----
+<html ... th:replace="~{layout/main :: layout('My expenses', ~{::breadcrumb}, ~{::actions}, ~{::#page-content})}">
+<body>
+<th:block th:ref="breadcrumb">
+    ...
+</th:block>
+<th:block th:ref="actions">
+    <sl:button as="a" th:href="@{/expenses/create}"
+               th:unless="${page.totalElements == 0 and search.isEmpty()}">New expense</sl:button> <!--.-->
+</th:block>
+<div id="page-content">
+    <form id="expenses-search" ...
+          th:unless="${page.totalElements == 0 and search.isEmpty()}"
+          class="mb-4 flex flex-wrap items-center gap-3"> <!--.-->
+        <sl:input-group class="w-56">
+            ...
+        </sl:input-group>
+        <sl:select id="expenses-category" name="category" aria-label="Category" class="w-40">
+            ...
+        </sl:select>
+        <sl:select id="expenses-status" name="status" aria-label="Status" class="w-40">
+            ...
+        </sl:select>
+        ...
+    </form>
+    ...
+</div>
+----
+
+<.> Like before, there is no "New expense" button above the "No expenses yet" card, which has its own.
+<.> The `<div>` around the form and the button is gone. The `th:unless` and the margin moved to the form itself.
+
+The search field and the two selects also got a bit narrower, so the four filters fit on one line at a laptop screen width, also with a long date range like "12 Sept 2026 – 30 Sept 2026".
+
+image::2026/12/shadleaf-part-04-07-button-moved.webp[link=/images/2026/12/shadleaf-part-04-07-button-moved.webp]
+
+== Conclusion
+
+In this part, we turned the expenses page into a live table.
+One `hx-boost` on the body made the whole application feel faster, and a search form with a few `hx-*` attributes filters the table while the user types.
+Sorting and paging swap only the results, the URL stays in step for bookmarks and the back button, and the controller renders only the part of the page that htmx asks for.
+
+Shadleaf did a lot of the work without any htmx-specific code: the sort and page links are built from the request, `<sl:query-params>` keeps the order of the table in the search form, and every link has a stable `id`, so the focus survives a swap.
+And because htmx only enhances plain links and a `GET` form, the page still works without JavaScript.
+
+In the next part, we will edit and delete expenses without leaving the list, with sheets, dialogs and toasts from the server.
+
+See https://github.com/wimdeblauwe/blog-example-code/tree/part-4/spendleaf[spendleaf] on GitHub for the full sources of this part.
+
+If you have any questions or remarks, feel free to post a comment at https://github.com/wimdeblauwe/wimdeblauwe.com/discussions[GitHub discussions].
