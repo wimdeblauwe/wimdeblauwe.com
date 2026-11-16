@@ -16,9 +16,14 @@ description: "Tutorial showing how to build an application with the Shadleaf com
 This blog post is the first in a series showing how to build a Spring Boot with Thymeleaf application using the https://shadleaf.dev/[Shadleaf component library].
 Over the course of 10 parts, we will build Spendleaf, an expense tracker for a small team.
 Employees enter expenses and attach receipts, and managers approve or reject them.
-The app touches almost every part of Shadleaf: the https://shadleaf.dev/current/components/application-shell/[application shell], https://shadleaf.dev/current/components/table/[tables], https://shadleaf.dev/current/components/field/[forms], https://shadleaf.dev/current/components/dialog/[dialogs] and https://shadleaf.dev/current/components/sheet/[sheets], https://shadleaf.dev/current/components/file-upload/[file uploads], https://shadleaf.dev/current/components/user-menu/[roles] and https://shadleaf.dev/current/components/chart/[charts].
 
 <!--more-->
+
+The app touches almost every part of Shadleaf: the https://shadleaf.dev/current/components/application-shell/[application shell], https://shadleaf.dev/current/components/table/[tables], https://shadleaf.dev/current/components/field/[forms], https://shadleaf.dev/current/components/dialog/[dialogs] and https://shadleaf.dev/current/components/sheet/[sheets], https://shadleaf.dev/current/components/file-upload/[file uploads], https://shadleaf.dev/current/components/user-menu/[roles] and https://shadleaf.dev/current/components/chart/[charts].
+
+This is a mockup that shows the design direction of the finished application:
+
+image::2026/11/shadleaf-mockup.webp[link=/images/2026/11/shadleaf-mockup.webp]
 
 In this first part, we will set up the project and create the application shell.
 
