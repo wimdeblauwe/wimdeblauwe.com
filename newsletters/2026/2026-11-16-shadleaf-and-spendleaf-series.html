@@ -1,0 +1,210 @@
+<!--
+  Shadleaf + "Building an application with Shadleaf" series newsletter — paste into
+  EmailOctopus "Code your own" editor.
+  Send to: the main list
+
+  Subject:   Shadleaf: a component library for Thymeleaf (+ a new blog series)
+  Preheader: About 50 accessible, themeable components for Spring Boot and Thymeleaf, and a 10-part series that builds a real app with them.
+
+  Images are PNG/JPG on purpose: several email clients (Outlook) don't show WebP,
+  so the Spendleaf mockup uses a PNG copy (static/images/2026/11/shadleaf-mockup.png).
+  Deploy the site with that PNG before sending, or the image will be broken.
+
+  Required merge tags {{UnsubscribeURL}} and {{SenderInfo}} are in the footer.
+
+  Before sending, per newsletter.md step 3:
+    - From address must be newsletter@wimdeblauwe.com (NOT the gmail address)
+    - Send a test to yourself; check Authentication-Results reads
+      header.from=wimdeblauwe.com, not eomail5.com
+-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#faf9f5;margin:0;padding:0;">
+  <tr>
+    <td align="center" style="padding:24px 12px;">
+
+      <!-- preheader: shown in the inbox preview, hidden in the body -->
+      <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+        About 50 accessible, themeable components for Spring Boot and Thymeleaf, and a 10-part series that builds a real app with them.
+      </div>
+
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background-color:#ffffff;border:1px solid #e6e2d9;border-radius:12px;">
+        <tr>
+          <td style="padding:32px 32px 8px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+
+            <p style="margin:0 0 20px 0;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#c2702e;font-weight:700;">
+              Wim Deblauwe &middot; Newsletter
+            </p>
+
+            <p style="margin:0 0 16px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              Hi,
+            </p>
+
+            <p style="margin:0 0 28px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              I have something new to share: <strong>Shadleaf</strong>, a component library
+              for Thymeleaf. Today I also started a blog series that shows how to build a
+              complete application with it, and there is a new video on my YouTube channel.
+            </p>
+
+            <hr style="border:none;border-top:1px solid #e6e2d9;margin:0 0 28px 0;">
+
+            <!-- ===== Shadleaf ===== -->
+            <h2 style="margin:0 0 12px 0;font-size:21px;line-height:1.3;color:#13202f;font-weight:800;">
+              Shadleaf 1.0: UI components for Thymeleaf
+            </h2>
+
+            <p style="margin:0 0 16px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              If you build with React or Angular, you pick a component library and you have
+              buttons, dialogs, date pickers and tables ready to go. With Thymeleaf, you end up
+              writing all of that yourself, in every project again.
+            </p>
+
+            <p style="margin:0 0 20px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              <a href="https://shadleaf.dev/" style="color:#c2702e;text-decoration:underline;font-weight:700;">Shadleaf</a>
+              fixes that. It is an open-source library of accessible, themeable components,
+              inspired by shadcn/ui and packaged as a Spring Boot starter. You use the
+              components as custom tags in your templates:
+            </p>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px 0;">
+              <tr>
+                <td style="background-color:#f4f1ea;border-radius:8px;padding:14px 16px;font-family:SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace;font-size:13px;line-height:1.6;color:#13202f;">
+                  &lt;sl:button variant="destructive" hx-delete="/orders/42"&gt;<br>
+                  &nbsp;&nbsp;&lt;sl:slot name="icon-start"&gt;&lt;sl:icon name="trash"/&gt;&lt;/sl:slot&gt;<br>
+                  &nbsp;&nbsp;Delete order<br>
+                  &lt;/sl:button&gt;
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:0 0 24px 0;text-align:center;">
+              <a href="https://shadleaf.dev/">
+                <img src="https://www.wimdeblauwe.com/images/2026/10/shadleaf-sample-01-light.png"
+                     width="536" alt="A people table built with Shadleaf, with a sidebar, search, sorting and pagination"
+                     style="display:block;margin:0 auto;width:100%;max-width:536px;height:auto;border:1px solid #e6e2d9;border-radius:8px;">
+              </a>
+            </p>
+
+            <p style="margin:0 0 8px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              What is in 1.0:
+            </p>
+
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px 0;">
+              <tr><td style="padding:4px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#1b2531;">&bull;&nbsp; About 50 components, from buttons and inputs to dialogs, comboboxes, date pickers, tables, charts and a full application shell</td></tr>
+              <tr><td style="padding:4px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#1b2531;">&bull;&nbsp; Themed with shadcn's CSS variables, in light and dark mode</td></tr>
+              <tr><td style="padding:4px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#1b2531;">&bull;&nbsp; Works with htmx and Alpine.js, also under a strict Content-Security-Policy</td></tr>
+              <tr><td style="padding:4px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#1b2531;">&bull;&nbsp; Checked props: a typo like <code>variant="destructve"</code> fails with a clear message</td></tr>
+              <tr><td style="padding:4px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#1b2531;">&bull;&nbsp; Plain Maven build is enough: the jar ships compiled CSS and JavaScript</td></tr>
+              <tr><td style="padding:4px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#1b2531;">&bull;&nbsp; Code completion in IntelliJ IDEA, and docs as Markdown for coding agents</td></tr>
+            </table>
+
+            <p style="margin:0 0 28px 0;text-align:center;">
+              <a href="https://shadleaf.dev/"
+                 style="display:inline-block;background-color:#c2702e;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:12px 24px;border-radius:8px;">
+                Explore Shadleaf
+              </a>
+            </p>
+
+            <p style="margin:0 0 28px 0;font-size:15px;line-height:1.6;color:#5d6673;">
+              Read the <a href="https://www.wimdeblauwe.com/blog/2026/10/29/shadleaf-1.0-release/" style="color:#c2702e;text-decoration:underline;">release blog post</a>,
+              watch the <a href="https://www.youtube.com/watch?v=2OBDw-t0fX0" style="color:#c2702e;text-decoration:underline;">launch video</a>,
+              or check out the code on <a href="https://github.com/wimdeblauwe/shadleaf" style="color:#c2702e;text-decoration:underline;">GitHub</a>.
+              A star is much appreciated!
+            </p>
+
+            <hr style="border:none;border-top:1px solid #e6e2d9;margin:0 0 28px 0;">
+
+            <!-- ===== Blog series ===== -->
+            <h2 style="margin:0 0 12px 0;font-size:21px;line-height:1.3;color:#13202f;font-weight:800;">
+              New blog series: Building an application with Shadleaf
+            </h2>
+
+            <p style="margin:0 0 16px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              A component library makes more sense when you see it used in a real application.
+              So over 10 parts, I will build <strong>Spendleaf</strong>, an expense tracker for a
+              small team. Employees enter expenses and attach receipts, and managers approve or
+              reject them.
+            </p>
+
+            <p style="margin:0 0 16px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              Along the way we use almost every part of Shadleaf: the application shell, tables,
+              forms, dialogs and sheets, file uploads, roles and charts.
+              This mockup shows where we are heading:
+            </p>
+
+            <p style="margin:0 0 24px 0;text-align:center;">
+              <a href="https://www.wimdeblauwe.com/blog/2026/11/16/building-an-application-with-shadleaf/">
+                <img src="https://www.wimdeblauwe.com/images/2026/11/shadleaf-mockup.png"
+                     width="536" alt="Mockup of the Spendleaf expense tracker: a table of expenses with search, filters and pagination"
+                     style="display:block;margin:0 auto;width:100%;max-width:536px;height:auto;border:0;">
+              </a>
+            </p>
+
+            <p style="margin:0 0 24px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              In the first part, we set up the project with <code>ttcli</code>, build the
+              application shell with a sidebar, breadcrumbs and a theme toggle, and add code
+              completion in IntelliJ IDEA. A new part follows every week.
+            </p>
+
+            <p style="margin:0 0 28px 0;text-align:center;">
+              <a href="https://www.wimdeblauwe.com/blog/2026/11/16/building-an-application-with-shadleaf/"
+                 style="display:inline-block;background-color:#c2702e;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:12px 24px;border-radius:8px;">
+                Read part 1
+              </a>
+            </p>
+
+            <hr style="border:none;border-top:1px solid #e6e2d9;margin:0 0 28px 0;">
+
+            <!-- ===== YouTube video ===== -->
+            <h2 style="margin:0 0 12px 0;font-size:21px;line-height:1.3;color:#13202f;font-weight:800;">
+              New video: Form handling with Spring Boot and Thymeleaf
+            </h2>
+
+            <p style="margin:0 0 20px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              There is also a new video on my YouTube channel about handling forms with Spring Boot
+              and Thymeleaf.
+            </p>
+
+            <!-- thumbnail linking to YouTube (email clients cannot embed video) -->
+            <p style="margin:0 0 8px 0;text-align:center;">
+              <a href="https://www.youtube.com/watch?v=KrhANnaN-X0">
+                <img src="https://img.youtube.com/vi/KrhANnaN-X0/hqdefault.jpg"
+                     width="536" alt="Watch Form Handling with Spring Boot and Thymeleaf on YouTube"
+                     style="display:block;margin:0 auto;width:100%;max-width:536px;height:auto;border:0;border-radius:8px;">
+              </a>
+            </p>
+            <p style="margin:0 0 28px 0;text-align:center;font-size:15px;line-height:1.6;">
+              <a href="https://www.youtube.com/watch?v=KrhANnaN-X0" style="color:#c2702e;text-decoration:underline;font-weight:700;">
+                &#9654;&nbsp; Watch the video on YouTube
+              </a>
+            </p>
+
+            <hr style="border:none;border-top:1px solid #e6e2d9;margin:0 0 28px 0;">
+
+            <p style="margin:0 0 6px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              Thanks for reading,
+            </p>
+            <p style="margin:0 0 32px 0;font-size:16px;line-height:1.65;color:#1b2531;">
+              Wim
+            </p>
+
+          </td>
+        </tr>
+      </table>
+
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
+        <tr>
+          <td style="padding:20px 32px 8px 32px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:1.7;color:#5d6673;">
+            <p style="margin:0 0 8px 0;">
+              You are receiving this because you subscribed at wimdeblauwe.com.
+            </p>
+            <p style="margin:0 0 8px 0;">
+              <a href="{{UnsubscribeURL}}" style="color:#5d6673;text-decoration:underline;">Unsubscribe</a> |
+              <a href="{{RewardsURL}}" style="color:#5d6673;text-decoration:underline;">Sent with EmailOctopus</a>
+            </p>
+            <p style="margin:0;">{{SenderInfo}}</p>
+          </td>
+        </tr>
+      </table>
+
+    </td>
+  </tr>
+</table>
