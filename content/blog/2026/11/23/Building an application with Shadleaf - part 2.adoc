@@ -1,7 +1,7 @@
 ---
 title: "Building an application with Shadleaf - part 2"
 date: 2026-11-23
-draft: true
+draft: false
 tags: ["thymeleaf", "spring-boot"]
 keywords: []
 description: "Part 2 of the Shadleaf component library tutorial showing tables with paging and sorting"
@@ -13,7 +13,7 @@ description: "Part 2 of the Shadleaf component library tutorial showing tables w
 :2c: ::
 :underscore: _
 
-In part 1 of Building an application with Shadleaf, we set up the project and added the application shell.
+In https://www.wimdeblauwe.com/blog/2026/11/16/building-an-application-with-shadleaf/[part 1] of Building an application with Shadleaf, we set up the project and added the application shell.
 In this part, we will build a table with sorting and pagination.
 
 <!--more-->
@@ -419,18 +419,18 @@ Below the table, we add pagination controls so the user can see how many pages t
 .src/main/resources/templates/expenses/index.html
 ----
 <th:block th:unless="${page.totalElements == 0}">
-        <sl:table id="expenses-table" th:page="${page}">
-            ...
-        </sl:table>
+    <sl:table id="expenses-table" th:page="${page}">
+        ...
+    </sl:table>
 
-        <div class="mt-4 flex flex-wrap items-center justify-between gap-4"> <!--.-->
-            <sl:pagination-summary th:page="${page}"/> <!--.-->
-            <div class="flex flex-wrap items-center gap-6">
-                <sl:pagination-size th:page="${page}"/> <!--.-->
-                <sl:pagination th:page="${page}" class="m-0 w-auto"/> <!--.-->
-            </div>
+    <div class="mt-4 flex flex-wrap items-center justify-between gap-4"> <!--.-->
+        <sl:pagination-summary th:page="${page}"/> <!--.-->
+        <div class="flex flex-wrap items-center gap-6">
+            <sl:pagination-size th:page="${page}"/> <!--.-->
+            <sl:pagination th:page="${page}" class="m-0 w-auto"/> <!--.-->
         </div>
-    </th:block>
+    </div>
+</th:block>
 ----
 
 <.> A flex container with the Tailwind CSS utility classes that puts the summary at the start and the controls at the end.
